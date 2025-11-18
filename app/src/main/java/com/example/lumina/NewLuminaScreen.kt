@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -49,7 +50,8 @@ fun NewLuminaScreen(
     // --- ACCEPT the scanned URL (it's nullable) ---
     scannedUrl: String?,
     onNavigateBack: () -> Unit,
-    onSaveLumina: () -> Unit
+    onSaveLumina: () -> Unit,
+    onNavigateToAdvancedOptions: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -79,6 +81,11 @@ fun NewLuminaScreen(
             WebsiteInputSection(initialUrl = scannedUrl)
             Spacer(modifier = Modifier.height(24.dp))
             IconAndThemeSection()
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // --- NEW: Advanced Options Section ---
+            AdvancedOptionsRow(onClick = onNavigateToAdvancedOptions)
+            Spacer(modifier = Modifier.height(24.dp)) // Padding at the bottom
         }
     }
 }
@@ -251,6 +258,35 @@ fun IconAndThemeSection() {
     }
 }
 
+// --- NEW COMPOSABLE: Advanced Options Row ---
+
+@Composable
+fun AdvancedOptionsRow(
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF1C1C1E))
+            // --- THIS IS THE FIX ---
+            // Replace the empty comment with the onClick parameter.
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text("Advanced Options", color = Color.White, fontSize = 16.sp)
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowForwardIos,
+            contentDescription = "Open Advanced Options",
+            tint = Color.Gray,
+            modifier = Modifier
+                .size(16.dp)
+        )
+    }
+}
+
 // --- Preview ---
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 800)
@@ -261,7 +297,8 @@ fun NewLuminaScreenPreview() {
             // Pass a sample URL for previewing
             scannedUrl = "https://www.google.com",
             onNavigateBack = {},
-            onSaveLumina = {}
+            onSaveLumina = {},
+            onNavigateToAdvancedOptions = {}
         )
     }
 }

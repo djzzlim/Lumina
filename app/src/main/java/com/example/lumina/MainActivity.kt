@@ -120,13 +120,53 @@ fun AppNavigation() {
             // --- RETRIEVE THE ARGUMENT ---
             val urlFromScanner = backStackEntry.arguments?.getString("url")
             NewLuminaScreen(
-                // Pass the retrieved URL to the screen
                 scannedUrl = urlFromScanner,
                 onNavigateBack = { navController.navigateUp() },
                 onSaveLumina = {
                     // TODO: Add save logic here
                     navController.navigateUp()
+                },
+                // --- FIX 1: IMPLEMENT the navigation logic here ---
+                onNavigateToAdvancedOptions = {
+                    navController.navigate("advanced_options_screen")
                 }
+            )
+        }
+
+        composable(
+            route = "advanced_options_screen",
+            // --- THIS IS THE FIX: Change the animation direction ---
+            enterTransition = {
+                // Screen slides in from the RIGHT
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(400)
+                )
+            },
+            exitTransition = {
+                // When navigating away, it slides out to the LEFT
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(400)
+                )
+            },
+            popEnterTransition = {
+                // When coming back, it slides in from the LEFT
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(400)
+                )
+            },
+            popExitTransition = {
+                // When popping back, it slides out to the RIGHT
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(400)
+                )
+            }
+        ) {
+            AdvancedOptionsScreen(
+                onNavigateBack = { navController.navigateUp() }
             )
         }
     }
