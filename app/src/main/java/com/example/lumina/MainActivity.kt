@@ -7,12 +7,15 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.lumina.ui.theme.LuminaTheme
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,11 +38,9 @@ fun AppNavigation() {
         startDestination = "home_screen"
     ) {
         // Composable for the home screen
-        // The exit and popEnter transitions here make the home screen fade slightly,
-        // which looks good behind the sliding scanner screen.
         composable(
             "home_screen",
-            exitTransition = { fadeOut(animationSpec = tween(350)) },
+            exitTransition = { null },
             popEnterTransition = { fadeIn(animationSpec = tween(350)) }
         ) {
             LuminaHomeScreen(
@@ -47,22 +48,26 @@ fun AppNavigation() {
                     navController.navigate("qr_code_scanner_screen") {
                         launchSingleTop = true
                     }
+                },
+                onNavigateToAddLumina = {
+                    // Navigate to the new screen WITHOUT a URL
+                    navController.navigate("new_lumina_screen") {
+                        launchSingleTop = true
+                    }
                 }
             )
         }
 
-        // Composable for the QR code scanner screen with a vertical slide animation
+        // Composable for the QR code scanner screen
         composable(
             route = "qr_code_scanner_screen",
             enterTransition = {
-                // Screen slides up from the bottom
                 slideIntoContainer(
                     AnimatedContentTransitionScope.SlideDirection.Up,
                     animationSpec = tween(400)
                 )
             },
             popExitTransition = {
-                // Screen slides down to the bottom when navigating back
                 slideOutOfContainer(
                     AnimatedContentTransitionScope.SlideDirection.Down,
                     animationSpec = tween(400)
@@ -70,7 +75,56 @@ fun AppNavigation() {
             }
         ) {
             QRCodeScannerScreen(
+                // --- THIS IS A KEY CHANGE ---
+                onUrlScanned = { scannedUrl ->
+                    // URL-encode the scanned URL to make it safe for navigation
+                    val encodedUrl = URLEncoder.encode(scannedUrl, StandardCharsets.UTF_8.toString())
+                    // --- THIS IS THE FIX ---
+                    // Navigate to the new screen...
+                    navController.navigate("new_lumina_screen?url=$encodedUrl") {
+                        // ...and pop the scanner screen off the back stack.
+                        popUpTo("qr_code_scanner_screen") {
+                            inclusive = true // 'true' means the qr_code_scanner_screen itself is removed.
+                        }
+                    }
+                },
                 onNavigateBack = {
+                    navController.navigateUp()
+                }
+            )
+        }
+
+        // Composable for the New Lumina screen
+        composable(
+            // --- DEFINE THE ROUTE WITH AN OPTIONAL ARGUMENT ---
+            route = "new_lumina_screen?url={url}",
+            arguments = listOf(
+                navArgument("url") {
+                    type = NavType.StringType
+                    nullable = true // Mark the argument as optional
+                }
+            ),
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Up,
+                    animationSpec = tween(400)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Down,
+                    animationSpec = tween(400)
+                )
+            }
+        ) { backStackEntry ->
+            // --- RETRIEVE THE ARGUMENT ---
+            val urlFromScanner = backStackEntry.arguments?.getString("url")
+            NewLuminaScreen(
+                // Pass the retrieved URL to the screen
+                scannedUrl = urlFromScanner,
+                onNavigateBack = { navController.navigateUp() },
+                onSaveLumina = {
+                    // TODO: Add save logic here
                     navController.navigateUp()
                 }
             )

@@ -3,6 +3,7 @@ package com.example.lumina
 import android.Manifest
 import android.content.pm.PackageManager
 import android.util.Log
+import android.util.Patterns // 1. IMPORT a URL validator
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,10 +36,10 @@ import com.google.mlkit.vision.barcode.common.Barcode
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QRCodeScannerScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,    // --- ADD a new, specific callback for when a URL is found ---
+    onUrlScanned: (String) -> Unit
 ) {
     val context = LocalContext.current
-    // This is the single source of truth for the scanned state.
     var hasScanned by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -72,15 +73,16 @@ fun QRCodeScannerScreen(
         QRCodeScannerView(
             modifier = Modifier.padding(paddingValues),
             onQrCodeScanned = { qrCodeValue ->
-                // The check to prevent multiple scans happens here.
                 if (!hasScanned) {
-                    // --- THIS IS THE FIX ---
-                    // Immediately set the flag to true to block subsequent calls.
                     hasScanned = true
 
-                    Toast.makeText(context, "Scanned: $qrCodeValue", Toast.LENGTH_LONG).show()
-                    Log.d("QRCodeScanner", "Scanned value: $qrCodeValue")
-                    onNavigateBack()
+                    if (Patterns.WEB_URL.matcher(qrCodeValue).matches()) {
+                        // --- USE THE NEW CALLBACK ---
+                        onUrlScanned(qrCodeValue)
+                    } else {
+                        Toast.makeText(context, "Failed: Scanned code is not a URL.", Toast.LENGTH_LONG).show()
+                        onNavigateBack() // Navigate back on failure
+                    }
                 }
             }
         )

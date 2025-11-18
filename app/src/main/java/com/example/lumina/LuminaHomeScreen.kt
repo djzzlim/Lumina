@@ -25,9 +25,10 @@ import com.example.lumina.ui.theme.LuminaTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-// 1. ADD the parameter to the function signature here
 fun LuminaHomeScreen(
-    onNavigateToScanner: () -> Unit
+    onNavigateToScanner: () -> Unit,
+    // --- (1) ADD a new parameter for the add button ---
+    onNavigateToAddLumina: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -41,7 +42,6 @@ fun LuminaHomeScreen(
                     )
                 },
                 actions = {
-                    // Now this onClick is valid because onNavigateToScanner is a known parameter
                     IconButton(onClick = onNavigateToScanner) {
                         Icon(
                             Icons.Default.QrCodeScanner,
@@ -49,7 +49,8 @@ fun LuminaHomeScreen(
                             tint = Color(0xFFBB86FC)
                         )
                     }
-                    IconButton(onClick = { /* Handle add */ }) {
+                    // --- (2) USE the new parameter here ---
+                    IconButton(onClick = onNavigateToAddLumina) {
                         Icon(
                             Icons.Default.Add,
                             contentDescription = "Add Lumina",
@@ -184,8 +185,11 @@ fun LuminaItemCard(
 @Composable
 fun LuminaHomeScreenPreview() {
     LuminaTheme {
-        // 2. UPDATE the preview to pass an empty lambda for the new parameter
-        LuminaHomeScreen(onNavigateToScanner = {})
+        // --- (3) UPDATE the preview to pass lambdas for both parameters ---
+        LuminaHomeScreen(
+            onNavigateToScanner = {},
+            onNavigateToAddLumina = {}
+        )
     }
 }
 
