@@ -21,14 +21,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -39,46 +37,42 @@ fun QRCodeScannerScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    // This is the single source of truth for the scanned state.
     var hasScanned by remember { mutableStateOf(false) }
 
-    // Use Scaffold to match the structure of LuminaHomeScreen
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        // Consistent title style
                         "Scan QR Code",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp, // Match font size with "Lumina"
+                        fontSize = 24.sp,
                         color = Color.White
                     )
                 },
-                navigationIcon = {}, // Keep it empty
+                navigationIcon = {},
                 actions = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Close",
-                            // Use the same accent color as the home screen icons
                             tint = Color(0xFFBB86FC)
                         )
                     }
                 },
-                // Use a solid black TopAppBar to match the home screen
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Black
                 )
             )
         },
-        // Use a solid black container color
         containerColor = Color.Black
     ) { paddingValues ->
         QRCodeScannerView(
             modifier = Modifier.padding(paddingValues),
             onQrCodeScanned = { qrCodeValue ->
+                // The check to prevent multiple scans happens here.
                 if (!hasScanned) {
-                    hasScanned = true
                     Toast.makeText(context, "Scanned: $qrCodeValue", Toast.LENGTH_LONG).show()
                     Log.d("QRCodeScanner", "Scanned value: $qrCodeValue")
                     onNavigateBack()
@@ -117,7 +111,6 @@ fun QRCodeScannerView(
         if (hasCameraPermission) {
             CameraPreview(onQrCodeScanned = onQrCodeScanned)
         } else {
-            // This UI remains consistent as it's on a black background
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
@@ -143,7 +136,6 @@ fun CameraPreview(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    var hasScanned by remember { mutableStateOf(false) }
 
     val cameraController = remember { LifecycleCameraController(context) }
 
@@ -167,8 +159,6 @@ fun CameraPreview(
                     ImageAnalysis.COORDINATE_SYSTEM_VIEW_REFERENCED,
                     ContextCompat.getMainExecutor(ctx)
                 ) { result: MlKitAnalyzer.Result? ->
-                    if (hasScanned) return@MlKitAnalyzer
-
                     val barcodes = result?.getValue(barcodeScanner)
                     if (barcodes.isNullOrEmpty()) {
                         return@MlKitAnalyzer
@@ -176,7 +166,6 @@ fun CameraPreview(
 
                     val rawValue = barcodes.firstNotNullOfOrNull { it.rawValue }
                     if (!rawValue.isNullOrBlank()) {
-                        hasScanned = true
                         onQrCodeScanned(rawValue)
                     }
                 }
