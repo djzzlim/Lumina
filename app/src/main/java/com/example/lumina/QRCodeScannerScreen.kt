@@ -6,6 +6,9 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.view.LifecycleCameraController
@@ -15,12 +18,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -73,6 +75,10 @@ fun QRCodeScannerScreen(
             onQrCodeScanned = { qrCodeValue ->
                 // The check to prevent multiple scans happens here.
                 if (!hasScanned) {
+                    // --- THIS IS THE FIX ---
+                    // Immediately set the flag to true to block subsequent calls.
+                    hasScanned = true
+
                     Toast.makeText(context, "Scanned: $qrCodeValue", Toast.LENGTH_LONG).show()
                     Log.d("QRCodeScanner", "Scanned value: $qrCodeValue")
                     onNavigateBack()
@@ -135,7 +141,7 @@ fun CameraPreview(
     onQrCodeScanned: (String) -> Unit
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val cameraController = remember { LifecycleCameraController(context) }
 
