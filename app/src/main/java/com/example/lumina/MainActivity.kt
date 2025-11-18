@@ -44,7 +44,9 @@ fun AppNavigation() {
         ) {
             LuminaHomeScreen(
                 onNavigateToScanner = {
-                    navController.navigate("qr_code_scanner_screen")
+                    navController.navigate("qr_code_scanner_screen") {
+                        launchSingleTop = true
+                    }
                 }
             )
         }

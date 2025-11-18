@@ -12,7 +12,6 @@ import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-// Import the 'Close' icon
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,45 +40,46 @@ fun QRCodeScannerScreen(
     val context = LocalContext.current
     var hasScanned by remember { mutableStateOf(false) }
 
+    // Use Scaffold to match the structure of LuminaHomeScreen
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
+                        // Consistent title style
                         "Scan QR Code",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
+                        fontSize = 24.sp, // Match font size with "Lumina"
                         color = Color.White
                     )
                 },
-                // The navigationIcon is now empty
-                navigationIcon = { },
-                // The close button is added as an action item on the right
+                navigationIcon = {}, // Keep it empty
                 actions = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Close",
-                            tint = Color.White
+                            // Use the same accent color as the home screen icons
+                            tint = Color(0xFFBB86FC)
                         )
                     }
                 },
+                // Use a solid black TopAppBar to match the home screen
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Black
                 )
             )
         },
+        // Use a solid black container color
         containerColor = Color.Black
     ) { paddingValues ->
         QRCodeScannerView(
             modifier = Modifier.padding(paddingValues),
             onQrCodeScanned = { qrCodeValue ->
-                // Ensure we only process the first scan
                 if (!hasScanned) {
                     hasScanned = true
                     Toast.makeText(context, "Scanned: $qrCodeValue", Toast.LENGTH_LONG).show()
                     Log.d("QRCodeScanner", "Scanned value: $qrCodeValue")
-                    // After scanning, navigate back
                     onNavigateBack()
                 }
             }
@@ -96,7 +96,6 @@ fun QRCodeScannerView(
     val context = LocalContext.current
     var hasCameraPermission by remember { mutableStateOf(false) }
 
-    // New permission handling logic
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
@@ -104,7 +103,6 @@ fun QRCodeScannerView(
         }
     )
 
-    // Request permission on first composition
     LaunchedEffect(key1 = true) {
         val permissionCheckResult = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
         if (permissionCheckResult == PackageManager.PERMISSION_GRANTED) {
@@ -116,13 +114,13 @@ fun QRCodeScannerView(
 
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         if (hasCameraPermission) {
-            // Permission granted, show the camera preview
-            CameraPreview(
-                onQrCodeScanned = onQrCodeScanned
-            )
+            CameraPreview(onQrCodeScanned = onQrCodeScanned)
         } else {
-            // Permission denied or not yet granted
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // This UI remains consistent as it's on a black background
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
                 Text(
                     "Camera permission is required to scan QR codes.",
                     color = Color.White,
@@ -146,7 +144,6 @@ fun CameraPreview(
     val lifecycleOwner = LocalLifecycleOwner.current
     var hasScanned by remember { mutableStateOf(false) }
 
-    // Use LifecycleCameraController for simplified camera setup and lifecycle management
     val cameraController = remember { LifecycleCameraController(context) }
 
     AndroidView(
@@ -157,13 +154,11 @@ fun CameraPreview(
                 cameraController.bindToLifecycle(lifecycleOwner)
             }
 
-            // --- 1. Set up the ML Kit Barcode Scanner ---
             val options = BarcodeScannerOptions.Builder()
                 .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
                 .build()
             val barcodeScanner = BarcodeScanning.getClient(options)
 
-            // --- 2. Set up the MLKitAnalyzer ---
             cameraController.setImageAnalysisAnalyzer(
                 ContextCompat.getMainExecutor(ctx),
                 MlKitAnalyzer(
@@ -171,17 +166,16 @@ fun CameraPreview(
                     ImageAnalysis.COORDINATE_SYSTEM_VIEW_REFERENCED,
                     ContextCompat.getMainExecutor(ctx)
                 ) { result: MlKitAnalyzer.Result? ->
-                    if (hasScanned) return@MlKitAnalyzer // Prevent multiple scans
+                    if (hasScanned) return@MlKitAnalyzer
 
                     val barcodes = result?.getValue(barcodeScanner)
                     if (barcodes.isNullOrEmpty()) {
                         return@MlKitAnalyzer
                     }
 
-                    // We found a QR code
                     val rawValue = barcodes.firstNotNullOfOrNull { it.rawValue }
                     if (!rawValue.isNullOrBlank()) {
-                        hasScanned = true // Mark as scanned
+                        hasScanned = true
                         onQrCodeScanned(rawValue)
                     }
                 }
