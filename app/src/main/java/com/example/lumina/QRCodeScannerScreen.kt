@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -141,7 +140,7 @@ fun CameraPreview(
     onQrCodeScanned: (String) -> Unit
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     val cameraController = remember { LifecycleCameraController(context) }
 
