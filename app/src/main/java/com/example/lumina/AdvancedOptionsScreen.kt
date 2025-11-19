@@ -227,7 +227,6 @@ fun DefaultViewToggle() {
 
 @Composable
 fun AntifingerprintingToggles() {
-    // 2. USE the data class for the state. Now there's only ONE `remember` block.
     var afpState by remember { mutableStateOf(AntifingerprintingState()) }
 
     Column(
@@ -236,96 +235,99 @@ fun AntifingerprintingToggles() {
             .clip(RoundedCornerShape(12.dp))
             .background(Color(0xFF1C1C1E))
     ) {
-        // 3. USE the `key` composable to give each toggle a stable identity.
-        //    This is the core fix for the animation glitch.
-
+        // --- 1. The Main Toggle ---
+        // This one is always enabled.
         key("afpEnabled") {
             ToggleRowInternal(
                 text = "Antifingerprinting Enabled",
                 checked = afpState.afpEnabled,
-                onCheckedChange = { afpState = afpState.copy(afpEnabled = it) }
+                onCheckedChange = { afpState = afpState.copy(afpEnabled = it) },
+                enabled = true // Explicitly enabled
             )
         }
-        HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
+
+        // --- 2. The Sub-Toggles ---
+        // Pass the `afpState.afpEnabled` value to the `enabled` parameter of all other toggles.
 
         key("randomizeUserAgent") {
             ToggleRowInternal(
                 text = "Randomize User Agent",
                 checked = afpState.randomizeUserAgent,
-                onCheckedChange = { afpState = afpState.copy(randomizeUserAgent = it) }
+                onCheckedChange = { afpState = afpState.copy(randomizeUserAgent = it) },
+                enabled = afpState.afpEnabled // <-- This is the key change
             )
         }
-        HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
 
         key("spoofLocale") {
             ToggleRowInternal(
                 text = "Spoof system locale",
                 checked = afpState.spoofLocale,
-                onCheckedChange = { afpState = afpState.copy(spoofLocale = it) }
+                onCheckedChange = { afpState = afpState.copy(spoofLocale = it) },
+                enabled = afpState.afpEnabled // <-- This is the key change
             )
         }
-        HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
 
         key("spoofTimezone") {
             ToggleRowInternal(
                 text = "Spoof system timezone",
                 checked = afpState.spoofTimezone,
-                onCheckedChange = { afpState = afpState.copy(spoofTimezone = it) }
+                onCheckedChange = { afpState = afpState.copy(spoofTimezone = it) },
+                enabled = afpState.afpEnabled // <-- This is the key change
             )
         }
-        HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
 
         key("randomizeCanvas") {
             ToggleRowInternal(
                 text = "Randomize Canvas",
                 checked = afpState.randomizeCanvas,
-                onCheckedChange = { afpState = afpState.copy(randomizeCanvas = it) }
+                onCheckedChange = { afpState = afpState.copy(randomizeCanvas = it) },
+                enabled = afpState.afpEnabled // <-- This is the key change
             )
         }
-        HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
 
         key("disableAudioContext") {
             ToggleRowInternal(
                 text = "Disable AudioContext",
                 checked = afpState.disableAudioContext,
-                onCheckedChange = { afpState = afpState.copy(disableAudioContext = it) }
+                onCheckedChange = { afpState = afpState.copy(disableAudioContext = it) },
+                enabled = afpState.afpEnabled // <-- This is the key change
             )
         }
-        HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
 
         key("disableWebGl") {
             ToggleRowInternal(
                 text = "Disable WebGL",
                 checked = afpState.disableWebGl,
-                onCheckedChange = { afpState = afpState.copy(disableWebGl = it) }
+                onCheckedChange = { afpState = afpState.copy(disableWebGl = it) },
+                enabled = afpState.afpEnabled // <-- This is the key change
             )
         }
-        HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
 
         key("randomizeScreen") {
             ToggleRowInternal(
                 text = "Randomize Screen Dimensions",
                 checked = afpState.randomizeScreen,
-                onCheckedChange = { afpState = afpState.copy(randomizeScreen = it) }
+                onCheckedChange = { afpState = afpState.copy(randomizeScreen = it) },
+                enabled = afpState.afpEnabled // <-- This is the key change
             )
         }
-        HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
 
         key("spoofHardware") {
             ToggleRowInternal(
                 text = "Spoof Hardware Info",
                 checked = afpState.spoofHardware,
-                onCheckedChange = { afpState = afpState.copy(spoofHardware = it) }
+                onCheckedChange = { afpState = afpState.copy(spoofHardware = it) },
+                enabled = afpState.afpEnabled // <-- This is the key change
             )
         }
-        HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
 
         key("disablePayment") {
             ToggleRowInternal(
                 text = "Disable Payment APIs",
                 checked = afpState.disablePayment,
                 onCheckedChange = { afpState = afpState.copy(disablePayment = it) },
-                showHorizontalDivider = false
+                showHorizontalDivider = false,
+                enabled = afpState.afpEnabled // <-- This is the key change
             )
         }
     }
@@ -336,8 +338,12 @@ fun ToggleRowInternal(
     text: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    showHorizontalDivider: Boolean = true
+    showHorizontalDivider: Boolean = true,
+    enabled: Boolean = true // --- 3. Add the `enabled` parameter here ---
 ) {
+    // Determine the text color based on the enabled state
+    val textColor = if (enabled) Color.White else Color.Gray
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -345,11 +351,11 @@ fun ToggleRowInternal(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text, color = Color.White, fontSize = 16.sp)
-
+        Text(text, color = textColor, fontSize = 16.sp)
         SwitchWithConsistentThumb(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
+            enabled = enabled // --- 4. Pass it to the Switch ---
         )
     }
     if (showHorizontalDivider) {
@@ -360,13 +366,15 @@ fun ToggleRowInternal(
 @Composable
 fun SwitchWithConsistentThumb(
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true // --- 5. Add the `enabled` parameter here ---
 ) {
     val thumbSize = 24.dp // Define a fixed size for the thumb
 
     Switch(
         checked = checked,
         onCheckedChange = onCheckedChange,
+        enabled = enabled,
         colors = SwitchDefaults.colors(
             // Define your ON state colors
             checkedThumbColor = MaterialTheme.colorScheme.onPrimary,

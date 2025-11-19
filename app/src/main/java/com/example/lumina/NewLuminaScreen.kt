@@ -45,9 +45,7 @@ fun LuminaAppTheme(content: @Composable () -> Unit) {
 // --- New Lumina Screen ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-// --- FIX 1: Add parameters to the function signature ---
 fun NewLuminaScreen(
-    // --- ACCEPT the scanned URL (it's nullable) ---
     scannedUrl: String?,
     onNavigateBack: () -> Unit,
     onSaveLumina: () -> Unit,
@@ -85,7 +83,7 @@ fun NewLuminaScreen(
 
             // --- NEW: Advanced Options Section ---
             AdvancedOptionsRow(onClick = onNavigateToAdvancedOptions)
-            Spacer(modifier = Modifier.height(24.dp)) // Padding at the bottom
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
@@ -93,15 +91,13 @@ fun NewLuminaScreen(
 // --- Top App Bar ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-// --- FIX 3: Update the TopAppBar to accept the callbacks ---
 fun NewLuminaTopAppBar(
     onClose: () -> Unit,
     onSave: () -> Unit
 ) {
     TopAppBar(
-        title = { /* No title, handled by Text below */ },
+        title = {},
         navigationIcon = {
-            // --- FIX 4: Use the onClose callback ---
             IconButton(onClick = onClose) {
                 Icon(
                     Icons.Default.Close,
@@ -111,12 +107,11 @@ fun NewLuminaTopAppBar(
             }
         },
         actions = {
-            // --- FIX 5: Use the onSave callback ---
             IconButton(onClick = onSave) {
                 Icon(
                     Icons.Default.Check,
                     contentDescription = "Save",
-                    tint = Color(0xFFBB86FC) // Purple check
+                    tint = Color(0xFFBB86FC)
                 )
             }
         },
@@ -125,15 +120,14 @@ fun NewLuminaTopAppBar(
         )
     )
 }
+
 // --- Website Input Section ---
 
 @Composable
 fun WebsiteInputSection(
-    // --- ACCEPT the initial URL ---
     initialUrl: String?
 ) {
     var name by remember { mutableStateOf("") }
-    // --- USE the scanned URL if it exists, otherwise default to "https://" ---
     var url by remember { mutableStateOf(initialUrl ?: "https://") }
 
     Column {
@@ -193,9 +187,21 @@ fun IconAndThemeSection() {
         Icons.Default.Language, Icons.Default.Star, Icons.Default.Favorite,
         Icons.Default.Home, Icons.Default.DirectionsCar, Icons.Default.Flight,
         Icons.Default.ShoppingCart, Icons.Default.Notifications, Icons.Default.Delete,
-        Icons.Default.LocalFireDepartment, Icons.Default.FlashOn, Icons.Default.Phone,
-        Icons.Default.Nightlight, Icons.Default.AccessTime, Icons.Default.VideogameAsset,
-        Icons.Default.Visibility, Icons.Default.Flag, Icons.Default.Sailing
+        Icons.Default.LocalFireDepartment, Icons.Default.FlashOn, Icons.Default.Cloud,
+        Icons.Default.WbSunny, Icons.Default.Nightlight, Icons.Default.AccessTime,
+        Icons.Default.Settings, Icons.Default.VideogameAsset, Icons.Default.Face,
+        Icons.Default.Visibility, Icons.Default.Sailing, Icons.Default.Tv,
+        Icons.Default.Flag, Icons.Default.SportsSoccer,
+        Icons.Default.SportsBaseball, Icons.Default.SportsBasketball, Icons.Default.SportsFootball,
+        Icons.Default.SportsTennis, Icons.Default.DownhillSkiing, Icons.Default.Circle,
+        Icons.Default.Sports, Icons.Default.EmojiEvents, Icons.Default.Pets,
+        Icons.Default.Adb,
+        Icons.Default.FlutterDash,
+        Icons.Default.CrueltyFree,
+        Icons.Default.BugReport,
+        Icons.Default.WaterDrop,
+        Icons.Default.Eco, Icons.Default.LocalFlorist, Icons.Default.Park,
+        Icons.Default.FilterVintage, Icons.Default.Science
     )
     var selectedIcon by remember { mutableStateOf(Icons.Default.Language) }
 
@@ -220,7 +226,6 @@ fun IconAndThemeSection() {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Pick a color", color = Color.White, fontSize = 16.sp)
-                // Placeholder Color Picker
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -240,7 +245,6 @@ fun IconAndThemeSection() {
                 columns = GridCells.Adaptive(minSize = 48.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                // Fix height to avoid nested scrolling issues, or make Column scrollable
                 modifier = Modifier.heightIn(max = 200.dp)
             ) {
                 items(icons) { icon ->
@@ -269,8 +273,6 @@ fun AdvancedOptionsRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(Color(0xFF1C1C1E))
-            // --- THIS IS THE FIX ---
-            // Replace the empty comment with the onClick parameter.
             .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -294,7 +296,6 @@ fun AdvancedOptionsRow(
 fun NewLuminaScreenPreview() {
     LuminaAppTheme {
         NewLuminaScreen(
-            // Pass a sample URL for previewing
             scannedUrl = "https://www.google.com",
             onNavigateBack = {},
             onSaveLumina = {},
