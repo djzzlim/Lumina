@@ -1,7 +1,6 @@
 package com.example.lumina
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -60,15 +59,9 @@ fun AdvancedOptionsScreen(onNavigateBack: () -> Unit) {
                 modifier = Modifier.padding(vertical = 8.dp)
             )
 
-            // --- Default View Section ---
-            SectionTitle("DEFAULT VIEW")
-            DefaultViewToggle()
-            HelpText("Browser view uses tranditional navigation UI that automatically shows and hides as you scroll. PWA view provides minimal navigation UI which is hidden by default.")
-            Spacer(modifier = Modifier.height(24.dp))
-
             // --- Storage Section ---
             SectionTitle("STORAGE")
-            var ephemeralState by remember { mutableStateOf(true) }
+            var ephemeralState by remember { mutableStateOf(false) }
             ToggleRow(
                 text = "Ephemeral",
                 checked = ephemeralState,
@@ -188,40 +181,6 @@ fun ToggleRow(
             checked = checked,
             onCheckedChange = onCheckedChange
         )
-    }
-}
-
-@Composable
-fun DefaultViewToggle() {
-    var selectedView by remember { mutableStateOf("Browser") }
-    val views = listOf("Browser", "PWA")
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF1C1C1E))
-            .padding(4.dp)
-    ) {
-        views.forEach { view ->
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(
-                        if (selectedView == view) Color(0xFF3A3A3C) else Color.Transparent
-                    )
-                    .clickable { selectedView = view }
-                    .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = view,
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
     }
 }
 
