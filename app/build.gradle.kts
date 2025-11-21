@@ -49,6 +49,12 @@ dependencies {
     implementation(libs.camera.lifecycle)
     implementation(libs.camera.view)
 
+    // ViewModel
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+    // GeckoView
+    implementation(libs.geckoview)
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

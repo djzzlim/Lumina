@@ -1,18 +1,34 @@
-package com.example.lumina
+package com.example.lumina.features.home
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material3.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,10 +42,15 @@ import com.example.lumina.ui.theme.LuminaTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LuminaHomeScreen(
+    // The screen now accepts the ViewModel
+    viewModel: HomeViewModel,
+    // It still needs navigation callbacks
     onNavigateToScanner: () -> Unit,
-    // --- (1) ADD a new parameter for the add button ---
     onNavigateToAddLumina: () -> Unit
 ) {
+    // Collect the state from the ViewModel
+    val uiState by viewModel.uiState.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -49,7 +70,6 @@ fun LuminaHomeScreen(
                             tint = Color(0xFFBB86FC)
                         )
                     }
-                    // --- (2) USE the new parameter here ---
                     IconButton(onClick = onNavigateToAddLumina) {
                         Icon(
                             Icons.Default.Add,
@@ -79,39 +99,22 @@ fun LuminaHomeScreen(
                 .fillMaxSize()
         ) {
             Spacer(modifier = Modifier.height(24.dp))
-            LuminaItemsGrid()
+            // Pass the list from the state to the grid
+            LuminaItemsGrid(items = uiState.luminaItems)
         }
     }
 }
 
-
-// --- Simple data class to hold Lumina info ---
-data class LuminaInfo(
-    val icon: ImageVector,
-    val title: String,
-    val url: String
-)
-
-// --- Lumina Items Grid ---
-
+// The grid is now a stateless, reusable component that just displays the data it's given.
 @Composable
-fun LuminaItemsGrid() {
-    val luminaItems = listOf(
-        LuminaInfo(Icons.Default.Visibility, "Facebook", "facebook.com"),
-        LuminaInfo(Icons.Default.Language, "Instagram", "instagram.com"),
-        LuminaInfo(Icons.Default.Language, "Github", "github.com"),
-        LuminaInfo(Icons.Default.Language, "LinkedIn", "linkedin.com"),
-        LuminaInfo(Icons.Default.Visibility, "Reddit", "reddit.com"),
-        LuminaInfo(Icons.Default.Language, "Twitter", "twitter.com")
-    )
-
+fun LuminaItemsGrid(items: List<LuminaInfo>) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        items(luminaItems) { item ->
+        items(items) { item ->
             LuminaItemCard(
                 icon = item.icon,
                 title = item.title,
@@ -121,18 +124,7 @@ fun LuminaItemsGrid() {
     }
 }
 
-private fun maskUrl(url: String, nameLengthThreshold: Int = 6, prefixLength: Int = 3): String {
-    val parts = url.split('.', limit = 2)
-    val name = parts.getOrNull(0) ?: return url
-    val suffix = if (parts.size > 1) "." + parts[1] else ""
-    return if (name.length > nameLengthThreshold) {
-        val prefix = name.take(prefixLength)
-        "$prefix***$suffix"
-    } else {
-        url
-    }
-}
-
+// These components are also stateless and can be moved to a `ui/components` package later if desired.
 @Composable
 fun LuminaItemCard(
     icon: ImageVector,
@@ -179,28 +171,27 @@ fun LuminaItemCard(
     }
 }
 
-// --- Previews ---
+private fun maskUrl(url: String): String {
+    val parts = url.split('.', limit = 2)
+    val name = parts.getOrNull(0) ?: return url
+    val suffix = if (parts.size > 1) ".${parts[1]}" else ""
+    return if (name.length > 6) {
+        val prefix = name.take(3)
+        "$prefix***$suffix"
+    } else {
+        url
+    }
+}
 
+// --- Preview ---
 @Preview(showBackground = true, widthDp = 360, heightDp = 640)
 @Composable
 fun LuminaHomeScreenPreview() {
     LuminaTheme {
-        // --- (3) UPDATE the preview to pass lambdas for both parameters ---
         LuminaHomeScreen(
+            viewModel = HomeViewModel(), // Use a real ViewModel for an accurate preview
             onNavigateToScanner = {},
             onNavigateToAddLumina = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun LuminaItemCardPreview() {
-    LuminaTheme {
-        LuminaItemCard(
-            icon = Icons.Default.Visibility,
-            title = "Instagram",
-            url = "instagram.com"
         )
     }
 }
