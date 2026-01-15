@@ -2,14 +2,13 @@ package com.example.lumina.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.lumina.features.advanced_options.AdvancedOptionsScreen
-import com.example.lumina.features.advanced_options.AdvancedOptionsViewModel
 import com.example.lumina.features.home.HomeViewModel
 import com.example.lumina.features.home.LuminaHomeScreen
 import com.example.lumina.features.new_lumina.NewLuminaScreen
@@ -36,7 +35,7 @@ fun AppNavigation() {
     ) {
 
         composable(ScreenRoutes.HOME) {
-            val vm: HomeViewModel = viewModel()
+            val vm: HomeViewModel = hiltViewModel()
             LuminaHomeScreen(
                 viewModel = vm,
                 onNavigateToScanner = {
@@ -78,7 +77,7 @@ fun AppNavigation() {
                 }
             )
         ) { backStackEntry ->
-            val vm: NewLuminaViewModel = viewModel()
+            val vm: NewLuminaViewModel = hiltViewModel()
             val url = backStackEntry.arguments
                 ?.getString(ScreenRoutes.NEW_LUMINA_URL_ARG)
 
@@ -102,7 +101,7 @@ fun AppNavigation() {
         }
 
         composable(ScreenRoutes.ADVANCED_OPTIONS) {
-            val vm: AdvancedOptionsViewModel = viewModel()
+            val vm: NewLuminaViewModel = hiltViewModel()
             AdvancedOptionsScreen(
                 viewModel = vm,
                 onNavigateBack = {

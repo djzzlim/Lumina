@@ -1,6 +1,9 @@
 package com.example.lumina.features.home
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -12,11 +15,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,64 +41,38 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.lumina.ui.theme.LuminaTheme
+import com.example.lumina.core.data.LuminaInfo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LuminaHomeScreen(
-    // The screen now accepts the ViewModel
     viewModel: HomeViewModel,
-    // It still needs navigation callbacks
     onNavigateToScanner: () -> Unit,
     onNavigateToAddLumina: () -> Unit
 ) {
-    // Collect the state from the ViewModel
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Lumina",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp,
-                        color = Color.White
-                    )
-                },
-                actions = {
-                    IconButton(onClick = onNavigateToScanner) {
-                        Icon(
-                            Icons.Default.QrCodeScanner,
-                            contentDescription = "Scan QR",
-                            tint = Color(0xFFBB86FC)
-                        )
-                    }
-                    IconButton(onClick = onNavigateToAddLumina) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "Add Lumina",
-                            tint = Color(0xFFBB86FC)
-                        )
-                    }
-                    IconButton(onClick = { /* Handle settings */ }) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = Color(0xFFBB86FC)
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black
+            if (uiState.selectionMode) {
+                SelectionTopAppBar(
+                    selectedItemCount = uiState.selectedItems.size,
+                    onCancel = viewModel::toggleSelectionMode,
+                    onDelete = viewModel::deleteSelectedItems
                 )
-            )
+            } else {
+                HomeTopAppBar(
+                    onNavigateToScanner = onNavigateToScanner,
+                    onNavigateToAddLumina = onNavigateToAddLumina,
+                    onToggleSelectionMode = viewModel::toggleSelectionMode
+                )
+            }
         },
         containerColor = Color.Black
     ) { paddingValues ->
@@ -99,15 +83,121 @@ fun LuminaHomeScreen(
                 .fillMaxSize()
         ) {
             Spacer(modifier = Modifier.height(24.dp))
-            // Pass the list from the state to the grid
-            LuminaItemsGrid(items = uiState.luminaItems)
+            LuminaItemsGrid(
+                items = uiState.luminaItems,
+                selectionMode = uiState.selectionMode,
+                selectedItems = uiState.selectedItems,
+                onItemClick = {
+                    if (uiState.selectionMode) {
+                        viewModel.toggleItemSelection(it.id)
+                    } else {
+                        // Handle normal item click here
+                    }
+                }
+            )
         }
     }
 }
 
-// The grid is now a stateless, reusable component that just displays the data it's given.
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LuminaItemsGrid(items: List<LuminaInfo>) {
+fun HomeTopAppBar(
+    onNavigateToScanner: () -> Unit,
+    onNavigateToAddLumina: () -> Unit,
+    onToggleSelectionMode: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Text(
+                "Lumina",
+                fontWeight = FontWeight.Bold,
+                fontSize = 24.sp,
+                color = Color.White
+            )
+        },
+        actions = {
+            IconButton(onClick = onToggleSelectionMode) {
+                Icon(
+                    Icons.Default.SelectAll,
+                    contentDescription = "Select",
+                    tint = Color(0xFFBB86FC)
+                )
+            }
+            IconButton(onClick = onNavigateToScanner) {
+                Icon(
+                    Icons.Default.QrCodeScanner,
+                    contentDescription = "Scan QR",
+                    tint = Color(0xFFBB86FC)
+                )
+            }
+            IconButton(onClick = onNavigateToAddLumina) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Add Lumina",
+                    tint = Color(0xFFBB86FC)
+                )
+            }
+            IconButton(onClick = { /* Handle settings */ }) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = Color(0xFFBB86FC)
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Black
+        )
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SelectionTopAppBar(
+    selectedItemCount: Int,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Text(
+                "$selectedItemCount selected",
+                fontWeight = FontWeight.Bold,
+                fontSize = 24.sp,
+                color = Color.White
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onCancel) {
+                Icon(
+                    Icons.Default.Cancel,
+                    contentDescription = "Cancel",
+                    tint = Color(0xFFBB86FC)
+                )
+            }
+        },
+        actions = {
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = Color(0xFFBB86FC)
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Black
+        )
+    )
+}
+
+@Composable
+fun LuminaItemsGrid(
+    items: List<LuminaInfo>,
+    selectionMode: Boolean,
+    selectedItems: Set<Long>,
+    onItemClick: (LuminaInfo) -> Unit
+) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -116,82 +206,110 @@ fun LuminaItemsGrid(items: List<LuminaInfo>) {
     ) {
         items(items) { item ->
             LuminaItemCard(
-                icon = item.icon,
-                title = item.title,
-                url = item.url
+                item = item,
+                isSelected = selectedItems.contains(item.id),
+                onClick = { onItemClick(item) }
             )
         }
     }
 }
 
-// These components are also stateless and can be moved to a `ui/components` package later if desired.
 @Composable
 fun LuminaItemCard(
-    icon: ImageVector,
-    title: String,
-    url: String,
+    item: LuminaInfo,
+    isSelected: Boolean,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.aspectRatio(0.8f),
+        modifier = modifier
+            .aspectRatio(0.8f)
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF1A1A2E)
         )
     ) {
-        Column(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Spacer(modifier = Modifier.weight(1f))
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = Color(0xFF00A2FF),
-                modifier = Modifier.size(48.dp)
-            )
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    title,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
+        Box {
+            Column(
+                modifier = Modifier
+                    .padding(12.dp)
+                    .fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(
+                    imageVector = getIconVector(item.icon),
+                    contentDescription = item.name,
+                    tint = Color(item.color),
+                    modifier = Modifier.size(48.dp)
                 )
-                Text(
-                    text = maskUrl(url),
-                    color = Color.White.copy(alpha = 0.6f),
-                    fontSize = 12.sp
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        item.name,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    Text(
+                        text = maskUrl(item.url),
+                        color = Color.White.copy(alpha = 0.6f),
+                        fontSize = 12.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.4f))
+                )
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Selected",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(24.dp)
+                        .clip(CircleShape)
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
 
-private fun maskUrl(url: String): String {
-    val parts = url.split('.', limit = 2)
-    val name = parts.getOrNull(0) ?: return url
-    val suffix = if (parts.size > 1) ".${parts[1]}" else ""
-    return if (name.length > 6) {
-        val prefix = name.take(3)
-        "$prefix***$suffix"
-    } else {
-        url
+private fun getIconVector(iconName: String): ImageVector {
+    return when (iconName) {
+        "Language" -> Icons.Default.Language
+        "Visibility" -> Icons.Default.Visibility
+        else -> Icons.Default.Language
     }
 }
 
-// --- Preview ---
-@Preview(showBackground = true, widthDp = 360, heightDp = 640)
-@Composable
-fun LuminaHomeScreenPreview() {
-    LuminaTheme {
-        LuminaHomeScreen(
-            viewModel = HomeViewModel(), // Use a real ViewModel for an accurate preview
-            onNavigateToScanner = {},
-            onNavigateToAddLumina = {}
-        )
+private fun maskUrl(url: String): String {
+    return try {
+        val parsedUrl = java.net.URL(url)
+        var host = parsedUrl.host
+        if (host.startsWith("www.")) {
+            host = host.substring(4)
+        }
+        if (host.length > 15) {
+            val parts = host.split('.')
+            if (parts.size > 1) {
+                val name = parts.first()
+                val tld = parts.last()
+                val prefix = name.take(6)
+                "$prefix***.$tld"
+            } else {
+                host
+            }
+        } else {
+            host
+        }
+    } catch (e: Exception) {
+        url // Return original URL if parsing fails
     }
 }

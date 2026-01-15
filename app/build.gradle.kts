@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt)
+    id("kotlin-kapt")
 }
 
 android {
@@ -38,6 +40,10 @@ android {
     }
 }
 
+kapt {
+    correctErrorTypes = true
+}
+
 dependencies {
     // ML Kit Barcode Scanning
     implementation(libs.mlkit.barcode.scanning)
@@ -53,7 +59,19 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     // GeckoView
-    implementation(libs.geckoview)
+    implementation(libs.geckoview) {
+        exclude(group = "com.intellij", module = "annotations")
+    }
+
+    // Room
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    kapt(libs.androidx.room.compiler)
+
+    // Hilt
+    implementation(libs.hilt.android)
+    kapt(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

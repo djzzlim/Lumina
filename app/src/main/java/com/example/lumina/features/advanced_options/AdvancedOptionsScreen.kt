@@ -40,12 +40,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.lumina.features.new_lumina.NewLuminaUiState
+import com.example.lumina.features.new_lumina.NewLuminaViewModel
 import com.example.lumina.ui.theme.LuminaTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdvancedOptionsScreen(
-    viewModel: AdvancedOptionsViewModel,
+    viewModel: NewLuminaViewModel,
     onNavigateBack: () -> Unit
 ) {
     // Collect the state from the ViewModel. The UI will automatically
@@ -120,7 +122,7 @@ fun AdvancedOptionsScreen(
 // This composable is now stateless and just receives the state and all callbacks.
 @Composable
 fun AntifingerprintingToggles(
-    afpState: AdvancedOptionsUiState,
+    afpState: NewLuminaUiState,
     onAfpEnabledChange: (Boolean) -> Unit,
     onRandomizeUserAgentChange: (Boolean) -> Unit,
     onSpoofLocaleChange: (Boolean) -> Unit,

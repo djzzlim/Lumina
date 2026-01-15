@@ -1,26 +1,29 @@
 package com.example.lumina.features.home
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.lumina.core.LuminaRepository
+import com.example.lumina.core.data.LuminaInfo
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
-// This is your existing data class, now part of the home feature's domain.
-data class LuminaInfo(
-    val icon: ImageVector,
-    val title: String,
-    val url: String
-)
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 // The state for the home screen, containing the list of items.
 data class HomeUiState(
-    val luminaItems: List<LuminaInfo> = emptyList()
+    val luminaItems: List<LuminaInfo> = emptyList(),
+    val selectionMode: Boolean = false,
+    val selectedItems: Set<Long> = emptySet()
 )
 
-class HomeViewModel : ViewModel() {
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val repository: LuminaRepository
+) : ViewModel() {
 
     // Private, mutable state
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -29,23 +32,37 @@ class HomeViewModel : ViewModel() {
 
     init {
         // Load the initial data when the ViewModel is created.
-        // Later, this could be a call to a database or network.
         loadLuminaItems()
     }
 
     private fun loadLuminaItems() {
-        // This is the hardcoded list from your original LuminaHomeScreen.kt
-        val items = listOf(
-            LuminaInfo(Icons.Default.Visibility, "Facebook", "facebook.com"),
-            LuminaInfo(Icons.Default.Language, "Instagram", "instagram.com"),
-            LuminaInfo(Icons.Default.Language, "Github", "github.com"),
-            LuminaInfo(Icons.Default.Language, "LinkedIn", "linkedin.com"),
-            LuminaInfo(Icons.Default.Visibility, "Reddit", "reddit.com"),
-            LuminaInfo(Icons.Default.Language, "Twitter", "twitter.com")
-        )
-        // Update the state with the loaded items.
-        _uiState.value = HomeUiState(luminaItems = items)
+        repository.getAllLuminas()
+            .onEach { items ->
+                _uiState.update { it.copy(luminaItems = items) }
+            }
+            .launchIn(viewModelScope)
     }
 
-    // You could add functions here later like `addLuminaItem()` or `deleteLuminaItem()`.
+    fun toggleSelectionMode() {
+        _uiState.update { it.copy(selectionMode = !it.selectionMode, selectedItems = emptySet()) }
+    }
+
+    fun toggleItemSelection(itemId: Long) {
+        _uiState.update {
+            val selectedItems = it.selectedItems.toMutableSet()
+            if (selectedItems.contains(itemId)) {
+                selectedItems.remove(itemId)
+            } else {
+                selectedItems.add(itemId)
+            }
+            it.copy(selectedItems = selectedItems)
+        }
+    }
+
+    fun deleteSelectedItems() {
+        viewModelScope.launch {
+            repository.deleteLuminasByIds(_uiState.value.selectedItems.toList())
+            toggleSelectionMode()
+        }
+    }
 }
