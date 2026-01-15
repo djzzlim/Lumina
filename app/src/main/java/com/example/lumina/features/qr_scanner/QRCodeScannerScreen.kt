@@ -10,11 +10,13 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
@@ -138,6 +140,13 @@ fun QRCodeScannerView(
             key(UUID.randomUUID().toString()) {
                 CameraPreview(onQrCodeScanned = onQrCodeScanned)
             }
+            // Add the square border for QR code alignment
+            Box(
+                modifier = Modifier
+                    .size(250.dp)
+                    .border(2.dp, Color.White),
+                contentAlignment = Alignment.Center
+            ) {}
         } else {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
