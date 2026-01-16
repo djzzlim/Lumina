@@ -330,7 +330,7 @@ private fun maskUrl(url: String): String {
         } else {
             host
         }
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         url // Return original URL if parsing fails
     }
 }
