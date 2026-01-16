@@ -56,7 +56,8 @@ import com.example.lumina.core.data.LuminaInfo
 fun LuminaHomeScreen(
     viewModel: HomeViewModel,
     onNavigateToScanner: () -> Unit,
-    onNavigateToAddLumina: () -> Unit
+    onNavigateToAddLumina: () -> Unit,
+    onNavigateToBrowser: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -93,7 +94,7 @@ fun LuminaHomeScreen(
                     if (uiState.selectionMode) {
                         viewModel.toggleItemSelection(it.id)
                     } else {
-                        // Handle normal item click here
+                        onNavigateToBrowser(it.id)
                     }
                 }
             )

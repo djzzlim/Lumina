@@ -11,6 +11,8 @@ class LuminaRepository @Inject constructor(private val luminaDao: LuminaDao) {
 
     fun getAllLuminas(): Flow<List<LuminaInfo>> = luminaDao.getAll()
 
+    fun getLuminaById(id: Long): Flow<LuminaInfo> = luminaDao.getById(id)
+
     suspend fun insertLumina(luminaInfo: LuminaInfo) {
         luminaDao.insert(luminaInfo)
     }

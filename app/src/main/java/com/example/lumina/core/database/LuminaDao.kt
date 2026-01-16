@@ -18,6 +18,9 @@ interface LuminaDao {
     @Query("SELECT * FROM luminas")
     fun getAll(): Flow<List<LuminaInfo>>
 
+    @Query("SELECT * FROM luminas WHERE id = :id")
+    fun getById(id: Long): Flow<LuminaInfo>
+
     @Query("DELETE FROM luminas WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Long>)
 }

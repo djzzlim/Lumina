@@ -1,5 +1,8 @@
 package com.example.lumina.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -11,6 +14,7 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.lumina.features.advanced_options.AdvancedOptionsScreen
+import com.example.lumina.features.browser.BrowserScreen
 import com.example.lumina.features.home.HomeViewModel
 import com.example.lumina.features.home.LuminaHomeScreen
 import com.example.lumina.features.new_lumina.NewLuminaScreen
@@ -45,6 +49,9 @@ fun AppNavigation() {
                 },
                 onNavigateToAddLumina = {
                     safeNavigate(ScreenRoutes.NEW_LUMINA_GRAPH)
+                },
+                onNavigateToBrowser = { luminaId ->
+                    safeNavigate("${ScreenRoutes.BROWSER_BASE}/$luminaId")
                 }
             )
         }
@@ -122,5 +129,33 @@ fun AppNavigation() {
                 )
             }
         }
+
+        composable(
+            route = ScreenRoutes.BROWSER_ROUTE,
+            arguments = listOf(
+                navArgument(ScreenRoutes.BROWSER_ID_ARG) {
+                    type = NavType.LongType
+                }
+            ),
+            enterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(300)
+                )
+            },
+            exitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(300)
+                )
+            }
+        ) {
+            BrowserScreen(
+                onClose = {
+                    navController.popBackStack()
+                }
+            )
+        }
     }
 }
+
