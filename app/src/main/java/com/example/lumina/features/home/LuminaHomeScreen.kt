@@ -45,6 +45,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.lumina.core.data.LuminaInfo
@@ -221,6 +223,7 @@ fun LuminaItemCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+
     Card(
         modifier = modifier
             .aspectRatio(0.8f)
@@ -236,29 +239,47 @@ fun LuminaItemCard(
                     .padding(12.dp)
                     .fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Spacer(modifier = Modifier.weight(1f))
-                Icon(
-                    imageVector = getIconVector(item.icon),
-                    contentDescription = item.name,
-                    tint = Color(item.color),
-                    modifier = Modifier.size(48.dp)
-                )
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = getIconVector(item.icon),
+                        contentDescription = item.name,
+                        tint = Color(item.color),
+                        modifier = Modifier.size(44.dp) // Slightly smaller to give text room
+                    )
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text(
-                        item.name,
+                        text = item.name,
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        fontSize = 14.sp,
+                        maxLines = 2, // Limit name to 2 lines
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
                     )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     Text(
                         text = maskUrl(item.url),
                         color = Color.White.copy(alpha = 0.6f),
-                        fontSize = 12.sp
+                        fontSize = 11.sp, // Slightly smaller font for URL
+                        maxLines = 1,     // Force URL to 1 line
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
             }
             if (isSelected) {
                 Box(

@@ -17,10 +17,10 @@ object DatabaseModule {
     @Singleton
     fun provideLuminaDatabase(@ApplicationContext context: Context): LuminaDatabase {
         return Room.databaseBuilder(
-            context,
-            LuminaDatabase::class.java,
-            "lumina-database"
-        ).build()
+                context,
+                LuminaDatabase::class.java,
+                "lumina-database"
+            ).fallbackToDestructiveMigration(false).build()
     }
 
     @Provides

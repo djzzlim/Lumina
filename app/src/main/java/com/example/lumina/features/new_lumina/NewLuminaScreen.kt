@@ -14,14 +14,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.AccessTime
@@ -109,37 +108,45 @@ fun NewLuminaScreen(
         topBar = { NewLuminaTopAppBar(onClose = onNavigateBack, onSave = onSaveLumina) },
         containerColor = Color.Black
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                "New Lumina",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
+            item {
+                Text(
+                    "New Lumina",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
 
-            // Pass the state down and the events up
-            WebsiteInputSection(
-                name = uiState.name,
-                url = uiState.url,
-                onNameChange = viewModel::onNameChange,
-                onUrlChange = viewModel::onUrlChange
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            IconAndThemeSection(
-                selectedIcon = uiState.selectedIcon,
-                onIconSelected = viewModel::onIconSelected
-            )
-            Spacer(modifier = Modifier.height(24.dp))
+            item {
+                // Pass the state down and the events up
+                WebsiteInputSection(
+                    name = uiState.name,
+                    url = uiState.url,
+                    onNameChange = viewModel::onNameChange,
+                    onUrlChange = viewModel::onUrlChange
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+            }
 
-            AdvancedOptionsRow(onClick = onNavigateToAdvancedOptions)
-            Spacer(modifier = Modifier.height(24.dp))
+            item {
+                IconAndThemeSection(
+                    selectedIcon = uiState.selectedIcon,
+                    onIconSelected = viewModel::onIconSelected
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            item {
+                AdvancedOptionsRow(onClick = onNavigateToAdvancedOptions)
+                Spacer(modifier = Modifier.height(24.dp))
+            }
         }
     }
 }
