@@ -11,4 +11,6 @@ object ScreenRoutes {
     const val NEW_LUMINA_ROUTE = "$NEW_LUMINA_BASE?$NEW_LUMINA_URL_ARG={$NEW_LUMINA_URL_ARG}"
 
     const val ADVANCED_OPTIONS = "advanced_options_screen"
+
+    const val NEW_LUMINA_GRAPH = "new_lumina_graph"
 }

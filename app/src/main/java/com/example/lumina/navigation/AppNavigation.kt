@@ -2,10 +2,12 @@ package com.example.lumina.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.remember
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.lumina.features.advanced_options.AdvancedOptionsScreen
@@ -42,7 +44,7 @@ fun AppNavigation() {
                     safeNavigate(ScreenRoutes.QR_SCANNER)
                 },
                 onNavigateToAddLumina = {
-                    safeNavigate(ScreenRoutes.NEW_LUMINA_BASE)
+                    safeNavigate(ScreenRoutes.NEW_LUMINA_GRAPH)
                 }
             )
         }
@@ -68,46 +70,57 @@ fun AppNavigation() {
             )
         }
 
-        composable(
-            route = ScreenRoutes.NEW_LUMINA_ROUTE,
-            arguments = listOf(
-                navArgument(ScreenRoutes.NEW_LUMINA_URL_ARG) {
-                    type = NavType.StringType
-                    nullable = true
+        navigation(
+            startDestination = ScreenRoutes.NEW_LUMINA_ROUTE,
+            route = ScreenRoutes.NEW_LUMINA_GRAPH
+        ) {
+            composable(
+                route = ScreenRoutes.NEW_LUMINA_ROUTE,
+                arguments = listOf(
+                    navArgument(ScreenRoutes.NEW_LUMINA_URL_ARG) {
+                        type = NavType.StringType
+                        nullable = true
+                    }
+                )
+            ) { backStackEntry ->
+                val parentEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(ScreenRoutes.NEW_LUMINA_GRAPH)
                 }
-            )
-        ) { backStackEntry ->
-            val vm: NewLuminaViewModel = hiltViewModel()
-            val url = backStackEntry.arguments
-                ?.getString(ScreenRoutes.NEW_LUMINA_URL_ARG)
+                val vm: NewLuminaViewModel = hiltViewModel(parentEntry)
+                val url = backStackEntry.arguments
+                    ?.getString(ScreenRoutes.NEW_LUMINA_URL_ARG)
 
-            LaunchedEffect(url) {
-                vm.initializeFromScannedUrl(url)
+                LaunchedEffect(url) {
+                    vm.initializeFromScannedUrl(url)
+                }
+
+                NewLuminaScreen(
+                    viewModel = vm,
+                    onNavigateBack = {
+                        navController.navigateUp()
+                    },
+                    onSaveLumina = {
+                        vm.onSave()
+                        navController.navigateUp()
+                    },
+                    onNavigateToAdvancedOptions = {
+                        safeNavigate(ScreenRoutes.ADVANCED_OPTIONS)
+                    }
+                )
             }
 
-            NewLuminaScreen(
-                viewModel = vm,
-                onNavigateBack = {
-                    navController.navigateUp()
-                },
-                onSaveLumina = {
-                    vm.onSave()
-                    navController.navigateUp()
-                },
-                onNavigateToAdvancedOptions = {
-                    safeNavigate(ScreenRoutes.ADVANCED_OPTIONS)
+            composable(ScreenRoutes.ADVANCED_OPTIONS) { backStackEntry ->
+                val parentEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(ScreenRoutes.NEW_LUMINA_GRAPH)
                 }
-            )
-        }
-
-        composable(ScreenRoutes.ADVANCED_OPTIONS) {
-            val vm: NewLuminaViewModel = hiltViewModel()
-            AdvancedOptionsScreen(
-                viewModel = vm,
-                onNavigateBack = {
-                    navController.navigateUp()
-                }
-            )
+                val vm: NewLuminaViewModel = hiltViewModel(parentEntry)
+                AdvancedOptionsScreen(
+                    viewModel = vm,
+                    onNavigateBack = {
+                        navController.navigateUp()
+                    }
+                )
+            }
         }
     }
 }
