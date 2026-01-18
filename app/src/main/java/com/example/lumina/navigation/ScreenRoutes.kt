@@ -17,4 +17,6 @@ object ScreenRoutes {
     const val BROWSER_BASE = "browser_screen"
     const val BROWSER_ID_ARG = "luminaId"
     const val BROWSER_ROUTE = "$BROWSER_BASE/{$BROWSER_ID_ARG}"
+
+    const val PROFILES_SCREEN = "profiles_screen"
 }

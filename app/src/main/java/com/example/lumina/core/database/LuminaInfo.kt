@@ -1,12 +1,26 @@
-package com.example.lumina.core.data
+package com.example.lumina.core.database
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "luminas")
+@Entity(
+    tableName = "luminas",
+    foreignKeys = [
+        ForeignKey(
+            entity = Profile::class,
+            parentColumns = ["id"],
+            childColumns = ["profileId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["profileId"])]
+)
 data class LuminaInfo(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    val profileId: String,
     val name: String,
     val url: String,
     val icon: String, // Storing icon name as string

@@ -1,34 +1,16 @@
 package com.example.lumina.core.browser
 
 import android.content.Context
-import org.mozilla.geckoview.ContentBlocking
-import org.mozilla.geckoview.GeckoRuntime
-import org.mozilla.geckoview.GeckoRuntimeSettings
+import dagger.hilt.android.qualifiers.ApplicationContext
 import org.mozilla.geckoview.GeckoView
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class GeckoViewManager(private val context: Context) {
-    init {
-        if (sRuntime == null) {
-            // Fix: Remove 'set' prefix, use .safeBrowsing()
-            val contentBlockingSettings = ContentBlocking.Settings.Builder()
-                .safeBrowsing(ContentBlocking.SafeBrowsing.NONE)
-                .build()
-
-            val runtimeSettings = GeckoRuntimeSettings.Builder()
-                .contentBlocking(contentBlockingSettings)
-                .build()
-
-            sRuntime = GeckoRuntime.create(context, runtimeSettings)
-        }
-    }
-
-    fun createGeckoView(): GeckoView {
-        return GeckoView(context)
-    }
-
-    companion object {
-        private var sRuntime: GeckoRuntime? = null
-        val runtime: GeckoRuntime
-            get() = sRuntime ?: throw IllegalStateException("GeckoRuntime not initialized")
+@Singleton
+class GeckoViewManager @Inject constructor(
+    @ApplicationContext private val applicationContext: Context
+) {
+    fun createGeckoView(activityContext: Context): GeckoView {
+        return GeckoView(activityContext)
     }
 }

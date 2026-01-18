@@ -4,7 +4,6 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
-import com.example.lumina.core.data.LuminaInfo
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -15,8 +14,8 @@ interface LuminaDao {
     @Update
     suspend fun update(luminaInfo: LuminaInfo)
 
-    @Query("SELECT * FROM luminas")
-    fun getAll(): Flow<List<LuminaInfo>>
+    @Query("SELECT * FROM luminas WHERE profileId = :profileId")
+    fun getAll(profileId: String): Flow<List<LuminaInfo>>
 
     @Query("SELECT * FROM luminas WHERE id = :id")
     fun getById(id: Long): Flow<LuminaInfo>

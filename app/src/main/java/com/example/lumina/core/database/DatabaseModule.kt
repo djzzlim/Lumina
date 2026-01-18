@@ -20,11 +20,17 @@ object DatabaseModule {
                 context,
                 LuminaDatabase::class.java,
                 "lumina-database"
-            ).fallbackToDestructiveMigration(false).build()
+            ).addMigrations(LuminaDatabase.MIGRATION_1_2, LuminaDatabase.MIGRATION_2_3)
+            .fallbackToDestructiveMigration(false).build()
     }
 
     @Provides
     fun provideLuminaDao(database: LuminaDatabase): LuminaDao {
         return database.luminaDao()
+    }
+
+    @Provides
+    fun provideProfileDao(database: LuminaDatabase): ProfileDao {
+        return database.profileDao()
     }
 }

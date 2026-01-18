@@ -8,10 +8,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.lumina.core.LuminaRepository
-import com.example.lumina.core.data.LuminaInfo
+import com.example.lumina.core.ProfileManager
+import com.example.lumina.core.database.LuminaInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
@@ -40,7 +42,8 @@ data class NewLuminaUiState(
 
 @HiltViewModel
 class NewLuminaViewModel @Inject constructor(
-    private val repository: LuminaRepository
+    private val repository: LuminaRepository,
+    private val profileManager: ProfileManager
 ) : ViewModel() {
 
     // The private, mutable state that only the ViewModel can change.
@@ -81,8 +84,12 @@ class NewLuminaViewModel @Inject constructor(
 
     fun onSave() {
         viewModelScope.launch {
+            val profileId = profileManager.getCurrentProfileId().first() 
+                ?: throw IllegalStateException("No profile selected")
+            
             val state = _uiState.value
             val luminaInfo = LuminaInfo(
+                profileId = profileId,
                 name = state.name,
                 url = state.url,
                 icon = getIconName(state.selectedIcon),

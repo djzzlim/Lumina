@@ -3,10 +3,12 @@ package com.example.lumina.features.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.lumina.core.LuminaRepository
-import com.example.lumina.core.data.LuminaInfo
+import com.example.lumina.core.ProfileManager
+import com.example.lumina.core.database.LuminaInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
@@ -22,7 +24,8 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repository: LuminaRepository
+    private val repository: LuminaRepository,
+    private val profileManager: ProfileManager
 ) : ViewModel() {
 
     // Private, mutable state
@@ -36,7 +39,14 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun loadLuminaItems() {
-        repository.getAllLuminas()
+        profileManager.getCurrentProfileId()
+            .flatMapLatest { profileId ->
+                if (profileId != null) {
+                    repository.getAllLuminas(profileId)
+                } else {
+                    kotlinx.coroutines.flow.flowOf(emptyList())
+                }
+            }
             .onEach { items ->
                 _uiState.update { it.copy(luminaItems = items) }
             }

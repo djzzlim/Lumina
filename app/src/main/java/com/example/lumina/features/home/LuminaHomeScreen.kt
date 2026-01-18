@@ -23,9 +23,9 @@ import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -49,7 +49,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.lumina.core.data.LuminaInfo
+import com.example.lumina.core.database.LuminaInfo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,7 +57,8 @@ fun LuminaHomeScreen(
     viewModel: HomeViewModel,
     onNavigateToScanner: () -> Unit,
     onNavigateToAddLumina: () -> Unit,
-    onNavigateToBrowser: (Long) -> Unit
+    onNavigateToBrowser: (Long) -> Unit,
+    onNavigateToProfiles: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -73,7 +74,8 @@ fun LuminaHomeScreen(
                 HomeTopAppBar(
                     onNavigateToScanner = onNavigateToScanner,
                     onNavigateToAddLumina = onNavigateToAddLumina,
-                    onToggleSelectionMode = viewModel::toggleSelectionMode
+                    onToggleSelectionMode = viewModel::toggleSelectionMode,
+                    onNavigateToProfiles = onNavigateToProfiles
                 )
             }
         },
@@ -107,7 +109,8 @@ fun LuminaHomeScreen(
 fun HomeTopAppBar(
     onNavigateToScanner: () -> Unit,
     onNavigateToAddLumina: () -> Unit,
-    onToggleSelectionMode: () -> Unit
+    onToggleSelectionMode: () -> Unit,
+    onNavigateToProfiles: () -> Unit
 ) {
     TopAppBar(
         title = {
@@ -140,13 +143,20 @@ fun HomeTopAppBar(
                     tint = Color(0xFFBB86FC)
                 )
             }
-            IconButton(onClick = { /* Handle settings */ }) {
+            IconButton(onClick = onNavigateToProfiles) {
                 Icon(
-                    Icons.Default.Settings,
-                    contentDescription = "Settings",
+                    Icons.Default.Person,
+                    contentDescription = "Profiles",
                     tint = Color(0xFFBB86FC)
                 )
             }
+//            IconButton(onClick = { /* Handle settings */ }) {
+//                Icon(
+//                    Icons.Default.Settings,
+//                    contentDescription = "Settings",
+//                    tint = Color(0xFFBB86FC)
+//                )
+//            }
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Color.Black

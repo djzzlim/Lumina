@@ -1,12 +1,14 @@
 package com.example.lumina.navigation
 
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -19,6 +21,7 @@ import com.example.lumina.features.home.HomeViewModel
 import com.example.lumina.features.home.LuminaHomeScreen
 import com.example.lumina.features.new_lumina.NewLuminaScreen
 import com.example.lumina.features.new_lumina.NewLuminaViewModel
+import com.example.lumina.features.profiles.ProfilesScreen
 import com.example.lumina.features.qr_scanner.QRCodeScannerScreen
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -40,7 +43,15 @@ fun AppNavigation() {
         startDestination = ScreenRoutes.HOME
     ) {
 
-        composable(ScreenRoutes.HOME) {
+        composable(
+            route = ScreenRoutes.HOME,
+            exitTransition = {
+                fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.9f, animationSpec = tween(300))
+            },
+            popEnterTransition = {
+                fadeIn(animationSpec = tween(300)) + scaleIn(initialScale = 0.9f, animationSpec = tween(300))
+            }
+        ) {
             val vm: HomeViewModel = hiltViewModel()
             LuminaHomeScreen(
                 viewModel = vm,
@@ -52,8 +63,15 @@ fun AppNavigation() {
                 },
                 onNavigateToBrowser = { luminaId ->
                     safeNavigate("${ScreenRoutes.BROWSER_BASE}/$luminaId")
+                },
+                onNavigateToProfiles = {
+                    safeNavigate(ScreenRoutes.PROFILES_SCREEN)
                 }
             )
+        }
+
+        composable(ScreenRoutes.PROFILES_SCREEN) {
+            ProfilesScreen()
         }
 
         composable(ScreenRoutes.QR_SCANNER) {
@@ -138,16 +156,16 @@ fun AppNavigation() {
                 }
             ),
             enterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { it },
-                    animationSpec = tween(300)
-                )
+                fadeIn(animationSpec = tween(400)) + scaleIn(initialScale = 0.8f, animationSpec = tween(400))
             },
             exitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { it },
-                    animationSpec = tween(300)
-                )
+                fadeOut(animationSpec = tween(400)) + scaleOut(targetScale = 0.8f, animationSpec = tween(400))
+            },
+            popEnterTransition = {
+                fadeIn(animationSpec = tween(400)) + scaleIn(initialScale = 1.1f, animationSpec = tween(400))
+            },
+            popExitTransition = {
+                fadeOut(animationSpec = tween(400)) + scaleOut(targetScale = 1.1f, animationSpec = tween(400))
             }
         ) {
             BrowserScreen(
@@ -158,4 +176,3 @@ fun AppNavigation() {
         }
     }
 }
-
