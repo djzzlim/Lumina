@@ -8,14 +8,11 @@ import com.example.lumina.navigation.AppNavigation
 import com.example.lumina.ui.theme.LuminaTheme
 import dagger.hilt.android.AndroidEntryPoint
 import org.mozilla.geckoview.GeckoRuntime
+import org.mozilla.geckoview.StorageController
 import javax.inject.Inject
 
 /**
  * Main activity for the Lumina application.
- *
- * This activity serves as the entry point for the UI, setting up the Compose theme
- * and the main navigation graph. It is annotated with [AndroidEntryPoint] to enable
- * Hilt dependency injection.
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -25,11 +22,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Redundancy: Clear data on start to ensure a clean slate
+        geckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
+        
         enableEdgeToEdge()
         setContent {
             LuminaTheme {
-                // The MainActivity is now extremely clean.
-                // Its only job is to set the theme and call the navigation graph.
                 AppNavigation()
             }
         }
@@ -37,9 +36,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Ensure the GeckoRuntime is shut down when the activity is destroyed
-        // to free up resources and stop background processes.
         if (isFinishing) {
+            // Clear history, cookies, and cache upon exit
+            // We trigger this, and although it's async, we follow with shutdown.
+            geckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
+            
+            // Shut down the runtime
             geckoRuntime.shutdown()
         }
     }
