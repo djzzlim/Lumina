@@ -9,8 +9,10 @@ import com.example.lumina.core.ProfileManager
 import com.example.lumina.core.database.LuminaInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -58,6 +60,24 @@ class BrowserViewModel @Inject constructor(
      */
     val geckoSession: GeckoSession get() = _geckoSession
 
+    private val _progress = MutableStateFlow(0)
+    val progress: StateFlow<Int> = _progress.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _currentUrl = MutableStateFlow("")
+    val currentUrl: StateFlow<String> = _currentUrl.asStateFlow()
+
+    private val _title = MutableStateFlow("")
+    val title: StateFlow<String> = _title.asStateFlow()
+
+    private val _isAtTop = MutableStateFlow(true)
+    val isAtTop: StateFlow<Boolean> = _isAtTop.asStateFlow()
+
+    private val _isSecure = MutableStateFlow(false)
+    val isSecure: StateFlow<Boolean> = _isSecure.asStateFlow()
+
     private val bangs = listOf(
         Bang("!g", "https://www.google.com/search?q=%s"),
         Bang("!ddg", "https://duckduckgo.com/?q=%s"),
@@ -67,6 +87,7 @@ class BrowserViewModel @Inject constructor(
     private var isInitialized = false
 
     init {
+        setupDelegates()
         // Initialize the browser session once lumina info is available.
         viewModelScope.launch {
             luminaInfo.filterNotNull().collect { info ->
@@ -80,6 +101,45 @@ class BrowserViewModel @Inject constructor(
                 } else {
                     applySettings(info)
                 }
+            }
+        }
+    }
+
+    private fun setupDelegates() {
+        _geckoSession.progressDelegate = object : GeckoSession.ProgressDelegate {
+            override fun onProgressChange(session: GeckoSession, progress: Int) {
+                _progress.value = progress
+                _isLoading.value = progress < 100
+            }
+
+            override fun onSecurityChange(
+                session: GeckoSession,
+                securityInfo: GeckoSession.ProgressDelegate.SecurityInformation
+            ) {
+                _isSecure.value = securityInfo.isSecure
+            }
+        }
+
+        _geckoSession.navigationDelegate = object : GeckoSession.NavigationDelegate {
+            override fun onLocationChange(
+                session: GeckoSession,
+                url: String?,
+                permissions: List<GeckoSession.PermissionDelegate.ContentPermission>,
+                isRedirection: Boolean
+            ) {
+                _currentUrl.value = url ?: ""
+            }
+        }
+
+        _geckoSession.scrollDelegate = object : GeckoSession.ScrollDelegate {
+            fun onScrollChange(session: GeckoSession, scrollX: Int, scrollY: Int) {
+                _isAtTop.value = scrollY <= 0
+            }
+        }
+
+        _geckoSession.contentDelegate = object : GeckoSession.ContentDelegate {
+            override fun onTitleChange(session: GeckoSession, title: String?) {
+                _title.value = title ?: ""
             }
         }
     }
@@ -120,5 +180,9 @@ class BrowserViewModel @Inject constructor(
             }
         }
         _geckoSession.loadUri(url)
+    }
+
+    fun reload() {
+        _geckoSession.reload()
     }
 }
