@@ -27,6 +27,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoView
 
+/**
+ * Composable representing the browser screen.
+ *
+ * This screen embeds a [GeckoView] to render web content and provides a top bar
+ * with an address/search field and navigation controls.
+ *
+ * @param onClose Callback to be invoked when the browser is closed.
+ * @param browserViewModel The [BrowserViewModel] that manages the browser session and state.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrowserScreen(

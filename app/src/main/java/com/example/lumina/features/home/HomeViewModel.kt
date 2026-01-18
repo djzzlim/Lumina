@@ -15,13 +15,28 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// The state for the home screen, containing the list of items.
+/**
+ * UI State for the Home screen.
+ *
+ * @property luminaItems List of items to display on the home screen.
+ * @property selectionMode Whether the UI is currently in item selection mode.
+ * @property selectedItems Set of IDs for the items currently selected.
+ */
 data class HomeUiState(
     val luminaItems: List<LuminaInfo> = emptyList(),
     val selectionMode: Boolean = false,
     val selectedItems: Set<Long> = emptySet()
 )
 
+/**
+ * ViewModel for the Home screen.
+ *
+ * Manages the data and logic for displaying and interacting with lumina items
+ * based on the currently active profile.
+ *
+ * @property repository Repository for lumina data operations.
+ * @property profileManager Manager for profile-related state.
+ */
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: LuminaRepository,
@@ -30,7 +45,9 @@ class HomeViewModel @Inject constructor(
 
     // Private, mutable state
     private val _uiState = MutableStateFlow(HomeUiState())
-    // Public, read-only state for the UI to observe
+    /**
+     * Public, read-only state for the UI to observe.
+     */
     val uiState = _uiState.asStateFlow()
 
     init {
@@ -38,6 +55,9 @@ class HomeViewModel @Inject constructor(
         loadLuminaItems()
     }
 
+    /**
+     * Loads lumina items for the current profile and updates the UI state.
+     */
     private fun loadLuminaItems() {
         profileManager.getCurrentProfileId()
             .flatMapLatest { profileId ->
@@ -53,10 +73,18 @@ class HomeViewModel @Inject constructor(
             .launchIn(viewModelScope)
     }
 
+    /**
+     * Toggles the item selection mode on or off.
+     */
     fun toggleSelectionMode() {
         _uiState.update { it.copy(selectionMode = !it.selectionMode, selectedItems = emptySet()) }
     }
 
+    /**
+     * Toggles the selection state of a specific item.
+     *
+     * @param itemId The ID of the item to toggle.
+     */
     fun toggleItemSelection(itemId: Long) {
         _uiState.update {
             val selectedItems = it.selectedItems.toMutableSet()
@@ -69,6 +97,9 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Deletes all currently selected items from the repository.
+     */
     fun deleteSelectedItems() {
         viewModelScope.launch {
             repository.deleteLuminasByIds(_uiState.value.selectedItems.toList())

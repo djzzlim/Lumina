@@ -1,4 +1,4 @@
-package com.example.lumina.features.qr_scanner // 1. Updated package name
+package com.example.lumina.features.qr_scanner
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -50,9 +50,15 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import java.util.UUID
 
-// This screen is mostly a "View" and since its state is transient (it doesn't need to be saved),
-// it's simple enough to not require a ViewModel for now.
-
+/**
+ * Screen for scanning QR codes.
+ *
+ * This screen uses CameraX and ML Kit to scan for QR codes. When a valid URL is
+ * detected, it triggers the [onUrlScanned] callback.
+ *
+ * @param onNavigateBack Callback to navigate back to the previous screen.
+ * @param onUrlScanned Callback to be invoked when a URL is successfully scanned.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QRCodeScannerScreen(
@@ -108,7 +114,12 @@ fun QRCodeScannerScreen(
     }
 }
 
-
+/**
+ * View component that handles camera permission and displays the scanner UI.
+ *
+ * @param modifier The modifier to be applied to the layout.
+ * @param onQrCodeScanned Callback for when a QR code is detected.
+ */
 @Composable
 fun QRCodeScannerView(
     modifier: Modifier = Modifier,
@@ -166,6 +177,12 @@ fun QRCodeScannerView(
     }
 }
 
+/**
+ * Camera preview component that integrates with ML Kit for barcode scanning.
+ *
+ * @param modifier The modifier to be applied to the layout.
+ * @param onQrCodeScanned Callback for when a QR code is detected.
+ */
 @Composable
 fun CameraPreview(
     modifier: Modifier = Modifier,
@@ -210,4 +227,3 @@ fun CameraPreview(
         }
     )
 }
-

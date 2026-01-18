@@ -20,7 +20,26 @@ import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import javax.inject.Inject
 
-// This data class represents the entire state of the NewLuminaScreen.
+/**
+ * UI State for the New Lumina screen.
+ *
+ * @property name The name of the new Lumina instance.
+ * @property url The URL for the new Lumina instance.
+ * @property selectedIcon The selected [ImageVector] icon.
+ * @property selectedColor The selected [Color] theme.
+ * @property isEphemeral Whether to use ephemeral storage.
+ * @property isWebRtcDisabled Whether to disable WebRTC.
+ * @property afpEnabled Whether global anti-fingerprinting is enabled.
+ * @property randomizeUserAgent Whether to randomize the User-Agent.
+ * @property spoofLocale Whether to spoof the system locale.
+ * @property spoofTimezone Whether to spoof the system timezone.
+ * @property randomizeCanvas Whether to randomize canvas fingerprinting.
+ * @property disableAudioContext Whether to disable AudioContext.
+ * @property disableWebGl Whether to disable WebGL.
+ * @property randomizeScreen Whether to randomize screen dimensions.
+ * @property spoofHardware Whether to spoof hardware information.
+ * @property disablePayment Whether to disable Payment APIs.
+ */
 data class NewLuminaUiState(
     val name: String = "",
     val url: String = "https://",
@@ -40,6 +59,15 @@ data class NewLuminaUiState(
     val disablePayment: Boolean = true
 )
 
+/**
+ * ViewModel for creating a new Lumina instance.
+ *
+ * Manages the state of the creation form, handles scanned URLs, and saves the
+ * final configuration to the repository.
+ *
+ * @property repository Repository for lumina data operations.
+ * @property profileManager Manager for the active profile.
+ */
 @HiltViewModel
 class NewLuminaViewModel @Inject constructor(
     private val repository: LuminaRepository,
@@ -48,30 +76,45 @@ class NewLuminaViewModel @Inject constructor(
 
     // The private, mutable state that only the ViewModel can change.
     private val _uiState = MutableStateFlow(NewLuminaUiState())
-    // The public, read-only state that the UI observes.
+    /**
+     * The public, read-only state that the UI observes.
+     */
     val uiState = _uiState.asStateFlow()
 
     // --- Events from the UI ---
 
+    /**
+     * Updates the name in the UI state.
+     */
     fun onNameChange(newName: String) {
         _uiState.update { currentState ->
             currentState.copy(name = newName)
         }
     }
 
+    /**
+     * Updates the URL in the UI state.
+     */
     fun onUrlChange(newUrl: String) {
         _uiState.update { currentState ->
             currentState.copy(url = newUrl)
         }
     }
 
+    /**
+     * Updates the selected icon in the UI state.
+     */
     fun onIconSelected(newIcon: ImageVector) {
         _uiState.update { currentState ->
             currentState.copy(selectedIcon = newIcon)
         }
     }
 
-    // Called once when the screen is created with a URL from the QR scanner
+    /**
+     * Initializes the form with a URL scanned from a QR code.
+     *
+     * @param encodedUrl The URL string, potentially URL-encoded.
+     */
     fun initializeFromScannedUrl(encodedUrl: String?) {
         if (!encodedUrl.isNullOrBlank()) {
             // Only update if the URL is the default, to avoid overwriting user input
@@ -82,6 +125,9 @@ class NewLuminaViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Saves the current form data as a new [LuminaInfo] entry in the repository.
+     */
     fun onSave() {
         viewModelScope.launch {
             val profileId = profileManager.getCurrentProfileId().first() 
@@ -111,6 +157,9 @@ class NewLuminaViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Maps an [ImageVector] to a string identifier for storage.
+     */
     private fun getIconName(icon: ImageVector): String {
         return when (icon) {
             Icons.Default.Language -> "Language"

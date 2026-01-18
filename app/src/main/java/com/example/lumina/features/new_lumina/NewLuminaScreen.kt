@@ -91,10 +91,20 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/**
+ * Composable representing the screen for creating a new Lumina instance.
+ *
+ * This screen allows users to input a name and URL, select an icon, and navigate
+ * to advanced configuration options before saving.
+ *
+ * @param viewModel The [NewLuminaViewModel] providing state and handling user actions.
+ * @param onNavigateBack Callback for the "Close" navigation action.
+ * @param onSaveLumina Callback to trigger the saving of the new Lumina instance.
+ * @param onNavigateToAdvancedOptions Callback to navigate to the advanced options screen.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewLuminaScreen(
-    // It now receives the ViewModel as its source of truth
     viewModel: NewLuminaViewModel,
     onNavigateBack: () -> Unit,
     onSaveLumina: () -> Unit,
@@ -151,7 +161,12 @@ fun NewLuminaScreen(
     }
 }
 
-// --- Top App Bar --- (Stateless)
+/**
+ * Top app bar for the New Lumina screen.
+ *
+ * @param onClose Callback for the close button.
+ * @param onSave Callback for the save button.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewLuminaTopAppBar(onClose: () -> Unit, onSave: () -> Unit) {
@@ -171,7 +186,9 @@ fun NewLuminaTopAppBar(onClose: () -> Unit, onSave: () -> Unit) {
     )
 }
 
-// --- Sub-sections are now stateless ---
+/**
+ * Section for inputting the website's name and URL.
+ */
 @Composable
 fun WebsiteInputSection(
     name: String,
@@ -219,6 +236,9 @@ fun WebsiteInputSection(
     }
 }
 
+/**
+ * Section for selecting an icon and color theme.
+ */
 @Composable
 fun IconAndThemeSection(
     selectedIcon: ImageVector,
@@ -265,8 +285,9 @@ fun IconAndThemeSection(
     }
 }
 
-
-// --- Advanced Options Row --- (Stateless)
+/**
+ * Clickable row that navigates to the Advanced Options screen.
+ */
 @Composable
 fun AdvancedOptionsRow(onClick: () -> Unit) {
     Row(
@@ -278,5 +299,3 @@ fun AdvancedOptionsRow(onClick: () -> Unit) {
         Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, "Open Advanced Options", tint = Color.Gray, modifier = Modifier.size(16.dp))
     }
 }
-
-

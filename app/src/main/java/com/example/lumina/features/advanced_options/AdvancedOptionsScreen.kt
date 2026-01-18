@@ -44,6 +44,16 @@ import com.example.lumina.features.new_lumina.NewLuminaUiState
 import com.example.lumina.features.new_lumina.NewLuminaViewModel
 import com.example.lumina.ui.theme.LuminaTheme
 
+/**
+ * Composable representing the Advanced Options screen.
+ *
+ * This screen allows users to configure advanced privacy and browser settings
+ * for a new Lumina instance, such as ephemeral storage, anti-fingerprinting measures,
+ * and WebRTC configuration.
+ *
+ * @param viewModel The [NewLuminaViewModel] that manages the state for this screen.
+ * @param onNavigateBack Callback function to navigate back to the previous screen.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdvancedOptionsScreen(
@@ -119,7 +129,21 @@ fun AdvancedOptionsScreen(
     }
 }
 
-// This composable is now stateless and just receives the state and all callbacks.
+/**
+ * A group of toggles for various anti-fingerprinting settings.
+ *
+ * @param afpState The current state of anti-fingerprinting options.
+ * @param onAfpEnabledChange Callback for toggling global anti-fingerprinting.
+ * @param onRandomizeUserAgentChange Callback for toggling user agent randomization.
+ * @param onSpoofLocaleChange Callback for toggling locale spoofing.
+ * @param onSpoofTimezoneChange Callback for toggling timezone spoofing.
+ * @param onRandomizeCanvasChange Callback for toggling canvas randomization.
+ * @param onDisableAudioContextChange Callback for toggling AudioContext disabling.
+ * @param onDisableWebGlChange Callback for toggling WebGL disabling.
+ * @param onRandomizeScreenChange Callback for toggling screen dimensions randomization.
+ * @param onSpoofHardwareChange Callback for toggling hardware info spoofing.
+ * @param onDisablePaymentChange Callback for toggling Payment API disabling.
+ */
 @Composable
 fun AntifingerprintingToggles(
     afpState: NewLuminaUiState,
@@ -204,8 +228,11 @@ fun AntifingerprintingToggles(
     }
 }
 
-// --- The rest of the file contains stateless, reusable UI components ---
-
+/**
+ * Top app bar for the Advanced Options screen.
+ *
+ * @param onNavigateBack Callback for the navigation icon.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdvancedOptionsTopAppBar(onNavigateBack: () -> Unit) {
@@ -224,8 +251,11 @@ fun AdvancedOptionsTopAppBar(onNavigateBack: () -> Unit) {
     )
 }
 
-// --- Reusable Components ---
-
+/**
+ * Displays a section title with specific styling.
+ *
+ * @param title The title text to display.
+ */
 @Composable
 fun SectionTitle(title: String) {
     Text(
@@ -237,6 +267,12 @@ fun SectionTitle(title: String) {
     )
 }
 
+/**
+ * Displays help or descriptive text with specific styling.
+ *
+ * @param text The text to display.
+ * @param color The color of the text, defaults to gray.
+ */
 @Composable
 fun HelpText(text: String, color: Color = Color.Gray) {
     Text(
@@ -248,6 +284,13 @@ fun HelpText(text: String, color: Color = Color.Gray) {
     )
 }
 
+/**
+ * A reusable row containing a text label and a switch.
+ *
+ * @param text The label for the switch.
+ * @param checked The current checked state of the switch.
+ * @param onCheckedChange Callback for when the switch state changes.
+ */
 @Composable
 fun ToggleRow(
     text: String,
@@ -272,6 +315,9 @@ fun ToggleRow(
     }
 }
 
+/**
+ * An internal version of [ToggleRow] with optional divider and enabled state.
+ */
 @Composable
 fun ToggleRowInternal(
     text: String,
@@ -298,11 +344,14 @@ fun ToggleRowInternal(
     }
 }
 
+/**
+ * A custom [Switch] component with a consistently sized thumb.
+ */
 @Composable
 fun SwitchWithConsistentThumb(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true // --- 5. Add the `enabled` parameter here ---
+    enabled: Boolean = true
 ) {
     val thumbSize = 24.dp // Define a fixed size for the thumb
 
@@ -337,8 +386,9 @@ fun SwitchWithConsistentThumb(
     )
 }
 
-// --- Preview ---
-
+/**
+ * Preview for [AdvancedOptionsScreen].
+ */
 @Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
 fun AdvancedOptionsScreenPreview() {

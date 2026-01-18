@@ -8,6 +8,13 @@ import com.example.lumina.navigation.AppNavigation
 import com.example.lumina.ui.theme.LuminaTheme
 import dagger.hilt.android.AndroidEntryPoint
 
+/**
+ * Main activity for the Lumina application.
+ *
+ * This activity serves as the entry point for the UI, setting up the Compose theme
+ * and the main navigation graph. It is annotated with [AndroidEntryPoint] to enable
+ * Hilt dependency injection.
+ */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
@@ -16,7 +23,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             LuminaTheme {
-                // 2. The MainActivity is now extremely clean.
+                // The MainActivity is now extremely clean.
                 // Its only job is to set the theme and call the navigation graph.
                 AppNavigation()
             }

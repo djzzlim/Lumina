@@ -33,6 +33,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.lumina.core.database.Profile
 
+/**
+ * Screen for managing user profiles.
+ *
+ * Allows users to view existing profiles, switch between them, create new
+ * profiles, and delete existing ones.
+ *
+ * @param profilesViewModel The [ProfilesViewModel] that manages profile data and actions.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfilesScreen(
@@ -95,6 +103,14 @@ fun ProfilesScreen(
     }
 }
 
+/**
+ * A list item representing a single profile.
+ *
+ * @param profile The [Profile] entity to display.
+ * @param isCurrent Whether this is the currently active profile.
+ * @param onSwitch Callback to be invoked when the profile is clicked to be switched.
+ * @param onDelete Callback to be invoked when the delete icon is clicked.
+ */
 @Composable
 fun ProfileListItem(
     profile: Profile,

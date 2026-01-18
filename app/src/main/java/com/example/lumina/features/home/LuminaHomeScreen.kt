@@ -51,6 +51,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.lumina.core.database.LuminaInfo
 
+/**
+ * The main home screen of the Lumina application.
+ *
+ * This screen displays a grid of lumina items and provides navigation to other
+ * features like QR scanning, adding new items, and profile management.
+ *
+ * @param viewModel The [HomeViewModel] that provides the data and logic for this screen.
+ * @param onNavigateToScanner Callback to navigate to the QR code scanner.
+ * @param onNavigateToAddLumina Callback to navigate to the "Add Lumina" screen.
+ * @param onNavigateToBrowser Callback to navigate to the browser with a specific item ID.
+ * @param onNavigateToProfiles Callback to navigate to the profile management screen.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LuminaHomeScreen(
@@ -104,6 +116,9 @@ fun LuminaHomeScreen(
     }
 }
 
+/**
+ * Top app bar for the home screen in normal (non-selection) mode.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeTopAppBar(
@@ -150,13 +165,6 @@ fun HomeTopAppBar(
                     tint = Color(0xFFBB86FC)
                 )
             }
-//            IconButton(onClick = { /* Handle settings */ }) {
-//                Icon(
-//                    Icons.Default.Settings,
-//                    contentDescription = "Settings",
-//                    tint = Color(0xFFBB86FC)
-//                )
-//            }
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Color.Black
@@ -164,6 +172,9 @@ fun HomeTopAppBar(
     )
 }
 
+/**
+ * Top app bar for the home screen when in item selection mode.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectionTopAppBar(
@@ -204,6 +215,9 @@ fun SelectionTopAppBar(
     )
 }
 
+/**
+ * Displays a grid of lumina item cards.
+ */
 @Composable
 fun LuminaItemsGrid(
     items: List<LuminaInfo>,
@@ -227,6 +241,9 @@ fun LuminaItemsGrid(
     }
 }
 
+/**
+ * A card component that represents a single [LuminaInfo] entry.
+ */
 @Composable
 fun LuminaItemCard(
     item: LuminaInfo,
@@ -313,6 +330,9 @@ fun LuminaItemCard(
     }
 }
 
+/**
+ * Returns an [ImageVector] for a given icon name.
+ */
 private fun getIconVector(iconName: String): ImageVector {
     return when (iconName) {
         "Language" -> Icons.Default.Language
@@ -321,6 +341,9 @@ private fun getIconVector(iconName: String): ImageVector {
     }
 }
 
+/**
+ * Masks a URL for display purposes, shortening it and potentially obfuscating parts.
+ */
 private fun maskUrl(url: String): String {
     return try {
         val parsedUrl = java.net.URL(url)

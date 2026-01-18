@@ -10,27 +10,58 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * ViewModel for the [ProfilesScreen].
+ *
+ * Manages the list of user profiles and handles operations like creating,
+ * deleting, and switching the active profile.
+ *
+ * @property profileRepository Repository for accessing and modifying profile data.
+ * @property profileManager Manager for the currently active profile state.
+ */
 @HiltViewModel
 class ProfilesViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val profileManager: ProfileManager
 ) : ViewModel() {
 
+    /**
+     * Flow of all available user profiles.
+     */
     val profiles: Flow<List<Profile>> = profileRepository.getProfiles()
+
+    /**
+     * Flow of the ID of the currently active profile.
+     */
     val currentProfileId: Flow<String?> = profileManager.getCurrentProfileId()
 
+    /**
+     * Creates a new profile with the given name.
+     *
+     * @param name The name of the new profile.
+     */
     fun createProfile(name: String) {
         viewModelScope.launch {
             profileRepository.createProfile(name)
         }
     }
 
+    /**
+     * Deletes the specified profile.
+     *
+     * @param profile The [Profile] entity to delete.
+     */
     fun deleteProfile(profile: Profile) {
         viewModelScope.launch {
             profileRepository.deleteProfile(profile)
         }
     }
 
+    /**
+     * Switches the active profile to the one with the specified ID.
+     *
+     * @param profileId The ID of the profile to switch to.
+     */
     fun switchProfile(profileId: String) {
         viewModelScope.launch {
             profileManager.setCurrentProfile(profileId)

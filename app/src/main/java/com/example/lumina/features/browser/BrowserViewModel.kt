@@ -19,6 +19,18 @@ import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
 import javax.inject.Inject
 
+/**
+ * ViewModel for the [BrowserScreen].
+ *
+ * This class manages the [GeckoSession], handles URL loading and searching logic,
+ * and applies privacy settings based on the associated [LuminaInfo].
+ *
+ * @property luminaRepository Repository for accessing lumina configuration.
+ * @property profileManager Manager for the active profile.
+ * @property globalGeckoRuntime The singleton [GeckoRuntime] used by the app.
+ * @property applicationContext The application context.
+ * @property savedStateHandle Handle for retrieving navigation arguments like `luminaId`.
+ */
 @HiltViewModel
 class BrowserViewModel @Inject constructor(
     private val luminaRepository: LuminaRepository,
@@ -29,12 +41,21 @@ class BrowserViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val luminaId: Long = savedStateHandle.get<Long>("luminaId")!!
+    /**
+     * StateFlow emitting the [LuminaInfo] for the current browser session.
+     */
     val luminaInfo: StateFlow<LuminaInfo?> = luminaRepository.getLuminaById(luminaId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
+    /**
+     * Exposes the gecko runtime.
+     */
     val geckoRuntime: GeckoRuntime = globalGeckoRuntime
 
     private val _geckoSession = GeckoSession()
+    /**
+     * The [GeckoSession] instance used for this browser screen.
+     */
     val geckoSession: GeckoSession get() = _geckoSession
 
     private val bangs = listOf(
@@ -46,6 +67,7 @@ class BrowserViewModel @Inject constructor(
     private var isInitialized = false
 
     init {
+        // Initialize the browser session once lumina info is available.
         viewModelScope.launch {
             luminaInfo.filterNotNull().collect { info ->
                 if (!isInitialized) {
@@ -62,6 +84,9 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Applies privacy and browser settings to the current session based on [LuminaInfo].
+     */
     private fun applySettings(info: LuminaInfo) {
         _geckoSession.settings.userAgentMode = if (info.randomizeUserAgent)
             GeckoSessionSettings.USER_AGENT_MODE_MOBILE
@@ -71,6 +96,13 @@ class BrowserViewModel @Inject constructor(
         _geckoSession.settings.allowJavascript = true
     }
 
+    /**
+     * Processes a search or navigation query.
+     *
+     * Supports "bangs" (e.g., !g for Google), direct URL entry, or general search.
+     *
+     * @param query The user's input string.
+     */
     fun onSearchQuery(query: String) {
         if (query.isBlank()) return
         

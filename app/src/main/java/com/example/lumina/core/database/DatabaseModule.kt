@@ -9,10 +9,19 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+/**
+ * Hilt module that provides database-related dependencies.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    /**
+     * Provides a singleton instance of [LuminaDatabase].
+     *
+     * @param context The application context.
+     * @return The built [LuminaDatabase] instance.
+     */
     @Provides
     @Singleton
     fun provideLuminaDatabase(@ApplicationContext context: Context): LuminaDatabase {
@@ -24,11 +33,23 @@ object DatabaseModule {
             .fallbackToDestructiveMigration(false).build()
     }
 
+    /**
+     * Provides the [LuminaDao] from the database instance.
+     *
+     * @param database The [LuminaDatabase] instance.
+     * @return The [LuminaDao] instance.
+     */
     @Provides
     fun provideLuminaDao(database: LuminaDatabase): LuminaDao {
         return database.luminaDao()
     }
 
+    /**
+     * Provides the [ProfileDao] from the database instance.
+     *
+     * @param database The [LuminaDatabase] instance.
+     * @return The [ProfileDao] instance.
+     */
     @Provides
     fun provideProfileDao(database: LuminaDatabase): ProfileDao {
         return database.profileDao()
