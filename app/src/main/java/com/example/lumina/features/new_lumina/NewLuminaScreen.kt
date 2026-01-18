@@ -93,6 +93,17 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/**
+ * Composable representing the screen for creating a new Lumina instance.
+ *
+ * This screen allows users to input a name and URL, select an icon and theme color,
+ * and navigate to advanced configuration options before saving.
+ *
+ * @param viewModel The [NewLuminaViewModel] providing state and handling user actions.
+ * @param onNavigateBack Callback for the "Close" navigation action.
+ * @param onSaveLumina Callback to trigger the saving of the new Lumina instance.
+ * @param onNavigateToAdvancedOptions Callback to navigate to the advanced options screen.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewLuminaScreen(
@@ -101,6 +112,7 @@ fun NewLuminaScreen(
     onSaveLumina: () -> Unit,
     onNavigateToAdvancedOptions: () -> Unit
 ) {
+    // Collect the state from the ViewModel.
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
@@ -156,6 +168,12 @@ fun NewLuminaScreen(
     }
 }
 
+/**
+ * Top app bar for the New Lumina screen.
+ *
+ * @param onClose Callback for the close button.
+ * @param onSave Callback for the save button.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewLuminaTopAppBar(onClose: () -> Unit, onSave: () -> Unit) {
@@ -175,6 +193,14 @@ fun NewLuminaTopAppBar(onClose: () -> Unit, onSave: () -> Unit) {
     )
 }
 
+/**
+ * Section for inputting the website's name and URL.
+ *
+ * @param name The current name input.
+ * @param url The current URL input.
+ * @param onNameChange Callback when name changes.
+ * @param onUrlChange Callback when URL changes.
+ */
 @Composable
 fun WebsiteInputSection(
     name: String,
@@ -222,6 +248,14 @@ fun WebsiteInputSection(
     }
 }
 
+/**
+ * Section for selecting an icon and color theme.
+ *
+ * @param selectedIcon The currently selected icon.
+ * @param selectedColor The currently selected theme color.
+ * @param onIconSelected Callback when an icon is selected.
+ * @param onColorSelected Callback when a color is selected.
+ */
 @Composable
 fun IconAndThemeSection(
     selectedIcon: ImageVector,
@@ -302,6 +336,11 @@ fun IconAndThemeSection(
     }
 }
 
+/**
+ * Clickable row that navigates to the Advanced Options screen.
+ *
+ * @param onClick Callback when the row is clicked.
+ */
 @Composable
 fun AdvancedOptionsRow(onClick: () -> Unit) {
     Row(

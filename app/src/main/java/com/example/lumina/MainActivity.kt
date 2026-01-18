@@ -7,6 +7,8 @@ import androidx.activity.enableEdgeToEdge
 import com.example.lumina.navigation.AppNavigation
 import com.example.lumina.ui.theme.LuminaTheme
 import dagger.hilt.android.AndroidEntryPoint
+import org.mozilla.geckoview.GeckoRuntime
+import javax.inject.Inject
 
 /**
  * Main activity for the Lumina application.
@@ -18,6 +20,9 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    @Inject
+    lateinit var geckoRuntime: GeckoRuntime
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -27,6 +32,15 @@ class MainActivity : ComponentActivity() {
                 // Its only job is to set the theme and call the navigation graph.
                 AppNavigation()
             }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Ensure the GeckoRuntime is shut down when the activity is destroyed
+        // to free up resources and stop background processes.
+        if (isFinishing) {
+            geckoRuntime.shutdown()
         }
     }
 }
