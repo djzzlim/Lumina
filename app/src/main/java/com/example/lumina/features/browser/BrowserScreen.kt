@@ -243,6 +243,8 @@ fun BrowserScreen(
                             ViewGroup.LayoutParams.MATCH_PARENT
                         )
                         setSession(browserViewModel.geckoSession)
+                        // Enable nested scrolling to let PullToRefreshBox detect the pull gesture
+                        isNestedScrollingEnabled = true
                     }
                 },
                 modifier = Modifier.fillMaxSize()
