@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -91,17 +93,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/**
- * Composable representing the screen for creating a new Lumina instance.
- *
- * This screen allows users to input a name and URL, select an icon, and navigate
- * to advanced configuration options before saving.
- *
- * @param viewModel The [NewLuminaViewModel] providing state and handling user actions.
- * @param onNavigateBack Callback for the "Close" navigation action.
- * @param onSaveLumina Callback to trigger the saving of the new Lumina instance.
- * @param onNavigateToAdvancedOptions Callback to navigate to the advanced options screen.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewLuminaScreen(
@@ -110,12 +101,15 @@ fun NewLuminaScreen(
     onSaveLumina: () -> Unit,
     onNavigateToAdvancedOptions: () -> Unit
 ) {
-    // Collect the state from the ViewModel. The UI will automatically
-    // recompose whenever this state changes.
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
-        topBar = { NewLuminaTopAppBar(onClose = onNavigateBack, onSave = onSaveLumina) },
+        topBar = {
+            NewLuminaTopAppBar(
+                onClose = onNavigateBack,
+                onSave = onSaveLumina
+            )
+        },
         containerColor = Color.Black
     ) { paddingValues ->
         LazyColumn(
@@ -135,7 +129,6 @@ fun NewLuminaScreen(
             }
 
             item {
-                // Pass the state down and the events up
                 WebsiteInputSection(
                     name = uiState.name,
                     url = uiState.url,
@@ -148,7 +141,9 @@ fun NewLuminaScreen(
             item {
                 IconAndThemeSection(
                     selectedIcon = uiState.selectedIcon,
-                    onIconSelected = viewModel::onIconSelected
+                    selectedColor = uiState.selectedColor,
+                    onIconSelected = viewModel::onIconSelected,
+                    onColorSelected = viewModel::onColorSelected
                 )
                 Spacer(modifier = Modifier.height(24.dp))
             }
@@ -161,12 +156,6 @@ fun NewLuminaScreen(
     }
 }
 
-/**
- * Top app bar for the New Lumina screen.
- *
- * @param onClose Callback for the close button.
- * @param onSave Callback for the save button.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewLuminaTopAppBar(onClose: () -> Unit, onSave: () -> Unit) {
@@ -186,9 +175,6 @@ fun NewLuminaTopAppBar(onClose: () -> Unit, onSave: () -> Unit) {
     )
 }
 
-/**
- * Section for inputting the website's name and URL.
- */
 @Composable
 fun WebsiteInputSection(
     name: String,
@@ -236,13 +222,12 @@ fun WebsiteInputSection(
     }
 }
 
-/**
- * Section for selecting an icon and color theme.
- */
 @Composable
 fun IconAndThemeSection(
     selectedIcon: ImageVector,
-    onIconSelected: (ImageVector) -> Unit
+    selectedColor: Color,
+    onIconSelected: (ImageVector) -> Unit,
+    onColorSelected: (Color) -> Unit
 ) {
     val icons = listOf(
         Icons.Default.Language, Icons.Default.Star, Icons.Default.Favorite, Icons.Default.Home,
@@ -257,37 +242,66 @@ fun IconAndThemeSection(
         Icons.Default.Eco, Icons.Default.LocalFlorist, Icons.Default.Park, Icons.Default.FilterVintage, Icons.Default.Science
     )
 
+    val colors = listOf(
+        Color(0xFF00A2FF), Color(0xFFFF3B30), Color(0xFFFF9500), Color(0xFFFFCC00),
+        Color(0xFF4CD964), Color(0xFF5AC8FA), Color(0xFF007AFF), Color(0xFF5856D6),
+        Color(0xFFFF2D55), Color(0xFF8E8E93), Color(0xFFAF52DE), Color(0xFFBB86FC)
+    )
+
     Column {
         Text("ICON & THEME", color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
         Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFF1C1C1E)).padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text("Pick a color", color = Color.White, fontSize = 16.sp)
-                Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(Color(0xFF00A2FF)).border(2.dp, Color.White, CircleShape))
+            Text("Pick a color", color = Color.White, fontSize = 16.sp, modifier = Modifier.padding(bottom = 12.dp))
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(colors) { color ->
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                            .border(
+                                width = if (selectedColor == color) 2.dp else 0.dp,
+                                color = Color.White,
+                                shape = CircleShape
+                            )
+                            .clickable { onColorSelected(color) }
+                    )
+                }
             }
+            
             HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 16.dp))
 
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 48.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.heightIn(max = 200.dp)
+                modifier = Modifier.heightIn(max = 240.dp)
             ) {
                 items(icons) { icon ->
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = if (selectedIcon == icon) Color(0xFFBB86FC) else Color.Gray,
-                        modifier = Modifier.size(32.dp).clickable { onIconSelected(icon) }
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (selectedIcon == icon) Color.White.copy(alpha = 0.1f) else Color.Transparent)
+                            .clickable { onIconSelected(icon) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = if (selectedIcon == icon) selectedColor else Color.Gray,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-/**
- * Clickable row that navigates to the Advanced Options screen.
- */
 @Composable
 fun AdvancedOptionsRow(onClick: () -> Unit) {
     Row(
