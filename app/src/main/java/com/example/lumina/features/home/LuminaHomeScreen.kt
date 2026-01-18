@@ -18,15 +18,54 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Adb
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.CrueltyFree
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.DownhillSkiing
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FilterVintage
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.FlutterDash
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.LocalFlorist
+import androidx.compose.material.icons.filled.Nightlight
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Sailing
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Sports
+import androidx.compose.material.icons.filled.SportsBaseball
+import androidx.compose.material.icons.filled.SportsBasketball
+import androidx.compose.material.icons.filled.SportsFootball
+import androidx.compose.material.icons.filled.SportsSoccer
+import androidx.compose.material.icons.filled.SportsTennis
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,18 +90,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.lumina.core.database.LuminaInfo
 
-/**
- * The main home screen of the Lumina application.
- *
- * This screen displays a grid of lumina items and provides navigation to other
- * features like QR scanning, adding new items, and profile management.
- *
- * @param viewModel The [HomeViewModel] that provides the data and logic for this screen.
- * @param onNavigateToScanner Callback to navigate to the QR code scanner.
- * @param onNavigateToAddLumina Callback to navigate to the "Add Lumina" screen.
- * @param onNavigateToBrowser Callback to navigate to the browser with a specific item ID.
- * @param onNavigateToProfiles Callback to navigate to the profile management screen.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LuminaHomeScreen(
@@ -116,9 +143,6 @@ fun LuminaHomeScreen(
     }
 }
 
-/**
- * Top app bar for the home screen in normal (non-selection) mode.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeTopAppBar(
@@ -172,9 +196,6 @@ fun HomeTopAppBar(
     )
 }
 
-/**
- * Top app bar for the home screen when in item selection mode.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectionTopAppBar(
@@ -215,9 +236,6 @@ fun SelectionTopAppBar(
     )
 }
 
-/**
- * Displays a grid of lumina item cards.
- */
 @Composable
 fun LuminaItemsGrid(
     items: List<LuminaInfo>,
@@ -241,9 +259,6 @@ fun LuminaItemsGrid(
     }
 }
 
-/**
- * A card component that represents a single [LuminaInfo] entry.
- */
 @Composable
 fun LuminaItemCard(
     item: LuminaInfo,
@@ -251,7 +266,6 @@ fun LuminaItemCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-
     Card(
         modifier = modifier
             .aspectRatio(0.8f)
@@ -278,8 +292,8 @@ fun LuminaItemCard(
                     Icon(
                         imageVector = getIconVector(item.icon),
                         contentDescription = item.name,
-                        tint = Color(item.color),
-                        modifier = Modifier.size(44.dp) // Slightly smaller to give text room
+                        tint = Color(item.color.toInt()),
+                        modifier = Modifier.size(44.dp)
                     )
                 }
 
@@ -292,7 +306,7 @@ fun LuminaItemCard(
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
-                        maxLines = 2, // Limit name to 2 lines
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         textAlign = TextAlign.Center
                     )
@@ -302,8 +316,8 @@ fun LuminaItemCard(
                     Text(
                         text = maskUrl(item.url),
                         color = Color.White.copy(alpha = 0.6f),
-                        fontSize = 11.sp, // Slightly smaller font for URL
-                        maxLines = 1,     // Force URL to 1 line
+                        fontSize = 11.sp,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         textAlign = TextAlign.Center
                     )
@@ -330,20 +344,54 @@ fun LuminaItemCard(
     }
 }
 
-/**
- * Returns an [ImageVector] for a given icon name.
- */
 private fun getIconVector(iconName: String): ImageVector {
     return when (iconName) {
         "Language" -> Icons.Default.Language
+        "Star" -> Icons.Default.Star
+        "Favorite" -> Icons.Default.Favorite
+        "Home" -> Icons.Default.Home
+        "DirectionsCar" -> Icons.Default.DirectionsCar
+        "Flight" -> Icons.Default.Flight
+        "ShoppingCart" -> Icons.Default.ShoppingCart
+        "Notifications" -> Icons.Default.Notifications
+        "Delete" -> Icons.Default.Delete
+        "LocalFireDepartment" -> Icons.Default.LocalFireDepartment
+        "FlashOn" -> Icons.Default.FlashOn
+        "Cloud" -> Icons.Default.Cloud
+        "WbSunny" -> Icons.Default.WbSunny
+        "Nightlight" -> Icons.Default.Nightlight
+        "AccessTime" -> Icons.Default.AccessTime
+        "Settings" -> Icons.Default.Settings
+        "VideogameAsset" -> Icons.Default.VideogameAsset
+        "Face" -> Icons.Default.Face
         "Visibility" -> Icons.Default.Visibility
+        "Sailing" -> Icons.Default.Sailing
+        "Tv" -> Icons.Default.Tv
+        "Flag" -> Icons.Default.Flag
+        "SportsSoccer" -> Icons.Default.SportsSoccer
+        "SportsBaseball" -> Icons.Default.SportsBaseball
+        "SportsBasketball" -> Icons.Default.SportsBasketball
+        "SportsFootball" -> Icons.Default.SportsFootball
+        "SportsTennis" -> Icons.Default.SportsTennis
+        "DownhillSkiing" -> Icons.Default.DownhillSkiing
+        "Circle" -> Icons.Default.Circle
+        "Sports" -> Icons.Default.Sports
+        "EmojiEvents" -> Icons.Default.EmojiEvents
+        "Pets" -> Icons.Default.Pets
+        "Adb" -> Icons.Default.Adb
+        "FlutterDash" -> Icons.Default.FlutterDash
+        "CrueltyFree" -> Icons.Default.CrueltyFree
+        "BugReport" -> Icons.Default.BugReport
+        "WaterDrop" -> Icons.Default.WaterDrop
+        "Eco" -> Icons.Default.Eco
+        "LocalFlorist" -> Icons.Default.LocalFlorist
+        "Park" -> Icons.Default.Park
+        "FilterVintage" -> Icons.Default.FilterVintage
+        "Science" -> Icons.Default.Science
         else -> Icons.Default.Language
     }
 }
 
-/**
- * Masks a URL for display purposes, shortening it and potentially obfuscating parts.
- */
 private fun maskUrl(url: String): String {
     return try {
         val parsedUrl = java.net.URL(url)
@@ -365,6 +413,6 @@ private fun maskUrl(url: String): String {
             host
         }
     } catch (_: Exception) {
-        url // Return original URL if parsing fails
+        url
     }
 }
