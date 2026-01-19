@@ -76,18 +76,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.example.lumina.core.database.LuminaInfo
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -100,6 +107,21 @@ fun LuminaHomeScreen(
     onNavigateToProfiles: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var isNavigating by remember { mutableStateOf(false) }
+
+    // Reset isNavigating when the screen is resumed (e.g., navigating back to it)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isNavigating = false
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -111,10 +133,10 @@ fun LuminaHomeScreen(
                 )
             } else {
                 HomeTopAppBar(
-                    onNavigateToScanner = onNavigateToScanner,
-                    onNavigateToAddLumina = onNavigateToAddLumina,
+                    onNavigateToScanner = { if (!isNavigating) { isNavigating = true; onNavigateToScanner() } },
+                    onNavigateToAddLumina = { if (!isNavigating) { isNavigating = true; onNavigateToAddLumina() } },
                     onToggleSelectionMode = viewModel::toggleSelectionMode,
-                    onNavigateToProfiles = onNavigateToProfiles
+                    onNavigateToProfiles = { if (!isNavigating) { isNavigating = true; onNavigateToProfiles() } }
                 )
             }
         },
@@ -125,6 +147,7 @@ fun LuminaHomeScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
                 .fillMaxSize()
+                .background(Color.Black)
         ) {
             Spacer(modifier = Modifier.height(24.dp))
             LuminaItemsGrid(
@@ -134,7 +157,8 @@ fun LuminaHomeScreen(
                 onItemClick = {
                     if (uiState.selectionMode) {
                         viewModel.toggleItemSelection(it.id)
-                    } else {
+                    } else if (!isNavigating) {
+                        isNavigating = true
                         onNavigateToBrowser(it.id)
                     }
                 }
@@ -249,7 +273,10 @@ fun LuminaItemsGrid(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        items(items) { item ->
+        items(
+            items = items,
+            key = { it.id } // Adding keys improves performance
+        ) { item ->
             LuminaItemCard(
                 item = item,
                 isSelected = selectedItems.contains(item.id),
@@ -266,6 +293,11 @@ fun LuminaItemCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Optimization: remember expensive operations
+    val iconVector = remember(item.icon) { getIconVector(item.icon) }
+    val maskedUrl = remember(item.url) { maskUrl(item.url) }
+    val iconColor = remember(item.color) { Color(item.color.toInt()) }
+
     Card(
         modifier = modifier
             .aspectRatio(0.8f)
@@ -290,9 +322,9 @@ fun LuminaItemCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = getIconVector(item.icon),
+                        imageVector = iconVector,
                         contentDescription = item.name,
-                        tint = Color(item.color.toInt()),
+                        tint = iconColor,
                         modifier = Modifier.size(44.dp)
                     )
                 }
@@ -314,7 +346,7 @@ fun LuminaItemCard(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
-                        text = maskUrl(item.url),
+                        text = maskedUrl,
                         color = Color.White.copy(alpha = 0.6f),
                         fontSize = 11.sp,
                         maxLines = 1,
@@ -393,6 +425,7 @@ private fun getIconVector(iconName: String): ImageVector {
 }
 
 private fun maskUrl(url: String): String {
+    if (url.isEmpty()) return ""
     return try {
         val parsedUrl = java.net.URL(url)
         var host = parsedUrl.host

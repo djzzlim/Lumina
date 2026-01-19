@@ -1,14 +1,16 @@
 package com.example.lumina.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -38,18 +40,62 @@ fun AppNavigation() {
         }
     }
 
+    val slideDuration = 300
+
+    val defaultEnter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+        slideIntoContainer(
+            towards = AnimatedContentTransitionScope.SlideDirection.Start,
+            animationSpec = tween(slideDuration)
+        )
+    }
+
+    val defaultExit: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+        slideOutOfContainer(
+            towards = AnimatedContentTransitionScope.SlideDirection.Start,
+            animationSpec = tween(slideDuration)
+        )
+    }
+
+    val defaultPopEnter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+        slideIntoContainer(
+            towards = AnimatedContentTransitionScope.SlideDirection.End,
+            animationSpec = tween(slideDuration)
+        )
+    }
+
+    val defaultPopExit: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+        slideOutOfContainer(
+            towards = AnimatedContentTransitionScope.SlideDirection.End,
+            animationSpec = tween(slideDuration)
+        )
+    }
+
     NavHost(
         navController = navController,
-        startDestination = ScreenRoutes.HOME
+        startDestination = ScreenRoutes.HOME,
+        enterTransition = defaultEnter,
+        exitTransition = defaultExit,
+        popEnterTransition = defaultPopEnter,
+        popExitTransition = defaultPopExit
     ) {
 
         composable(
             route = ScreenRoutes.HOME,
             exitTransition = {
-                fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.9f, animationSpec = tween(300))
+                // When going to Browser, stay still (just fade a bit)
+                if (targetState.destination.route?.startsWith(ScreenRoutes.BROWSER_BASE) == true) {
+                    fadeOut(animationSpec = tween(slideDuration))
+                } else {
+                    defaultExit()
+                }
             },
             popEnterTransition = {
-                fadeIn(animationSpec = tween(300)) + scaleIn(initialScale = 0.9f, animationSpec = tween(300))
+                // When coming back from Browser, fade back in
+                if (initialState.destination.route?.startsWith(ScreenRoutes.BROWSER_BASE) == true) {
+                    fadeIn(animationSpec = tween(slideDuration))
+                } else {
+                    defaultPopEnter()
+                }
             }
         ) {
             val vm: HomeViewModel = hiltViewModel()
@@ -71,7 +117,11 @@ fun AppNavigation() {
         }
 
         composable(ScreenRoutes.PROFILES_SCREEN) {
-            ProfilesScreen()
+            ProfilesScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
         }
 
         composable(ScreenRoutes.QR_SCANNER) {
@@ -156,16 +206,22 @@ fun AppNavigation() {
                 }
             ),
             enterTransition = {
-                fadeIn(animationSpec = tween(400)) + scaleIn(initialScale = 0.8f, animationSpec = tween(400))
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                    animationSpec = tween(slideDuration)
+                )
             },
             exitTransition = {
-                fadeOut(animationSpec = tween(400)) + scaleOut(targetScale = 0.8f, animationSpec = tween(400))
+                fadeOut(animationSpec = tween(slideDuration))
             },
             popEnterTransition = {
-                fadeIn(animationSpec = tween(400)) + scaleIn(initialScale = 1.1f, animationSpec = tween(400))
+                fadeIn(animationSpec = tween(slideDuration))
             },
             popExitTransition = {
-                fadeOut(animationSpec = tween(400)) + scaleOut(targetScale = 1.1f, animationSpec = tween(400))
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                    animationSpec = tween(slideDuration)
+                )
             }
         ) {
             BrowserScreen(

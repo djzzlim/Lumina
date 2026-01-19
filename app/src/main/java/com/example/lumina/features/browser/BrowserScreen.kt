@@ -29,7 +29,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -53,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.delay
 import org.mozilla.geckoview.GeckoView
 
 /**
@@ -68,12 +68,19 @@ fun BrowserScreen(
     val title by browserViewModel.title.collectAsState()
     val progress by browserViewModel.progress.collectAsState()
     val isLoading by browserViewModel.isLoading.collectAsState()
-    val isAtTop by browserViewModel.isAtTop.collectAsState()
     val isSecure by browserViewModel.isSecure.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
     var isTextFieldFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+
+    // Delay showing the heavy GeckoView and signal the ViewModel to load
+    var showWebView by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(350) // Wait for navigation animation (300ms) to complete
+        showWebView = true
+        browserViewModel.onAnimationFinished() // Signal ViewModel to start heavy loading
+    }
 
     // Helper to format URL for display
     fun String.formatForDisplay() = this.removePrefix("https://").removePrefix("http://").removePrefix("www.")
@@ -98,13 +105,13 @@ fun BrowserScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(Color.Black) // Perfect blend with Home screen
             .padding(WindowInsets.statusBars.asPaddingValues())
     ) {
         // Modern Minimalist Address Bar
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surface,
+            color = Color.Black,
             tonalElevation = 1.dp
         ) {
             Row(
@@ -117,7 +124,8 @@ fun BrowserScreen(
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack, 
                         contentDescription = "Back",
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(20.dp),
+                        tint = Color.White
                     )
                 }
 
@@ -134,7 +142,7 @@ fun BrowserScreen(
                             }
                         },
                     shape = RoundedCornerShape(18.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                    color = Color.White.copy(alpha = 0.1f)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
@@ -145,7 +153,7 @@ fun BrowserScreen(
                                 Icons.Default.Lock,
                                 contentDescription = "Secure",
                                 modifier = Modifier.size(12.dp),
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                                tint = Color(0xFFBB86FC)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                         }
@@ -156,10 +164,10 @@ fun BrowserScreen(
                             modifier = Modifier.weight(1f),
                             singleLine = true,
                             textStyle = TextStyle(
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = 13.sp // Smaller, modern font
+                                color = Color.White,
+                                fontSize = 13.sp
                             ),
-                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            cursorBrush = SolidColor(Color(0xFFBB86FC)),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                             keyboardActions = KeyboardActions(onGo = {
                                 browserViewModel.onSearchQuery(searchQuery)
@@ -170,7 +178,7 @@ fun BrowserScreen(
                                     Text(
                                         "Search or enter address",
                                         fontSize = 13.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                        color = Color.Gray
                                     )
                                 }
                                 innerTextField()
@@ -186,7 +194,7 @@ fun BrowserScreen(
                                     Icons.Default.Clear,
                                     contentDescription = "Clear",
                                     modifier = Modifier.size(14.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    tint = Color.Gray
                                 )
                             }
                         }
@@ -207,7 +215,8 @@ fun BrowserScreen(
                     Icon(
                         if (isTextFieldFocused) Icons.Default.Search else Icons.Default.Refresh,
                         contentDescription = if (isTextFieldFocused) "Search" else "Reload",
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(20.dp),
+                        tint = Color(0xFFBB86FC)
                     )
                 }
             }
@@ -219,7 +228,7 @@ fun BrowserScreen(
                 LinearProgressIndicator(
                     progress = { progress.toFloat() / 100f },
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = Color(0xFFBB86FC),
                     trackColor = Color.Transparent
                 )
             }
@@ -235,20 +244,32 @@ fun BrowserScreen(
             },
             modifier = Modifier.weight(1f)
         ) {
-            AndroidView(
-                factory = { factoryContext ->
-                    GeckoView(factoryContext).apply {
-                        layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
-                        setSession(browserViewModel.geckoSession)
-                        // Enable nested scrolling to let PullToRefreshBox detect the pull gesture
-                        isNestedScrollingEnabled = true
-                    }
-                },
-                modifier = Modifier.fillMaxSize()
-            )
+            if (showWebView) {
+                AndroidView(
+                    factory = { factoryContext ->
+                        GeckoView(factoryContext).apply {
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                            setSession(browserViewModel.geckoSession)
+                            // Enable nested scrolling to let PullToRefreshBox detect the pull gesture
+                            isNestedScrollingEnabled = true
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                // Placeholder while animating to prevent CPU spike
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Stay black to blend with Home screen transition
+                }
+            }
         }
     }
 }

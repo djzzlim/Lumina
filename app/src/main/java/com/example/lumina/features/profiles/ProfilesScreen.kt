@@ -39,11 +39,13 @@ import com.example.lumina.core.database.Profile
  * Allows users to view existing profiles, switch between them, create new
  * profiles, and delete existing ones.
  *
+ * @param onNavigateBack Callback to go back to the previous screen (Home).
  * @param profilesViewModel The [ProfilesViewModel] that manages profile data and actions.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfilesScreen(
+    onNavigateBack: () -> Unit,
     profilesViewModel: ProfilesViewModel = hiltViewModel()
 ) {
     val profiles by profilesViewModel.profiles.collectAsState(initial = emptyList())
@@ -94,7 +96,10 @@ fun ProfilesScreen(
                     ProfileListItem(
                         profile = profile,
                         isCurrent = profile.id == currentProfileId,
-                        onSwitch = { profilesViewModel.switchProfile(profile.id) },
+                        onSwitch = { 
+                            profilesViewModel.switchProfile(profile.id)
+                            onNavigateBack() // Go back to main screen after switching
+                        },
                         onDelete = { profilesViewModel.deleteProfile(profile) }
                     )
                 }

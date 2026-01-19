@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -68,6 +69,8 @@ class BrowserViewModel @Inject constructor(
     private val _isSecure = MutableStateFlow(false)
     val isSecure: StateFlow<Boolean> = _isSecure.asStateFlow()
 
+    private val _isAnimationFinished = MutableStateFlow(false)
+
     private val bangs = listOf(
         Bang("!g", "https://www.google.com/search?q=%s"),
         Bang("!ddg", "https://duckduckgo.com/?q=%s"),
@@ -78,8 +81,12 @@ class BrowserViewModel @Inject constructor(
 
     init {
         setupDelegates()
+        
+        // Only start loading once we have the info AND the entry animation is finished
         viewModelScope.launch {
-            luminaInfo.filterNotNull().collect { info ->
+            combine(luminaInfo.filterNotNull(), _isAnimationFinished) { info, finished ->
+                if (finished) info else null
+            }.filterNotNull().collect { info ->
                 if (!isInitialized) {
                     if (!_geckoSession.isOpen) {
                         _geckoSession.open(globalGeckoRuntime)
@@ -92,6 +99,13 @@ class BrowserViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * Signal that the screen transition animation has finished.
+     */
+    fun onAnimationFinished() {
+        _isAnimationFinished.value = true
     }
 
     private fun setupDelegates() {

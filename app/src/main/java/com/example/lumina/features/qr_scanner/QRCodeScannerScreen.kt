@@ -30,7 +30,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -48,7 +47,7 @@ import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
-import java.util.UUID
+import kotlinx.coroutines.delay
 
 /**
  * Screen for scanning QR codes.
@@ -127,6 +126,13 @@ fun QRCodeScannerView(
 ) {
     val context = LocalContext.current
     var hasCameraPermission by remember { mutableStateOf(false) }
+    
+    // DELAY camera initialization to keep the navigation animation smooth
+    var showCamera by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(350) // Wait for screen transition to finish
+        showCamera = true
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -145,12 +151,9 @@ fun QRCodeScannerView(
     }
 
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        if (hasCameraPermission) {
-            // Use a key to ensure the camera is fully re-initialized on subsequent navigations,
-            // preventing the "disappearing TopAppBar" bug.
-            key(UUID.randomUUID().toString()) {
-                CameraPreview(onQrCodeScanned = onQrCodeScanned)
-            }
+        if (hasCameraPermission && showCamera) {
+            CameraPreview(onQrCodeScanned = onQrCodeScanned)
+            
             // Add the square border for QR code alignment
             Box(
                 modifier = Modifier
@@ -158,7 +161,7 @@ fun QRCodeScannerView(
                     .border(2.dp, Color.White),
                 contentAlignment = Alignment.Center
             ) {}
-        } else {
+        } else if (!hasCameraPermission) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
@@ -190,6 +193,7 @@ fun CameraPreview(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    // Use remember for the controller to keep it across recompositions
     val cameraController = remember { LifecycleCameraController(context) }
 
     AndroidView(
