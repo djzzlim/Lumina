@@ -6,6 +6,7 @@ import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import net.sqlcipher.database.SQLiteDatabase
 import javax.inject.Inject
 
 /**
@@ -22,6 +23,10 @@ class LuminaApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // Initialize SQLCipher libraries
+        SQLiteDatabase.loadLibs(this)
+
         // Ensure a default profile exists on application start.
         CoroutineScope(Dispatchers.Main).launch {
             profileManager.createDefaultProfileIfNeeded()

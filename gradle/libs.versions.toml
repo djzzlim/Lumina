@@ -23,6 +23,7 @@ camerax = "1.5.2"
 mlkit-barcode-scanning = "17.3.0"
 uiGraphics = "1.10.1"
 navigationCompose = "2.9.6"
+sqlcipher = "4.5.4"
 
 [libraries]
 #Room
@@ -66,6 +67,7 @@ androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", ve
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelCompose" }
 tor-android = { module = "info.guardianproject:tor-android", version.ref = "torAndroid" }
+sqlcipher = { module = "net.zetetic:android-database-sqlcipher", version.ref = "sqlcipher" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

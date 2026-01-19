@@ -104,9 +104,9 @@ class EditLuminaViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            repository.getLuminaById(luminaId).first()?.let { info ->
+            repository.getLuminaById(luminaId).first().let { info ->
                 originalLumina = info
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         name = info.name,
                         url = info.url,

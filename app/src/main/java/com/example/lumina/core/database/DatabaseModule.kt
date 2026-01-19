@@ -7,6 +7,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import net.sqlcipher.database.SupportFactory
 import javax.inject.Singleton
 
 /**
@@ -25,12 +26,19 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideLuminaDatabase(@ApplicationContext context: Context): LuminaDatabase {
+        // Get or create the secure encryption key
+        val passphrase = SecurityUtils.getOrCreateDatabaseKey()
+        val factory = SupportFactory(passphrase)
+
         return Room.databaseBuilder(
                 context,
                 LuminaDatabase::class.java,
-                "lumina-database"
-            ).addMigrations(LuminaDatabase.MIGRATION_1_2, LuminaDatabase.MIGRATION_2_3)
-            .fallbackToDestructiveMigration(false).build()
+                "lumina-database-v2" // Changed name to avoid "file is not a database" error with existing unencrypted DB
+            )
+            .openHelperFactory(factory) // Use SQLCipher for encryption
+            .addMigrations(LuminaDatabase.MIGRATION_1_2, LuminaDatabase.MIGRATION_2_3)
+            .fallbackToDestructiveMigration(false)
+            .build()
     }
 
     /**
