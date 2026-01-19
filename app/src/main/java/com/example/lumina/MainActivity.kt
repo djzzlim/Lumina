@@ -4,6 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalTextToolbar
+import androidx.compose.ui.platform.TextToolbar
+import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.lifecycle.lifecycleScope
 import com.example.lumina.core.ProfileManager
 import com.example.lumina.navigation.AppNavigation
@@ -41,7 +48,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             LuminaTheme {
-                AppNavigation()
+                FixedTextToolbar {
+                    AppNavigation()
+                }
             }
         }
     }
@@ -58,5 +67,47 @@ class MainActivity : ComponentActivity() {
             // Completely terminate the app process
             exitProcess(0)
         }
+    }
+}
+
+/**
+ * A wrapper that provides a "Safe" TextToolbar to prevent crashes on Xiaomi devices.
+ * Xiaomi's MIUI/HyperOS custom context menu implementation often throws ClassCastException
+ * because it expects a standard Android TextView, but Compose uses a custom view.
+ */
+@Composable
+fun FixedTextToolbar(content: @Composable () -> Unit) {
+    val originalToolbar = LocalTextToolbar.current
+    
+    val customToolbar = remember(originalToolbar) {
+        object : TextToolbar {
+            override val status: TextToolbarStatus get() = originalToolbar.status
+            override fun hide() = originalToolbar.hide()
+
+            override fun showMenu(
+                rect: Rect,
+                onCopyRequested: (() -> Unit)?,
+                onPasteRequested: (() -> Unit)?,
+                onCutRequested: (() -> Unit)?,
+                onSelectAllRequested: (() -> Unit)?
+            ) {
+                try {
+                    originalToolbar.showMenu(
+                        rect, 
+                        onCopyRequested, 
+                        onPasteRequested, 
+                        onCutRequested, 
+                        onSelectAllRequested
+                    )
+                } catch (_: Exception) {
+                    // This catches the MIUI/HyperOS ClassCastException.
+                    // The menu might not show up on affected devices, but the app won't crash.
+                }
+            }
+        }
+    }
+
+    CompositionLocalProvider(LocalTextToolbar provides customToolbar) {
+        content()
     }
 }
