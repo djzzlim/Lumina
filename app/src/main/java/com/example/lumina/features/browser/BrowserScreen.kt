@@ -34,11 +34,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,12 +48,15 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.delay
 import org.mozilla.geckoview.GeckoView
 
@@ -74,12 +79,36 @@ fun BrowserScreen(
     var isTextFieldFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
-    // Delay showing the heavy GeckoView and signal the ViewModel to load
-    var showWebView by remember { mutableStateOf(false) }
+    // Use rememberSaveable so the webview remains shown if the activity is recreated
+    var showWebView by rememberSaveable { mutableStateOf(false) }
+    
+    // Signal the ViewModel and show the view after the initial entry animation
     LaunchedEffect(Unit) {
-        delay(350) // Wait for navigation animation (300ms) to complete
-        showWebView = true
-        browserViewModel.onAnimationFinished() // Signal ViewModel to start heavy loading
+        if (!showWebView) {
+            delay(350)
+            showWebView = true
+        }
+        browserViewModel.onAnimationFinished()
+    }
+
+    // Lifecycle observer to handle GeckoSession active state when backgrounding/foregrounding
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    browserViewModel.geckoSession.setActive(true)
+                }
+                Lifecycle.Event.ON_PAUSE -> {
+                    browserViewModel.geckoSession.setActive(false)
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     // Helper to format URL for display
@@ -105,7 +134,7 @@ fun BrowserScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black) // Perfect blend with Home screen
+            .background(Color.Black)
             .padding(WindowInsets.statusBars.asPaddingValues())
     ) {
         // Modern Minimalist Address Bar
@@ -136,7 +165,7 @@ fun BrowserScreen(
                         .onFocusChanged { 
                             isTextFieldFocused = it.isFocused 
                             if (it.isFocused) {
-                                searchQuery = currentUrl // Show full URL for editing
+                                searchQuery = currentUrl
                             } else {
                                 searchQuery = if (title.isNotEmpty()) title else currentUrl.formatForDisplay()
                             }
@@ -253,22 +282,17 @@ fun BrowserScreen(
                                 ViewGroup.LayoutParams.MATCH_PARENT
                             )
                             setSession(browserViewModel.geckoSession)
-                            // Enable nested scrolling to let PullToRefreshBox detect the pull gesture
                             isNestedScrollingEnabled = true
                         }
                     },
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                // Placeholder while animating to prevent CPU spike
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Stay black to blend with Home screen transition
-                }
+                        .background(Color.Black)
+                )
             }
         }
     }

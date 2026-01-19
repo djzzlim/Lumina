@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.StorageController
 import javax.inject.Inject
+import kotlin.system.exitProcess
 
 /**
  * Main activity for the Lumina application.
@@ -53,6 +54,9 @@ class MainActivity : ComponentActivity() {
             
             // Shut down the runtime
             geckoRuntime.shutdown()
+            
+            // Completely terminate the app process
+            exitProcess(0)
         }
     }
 }

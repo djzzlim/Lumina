@@ -1,5 +1,7 @@
 package com.example.lumina.navigation
 
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -9,6 +11,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
@@ -31,6 +34,7 @@ import java.nio.charset.StandardCharsets
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
+    val context = LocalContext.current
 
     fun safeNavigate(route: String) {
         if (navController.currentDestination?.route != route) {
@@ -82,7 +86,6 @@ fun AppNavigation() {
         composable(
             route = ScreenRoutes.HOME,
             exitTransition = {
-                // When going to Browser, stay still (just fade a bit)
                 if (targetState.destination.route?.startsWith(ScreenRoutes.BROWSER_BASE) == true) {
                     fadeOut(animationSpec = tween(slideDuration))
                 } else {
@@ -90,7 +93,6 @@ fun AppNavigation() {
                 }
             },
             popEnterTransition = {
-                // When coming back from Browser, fade back in
                 if (initialState.destination.route?.startsWith(ScreenRoutes.BROWSER_BASE) == true) {
                     fadeIn(animationSpec = tween(slideDuration))
                 } else {
@@ -98,6 +100,11 @@ fun AppNavigation() {
                 }
             }
         ) {
+            // FORCE SHUTDOWN: When pressing back on Home screen, finish the activity
+            BackHandler {
+                (context as? ComponentActivity)?.finish()
+            }
+
             val vm: HomeViewModel = hiltViewModel()
             LuminaHomeScreen(
                 viewModel = vm,
