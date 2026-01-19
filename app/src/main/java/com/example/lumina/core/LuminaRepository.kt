@@ -43,6 +43,15 @@ class LuminaRepository @Inject constructor(private val luminaDao: LuminaDao) {
     }
 
     /**
+     * Updates an existing [LuminaInfo] entry in the database.
+     *
+     * @param luminaInfo The lumina info to update.
+     */
+    suspend fun updateLumina(luminaInfo: LuminaInfo) {
+        luminaDao.update(luminaInfo)
+    }
+
+    /**
      * Deletes [LuminaInfo] entries with the specified IDs.
      *
      * @param ids The list of IDs of the entries to delete.

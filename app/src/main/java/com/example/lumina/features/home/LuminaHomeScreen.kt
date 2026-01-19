@@ -1,7 +1,8 @@
 package com.example.lumina.features.home
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -104,6 +105,7 @@ fun LuminaHomeScreen(
     onNavigateToScanner: () -> Unit,
     onNavigateToAddLumina: () -> Unit,
     onNavigateToBrowser: (Long) -> Unit,
+    onNavigateToEditLumina: (Long) -> Unit,
     onNavigateToProfiles: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -160,6 +162,12 @@ fun LuminaHomeScreen(
                     } else if (!isNavigating) {
                         isNavigating = true
                         onNavigateToBrowser(it.id)
+                    }
+                },
+                onItemLongClick = {
+                    if (!uiState.selectionMode && !isNavigating) {
+                        isNavigating = true
+                        onNavigateToEditLumina(it.id)
                     }
                 }
             )
@@ -265,7 +273,8 @@ fun LuminaItemsGrid(
     items: List<LuminaInfo>,
     selectionMode: Boolean,
     selectedItems: Set<Long>,
-    onItemClick: (LuminaInfo) -> Unit
+    onItemClick: (LuminaInfo) -> Unit,
+    onItemLongClick: (LuminaInfo) -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
@@ -280,17 +289,20 @@ fun LuminaItemsGrid(
             LuminaItemCard(
                 item = item,
                 isSelected = selectedItems.contains(item.id),
-                onClick = { onItemClick(item) }
+                onClick = { onItemClick(item) },
+                onLongClick = { onItemLongClick(item) }
             )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LuminaItemCard(
     item: LuminaInfo,
     isSelected: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Optimization: remember expensive operations
@@ -301,7 +313,10 @@ fun LuminaItemCard(
     Card(
         modifier = modifier
             .aspectRatio(0.8f)
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF1A1A2E)
@@ -377,50 +392,54 @@ fun LuminaItemCard(
 }
 
 private fun getIconVector(iconName: String): ImageVector {
-    return when (iconName) {
-        "Language" -> Icons.Default.Language
-        "Star" -> Icons.Default.Star
-        "Favorite" -> Icons.Default.Favorite
-        "Home" -> Icons.Default.Home
-        "DirectionsCar" -> Icons.Default.DirectionsCar
-        "Flight" -> Icons.Default.Flight
-        "ShoppingCart" -> Icons.Default.ShoppingCart
-        "Notifications" -> Icons.Default.Notifications
-        "Delete" -> Icons.Default.Delete
-        "LocalFireDepartment" -> Icons.Default.LocalFireDepartment
-        "FlashOn" -> Icons.Default.FlashOn
-        "Cloud" -> Icons.Default.Cloud
-        "WbSunny" -> Icons.Default.WbSunny
-        "Nightlight" -> Icons.Default.Nightlight
-        "AccessTime" -> Icons.Default.AccessTime
-        "Settings" -> Icons.Default.Settings
-        "VideogameAsset" -> Icons.Default.VideogameAsset
-        "Face" -> Icons.Default.Face
-        "Visibility" -> Icons.Default.Visibility
-        "Sailing" -> Icons.Default.Sailing
-        "Tv" -> Icons.Default.Tv
-        "Flag" -> Icons.Default.Flag
-        "SportsSoccer" -> Icons.Default.SportsSoccer
-        "SportsBaseball" -> Icons.Default.SportsBaseball
-        "SportsBasketball" -> Icons.Default.SportsBasketball
-        "SportsFootball" -> Icons.Default.SportsFootball
-        "SportsTennis" -> Icons.Default.SportsTennis
-        "DownhillSkiing" -> Icons.Default.DownhillSkiing
-        "Circle" -> Icons.Default.Circle
-        "Sports" -> Icons.Default.Sports
-        "EmojiEvents" -> Icons.Default.EmojiEvents
-        "Pets" -> Icons.Default.Pets
-        "Adb" -> Icons.Default.Adb
-        "FlutterDash" -> Icons.Default.FlutterDash
-        "CrueltyFree" -> Icons.Default.CrueltyFree
-        "BugReport" -> Icons.Default.BugReport
-        "WaterDrop" -> Icons.Default.WaterDrop
-        "Eco" -> Icons.Default.Eco
-        "LocalFlorist" -> Icons.Default.LocalFlorist
-        "Park" -> Icons.Default.Park
-        "FilterVintage" -> Icons.Default.FilterVintage
-        "Science" -> Icons.Default.Science
-        else -> Icons.Default.Language
+    return try {
+        when (iconName) {
+            "Language" -> Icons.Default.Language
+            "Star" -> Icons.Default.Star
+            "Favorite" -> Icons.Default.Favorite
+            "Home" -> Icons.Default.Home
+            "DirectionsCar" -> Icons.Default.DirectionsCar
+            "Flight" -> Icons.Default.Flight
+            "ShoppingCart" -> Icons.Default.ShoppingCart
+            "Notifications" -> Icons.Default.Notifications
+            "Delete" -> Icons.Default.Delete
+            "LocalFireDepartment" -> Icons.Default.LocalFireDepartment
+            "FlashOn" -> Icons.Default.FlashOn
+            "Cloud" -> Icons.Default.Cloud
+            "WbSunny" -> Icons.Default.WbSunny
+            "Nightlight" -> Icons.Default.Nightlight
+            "AccessTime" -> Icons.Default.AccessTime
+            "Settings" -> Icons.Default.Settings
+            "VideogameAsset" -> Icons.Default.VideogameAsset
+            "Face" -> Icons.Default.Face
+            "Visibility" -> Icons.Default.Visibility
+            "Sailing" -> Icons.Default.Sailing
+            "Tv" -> Icons.Default.Tv
+            "Flag" -> Icons.Default.Flag
+            "SportsSoccer" -> Icons.Default.SportsSoccer
+            "SportsBaseball" -> Icons.Default.SportsBaseball
+            "SportsBasketball" -> Icons.Default.SportsBasketball
+            "SportsFootball" -> Icons.Default.SportsFootball
+            "SportsTennis" -> Icons.Default.SportsTennis
+            "DownhillSkiing" -> Icons.Default.DownhillSkiing
+            "Circle" -> Icons.Default.Circle
+            "Sports" -> Icons.Default.Sports
+            "EmojiEvents" -> Icons.Default.EmojiEvents
+            "Pets" -> Icons.Default.Pets
+            "Adb" -> Icons.Default.Adb
+            "FlutterDash" -> Icons.Default.FlutterDash
+            "CrueltyFree" -> Icons.Default.CrueltyFree
+            "BugReport" -> Icons.Default.BugReport
+            "WaterDrop" -> Icons.Default.WaterDrop
+            "Eco" -> Icons.Default.Eco
+            "LocalFlorist" -> Icons.Default.LocalFlorist
+            "Park" -> Icons.Default.Park
+            "FilterVintage" -> Icons.Default.FilterVintage
+            "Science" -> Icons.Default.Science
+            else -> Icons.Default.Language
+        }
+    } catch (e: Exception) {
+        Icons.Default.Language
     }
 }
 

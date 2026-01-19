@@ -71,12 +71,6 @@ class BrowserViewModel @Inject constructor(
 
     private val _isAnimationFinished = MutableStateFlow(false)
 
-    private val bangs = listOf(
-        Bang("!g", "https://www.google.com/search?q=%s"),
-        Bang("!ddg", "https://duckduckgo.com/?q=%s"),
-        Bang("!yt", "https://www.youtube.com/results?search_query=%s"),
-    )
-
     private var isInitialized = false
 
     init {
@@ -159,18 +153,10 @@ class BrowserViewModel @Inject constructor(
     fun onSearchQuery(query: String) {
         if (query.isBlank()) return
         
-        val bang = bangs.find { query.startsWith(it.trigger) }
-        val url = when {
-            bang != null -> {
-                val searchQuery = query.substring(bang.trigger.length).trim()
-                bang.urlTemplate.replace("%s", searchQuery)
-            }
-            query.contains(".") && !query.contains(" ") -> {
-                if (query.startsWith("http")) query else "https://$query"
-            }
-            else -> {
-                "https://www.google.com/search?q=$query"
-            }
+        val url = if (query.contains(".") && !query.contains(" ")) {
+            if (query.startsWith("http")) query else "https://$query"
+        } else {
+            "https://www.google.com/search?q=$query"
         }
         _geckoSession.loadUri(url)
     }

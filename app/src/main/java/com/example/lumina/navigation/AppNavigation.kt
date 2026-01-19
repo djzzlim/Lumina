@@ -10,6 +10,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -22,6 +24,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.lumina.features.advanced_options.AdvancedOptionsScreen
 import com.example.lumina.features.browser.BrowserScreen
+import com.example.lumina.features.edit_lumina.EditLuminaScreen
+import com.example.lumina.features.edit_lumina.EditLuminaViewModel
 import com.example.lumina.features.home.HomeViewModel
 import com.example.lumina.features.home.LuminaHomeScreen
 import com.example.lumina.features.new_lumina.NewLuminaScreen
@@ -117,6 +121,9 @@ fun AppNavigation() {
                 onNavigateToBrowser = { luminaId ->
                     safeNavigate("${ScreenRoutes.BROWSER_BASE}/$luminaId")
                 },
+                onNavigateToEditLumina = { luminaId ->
+                    safeNavigate("${ScreenRoutes.EDIT_LUMINA_BASE}/$luminaId")
+                },
                 onNavigateToProfiles = {
                     safeNavigate(ScreenRoutes.PROFILES_SCREEN)
                 }
@@ -195,8 +202,81 @@ fun AppNavigation() {
                     navController.getBackStackEntry(ScreenRoutes.NEW_LUMINA_GRAPH)
                 }
                 val vm: NewLuminaViewModel = hiltViewModel(parentEntry)
+                val uiState by vm.uiState.collectAsState()
+
                 AdvancedOptionsScreen(
+                    uiState = uiState,
+                    onEphemeralChange = vm::setEphemeral,
+                    onWebRtcDisabledChange = vm::setWebRtcDisabled,
+                    onAfpEnabledChange = vm::setAfpEnabled,
+                    onRandomizeUserAgentChange = vm::setRandomizeUserAgent,
+                    onSpoofLocaleChange = vm::setSpoofLocale,
+                    onSpoofTimezoneChange = vm::setSpoofTimezone,
+                    onRandomizeCanvasChange = vm::setRandomizeCanvas,
+                    onDisableAudioContextChange = vm::setDisableAudioContext,
+                    onDisableWebGlChange = vm::setDisableWebGl,
+                    onRandomizeScreenChange = vm::setRandomizeScreen,
+                    onSpoofHardwareChange = vm::setSpoofHardware,
+                    onDisablePaymentChange = vm::setDisablePayment,
+                    onNavigateBack = {
+                        navController.navigateUp()
+                    }
+                )
+            }
+        }
+
+        navigation(
+            startDestination = ScreenRoutes.EDIT_LUMINA_ROUTE,
+            route = ScreenRoutes.EDIT_LUMINA_GRAPH
+        ) {
+            composable(
+                route = ScreenRoutes.EDIT_LUMINA_ROUTE,
+                arguments = listOf(
+                    navArgument(ScreenRoutes.EDIT_LUMINA_ID_ARG) {
+                        type = NavType.LongType
+                    }
+                )
+            ) { backStackEntry ->
+                val parentEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(ScreenRoutes.EDIT_LUMINA_GRAPH)
+                }
+                val vm: EditLuminaViewModel = hiltViewModel(parentEntry)
+
+                EditLuminaScreen(
                     viewModel = vm,
+                    onNavigateBack = {
+                        navController.navigateUp()
+                    },
+                    onSaveLumina = {
+                        navController.navigateUp()
+                    },
+                    onNavigateToAdvancedOptions = {
+                        safeNavigate(ScreenRoutes.EDIT_ADVANCED_OPTIONS)
+                    }
+                )
+            }
+
+            composable(ScreenRoutes.EDIT_ADVANCED_OPTIONS) { backStackEntry ->
+                val parentEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(ScreenRoutes.EDIT_LUMINA_GRAPH)
+                }
+                val vm: EditLuminaViewModel = hiltViewModel(parentEntry)
+                val uiState by vm.uiState.collectAsState()
+
+                AdvancedOptionsScreen(
+                    uiState = uiState,
+                    onEphemeralChange = vm::setEphemeral,
+                    onWebRtcDisabledChange = vm::setWebRtcDisabled,
+                    onAfpEnabledChange = vm::setAfpEnabled,
+                    onRandomizeUserAgentChange = vm::setRandomizeUserAgent,
+                    onSpoofLocaleChange = vm::setSpoofLocale,
+                    onSpoofTimezoneChange = vm::setSpoofTimezone,
+                    onRandomizeCanvasChange = vm::setRandomizeCanvas,
+                    onDisableAudioContextChange = vm::setDisableAudioContext,
+                    onDisableWebGlChange = vm::setDisableWebGl,
+                    onRandomizeScreenChange = vm::setRandomizeScreen,
+                    onSpoofHardwareChange = vm::setSpoofHardware,
+                    onDisablePaymentChange = vm::setDisablePayment,
                     onNavigateBack = {
                         navController.navigateUp()
                     }

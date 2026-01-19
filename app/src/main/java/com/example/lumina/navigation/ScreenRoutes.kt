@@ -36,4 +36,19 @@ object ScreenRoutes {
 
     /** Route for the profile management screen. */
     const val PROFILES_SCREEN = "profiles_screen"
+
+    /** Base route for editing an existing lumina. */
+    const val EDIT_LUMINA_BASE = "edit_lumina_screen"
+
+    /** Argument key for the lumina ID to be edited. */
+    const val EDIT_LUMINA_ID_ARG = "luminaId"
+
+    /** Combined route for editing a lumina with a required ID argument. */
+    const val EDIT_LUMINA_ROUTE = "$EDIT_LUMINA_BASE/{$EDIT_LUMINA_ID_ARG}"
+
+    /** Route for the nested navigation graph for editing a lumina. */
+    const val EDIT_LUMINA_GRAPH = "edit_lumina_graph"
+
+    /** Route for edit advanced options screen. */
+    const val EDIT_ADVANCED_OPTIONS = "edit_advanced_options_screen"
 }

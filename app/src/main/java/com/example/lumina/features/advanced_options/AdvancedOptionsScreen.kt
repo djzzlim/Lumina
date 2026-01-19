@@ -29,8 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,31 +37,49 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.lumina.features.new_lumina.NewLuminaUiState
-import com.example.lumina.features.new_lumina.NewLuminaViewModel
 import com.example.lumina.ui.theme.LuminaTheme
 
 /**
  * Composable representing the Advanced Options screen.
  *
  * This screen allows users to configure advanced privacy and browser settings
- * for a new Lumina instance, such as ephemeral storage, anti-fingerprinting measures,
+ * for a Lumina instance, such as ephemeral storage, anti-fingerprinting measures,
  * and WebRTC configuration.
  *
- * @param viewModel The [NewLuminaViewModel] that manages the state for this screen.
+ * @param uiState The current state of advanced options.
+ * @param onEphemeralChange Callback for toggling ephemeral storage.
+ * @param onWebRtcDisabledChange Callback for toggling WebRTC.
+ * @param onAfpEnabledChange Callback for toggling global anti-fingerprinting.
+ * @param onRandomizeUserAgentChange Callback for toggling user agent randomization.
+ * @param onSpoofLocaleChange Callback for toggling locale spoofing.
+ * @param onSpoofTimezoneChange Callback for toggling timezone spoofing.
+ * @param onRandomizeCanvasChange Callback for toggling canvas randomization.
+ * @param onDisableAudioContextChange Callback for toggling AudioContext disabling.
+ * @param onDisableWebGlChange Callback for toggling WebGL disabling.
+ * @param onRandomizeScreenChange Callback for toggling screen dimensions randomization.
+ * @param onSpoofHardwareChange Callback for toggling hardware info spoofing.
+ * @param onDisablePaymentChange Callback for toggling Payment API disabling.
  * @param onNavigateBack Callback function to navigate back to the previous screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdvancedOptionsScreen(
-    viewModel: NewLuminaViewModel,
+    uiState: NewLuminaUiState,
+    onEphemeralChange: (Boolean) -> Unit,
+    onWebRtcDisabledChange: (Boolean) -> Unit,
+    onAfpEnabledChange: (Boolean) -> Unit,
+    onRandomizeUserAgentChange: (Boolean) -> Unit,
+    onSpoofLocaleChange: (Boolean) -> Unit,
+    onSpoofTimezoneChange: (Boolean) -> Unit,
+    onRandomizeCanvasChange: (Boolean) -> Unit,
+    onDisableAudioContextChange: (Boolean) -> Unit,
+    onDisableWebGlChange: (Boolean) -> Unit,
+    onRandomizeScreenChange: (Boolean) -> Unit,
+    onSpoofHardwareChange: (Boolean) -> Unit,
+    onDisablePaymentChange: (Boolean) -> Unit,
     onNavigateBack: () -> Unit
 ) {
-    // Collect the state from the ViewModel. The UI will automatically
-    // recompose whenever this state changes.
-    val uiState by viewModel.uiState.collectAsState()
-
     Scaffold(
         topBar = { AdvancedOptionsTopAppBar(onNavigateBack = onNavigateBack) },
         containerColor = Color.Black
@@ -88,7 +104,7 @@ fun AdvancedOptionsScreen(
             ToggleRow(
                 text = "Ephemeral",
                 checked = uiState.isEphemeral,
-                onCheckedChange = viewModel::setEphemeral // Send event to ViewModel
+                onCheckedChange = onEphemeralChange
             )
             HelpText("Ephemeral lumina will automatically reset when they're closed and will not store any data")
             Spacer(modifier = Modifier.height(24.dp))
@@ -97,16 +113,16 @@ fun AdvancedOptionsScreen(
             SectionTitle("ANTIFINGERPRINTING")
             AntifingerprintingToggles(
                 afpState = uiState,
-                onAfpEnabledChange = viewModel::setAfpEnabled,
-                onRandomizeUserAgentChange = viewModel::setRandomizeUserAgent,
-                onSpoofLocaleChange = viewModel::setSpoofLocale,
-                onSpoofTimezoneChange = viewModel::setSpoofTimezone,
-                onRandomizeCanvasChange = viewModel::setRandomizeCanvas,
-                onDisableAudioContextChange = viewModel::setDisableAudioContext,
-                onDisableWebGlChange = viewModel::setDisableWebGl,
-                onRandomizeScreenChange = viewModel::setRandomizeScreen,
-                onSpoofHardwareChange = viewModel::setSpoofHardware,
-                onDisablePaymentChange = viewModel::setDisablePayment
+                onAfpEnabledChange = onAfpEnabledChange,
+                onRandomizeUserAgentChange = onRandomizeUserAgentChange,
+                onSpoofLocaleChange = onSpoofLocaleChange,
+                onSpoofTimezoneChange = onSpoofTimezoneChange,
+                onRandomizeCanvasChange = onRandomizeCanvasChange,
+                onDisableAudioContextChange = onDisableAudioContextChange,
+                onDisableWebGlChange = onDisableWebGlChange,
+                onRandomizeScreenChange = onRandomizeScreenChange,
+                onSpoofHardwareChange = onSpoofHardwareChange,
+                onDisablePaymentChange = onDisablePaymentChange
             )
             HelpText("Lumina has many antifingerprinting measures. Some websites may not be compatible with some of these measures enabled.")
             Spacer(modifier = Modifier.height(8.dp))
@@ -118,7 +134,7 @@ fun AdvancedOptionsScreen(
             ToggleRow(
                 text = "Disable WebRTC",
                 checked = uiState.isWebRtcDisabled,
-                onCheckedChange = viewModel::setWebRtcDisabled // Send event to ViewModel
+                onCheckedChange = onWebRtcDisabledChange
             )
             HelpText(
                 "WARNING: Lumina disables WebRTC by default, as enabling WebRTC will leak your real IP address. Unchecking this option will reveal your IP address to any website that uses WebRTC.",
@@ -129,21 +145,6 @@ fun AdvancedOptionsScreen(
     }
 }
 
-/**
- * A group of toggles for various anti-fingerprinting settings.
- *
- * @param afpState The current state of anti-fingerprinting options.
- * @param onAfpEnabledChange Callback for toggling global anti-fingerprinting.
- * @param onRandomizeUserAgentChange Callback for toggling user agent randomization.
- * @param onSpoofLocaleChange Callback for toggling locale spoofing.
- * @param onSpoofTimezoneChange Callback for toggling timezone spoofing.
- * @param onRandomizeCanvasChange Callback for toggling canvas randomization.
- * @param onDisableAudioContextChange Callback for toggling AudioContext disabling.
- * @param onDisableWebGlChange Callback for toggling WebGL disabling.
- * @param onRandomizeScreenChange Callback for toggling screen dimensions randomization.
- * @param onSpoofHardwareChange Callback for toggling hardware info spoofing.
- * @param onDisablePaymentChange Callback for toggling Payment API disabling.
- */
 @Composable
 fun AntifingerprintingToggles(
     afpState: NewLuminaUiState,
@@ -228,16 +229,11 @@ fun AntifingerprintingToggles(
     }
 }
 
-/**
- * Top app bar for the Advanced Options screen.
- *
- * @param onNavigateBack Callback for the navigation icon.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdvancedOptionsTopAppBar(onNavigateBack: () -> Unit) {
     TopAppBar(
-        title = { }, // Title is handled by the large text in the Column
+        title = { },
         navigationIcon = {
             IconButton(onClick = onNavigateBack) {
                 Icon(
@@ -251,11 +247,6 @@ fun AdvancedOptionsTopAppBar(onNavigateBack: () -> Unit) {
     )
 }
 
-/**
- * Displays a section title with specific styling.
- *
- * @param title The title text to display.
- */
 @Composable
 fun SectionTitle(title: String) {
     Text(
@@ -267,12 +258,6 @@ fun SectionTitle(title: String) {
     )
 }
 
-/**
- * Displays help or descriptive text with specific styling.
- *
- * @param text The text to display.
- * @param color The color of the text, defaults to gray.
- */
 @Composable
 fun HelpText(text: String, color: Color = Color.Gray) {
     Text(
@@ -284,13 +269,6 @@ fun HelpText(text: String, color: Color = Color.Gray) {
     )
 }
 
-/**
- * A reusable row containing a text label and a switch.
- *
- * @param text The label for the switch.
- * @param checked The current checked state of the switch.
- * @param onCheckedChange Callback for when the switch state changes.
- */
 @Composable
 fun ToggleRow(
     text: String,
@@ -315,9 +293,6 @@ fun ToggleRow(
     }
 }
 
-/**
- * An internal version of [ToggleRow] with optional divider and enabled state.
- */
 @Composable
 fun ToggleRowInternal(
     text: String,
@@ -326,7 +301,6 @@ fun ToggleRowInternal(
     showHorizontalDivider: Boolean = true,
     enabled: Boolean = true
 ) {
-    // Determine the text color based on the enabled state
     val textColor = if (enabled) Color.White else Color.Gray
 
     Row(
@@ -344,37 +318,30 @@ fun ToggleRowInternal(
     }
 }
 
-/**
- * A custom [Switch] component with a consistently sized thumb.
- */
 @Composable
 fun SwitchWithConsistentThumb(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean = true
 ) {
-    val thumbSize = 24.dp // Define a fixed size for the thumb
+    val thumbSize = 24.dp
 
     Switch(
         checked = checked,
         onCheckedChange = onCheckedChange,
         enabled = enabled,
         colors = SwitchDefaults.colors(
-            // Define your ON state colors
             checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
             checkedTrackColor = MaterialTheme.colorScheme.primary,
             checkedBorderColor = Color.Transparent,
-
-            // Define your OFF state colors
             uncheckedThumbColor = Color(0xFFE5E5E5),
             uncheckedTrackColor = Color(0xFF3E3E3E),
             uncheckedBorderColor = Color.Transparent
         ),
-        // By providing thumbContent, we override the default resizing behavior.
         thumbContent = {
             Box(
                 modifier = Modifier
-                    .size(thumbSize) // Always use the same size
+                    .size(thumbSize)
                     .background(
                         color = if (checked) MaterialTheme.colorScheme.onPrimary else Color(
                             0xFFE5E5E5
@@ -386,14 +353,25 @@ fun SwitchWithConsistentThumb(
     )
 }
 
-/**
- * Preview for [AdvancedOptionsScreen].
- */
 @Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
 fun AdvancedOptionsScreenPreview() {
     LuminaTheme {
-        // Pass a dummy ViewModel for previewing
-        AdvancedOptionsScreen(viewModel = viewModel(), onNavigateBack = {})
+        AdvancedOptionsScreen(
+            uiState = NewLuminaUiState(),
+            onEphemeralChange = {},
+            onWebRtcDisabledChange = {},
+            onAfpEnabledChange = {},
+            onRandomizeUserAgentChange = {},
+            onSpoofLocaleChange = {},
+            onSpoofTimezoneChange = {},
+            onRandomizeCanvasChange = {},
+            onDisableAudioContextChange = {},
+            onDisableWebGlChange = {},
+            onRandomizeScreenChange = {},
+            onSpoofHardwareChange = {},
+            onDisablePaymentChange = {},
+            onNavigateBack = {}
+        )
     }
 }
