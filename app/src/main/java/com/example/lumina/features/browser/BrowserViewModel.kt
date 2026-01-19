@@ -71,6 +71,9 @@ class BrowserViewModel @Inject constructor(
     private val _isSecure = MutableStateFlow(false)
     val isSecure: StateFlow<Boolean> = _isSecure.asStateFlow()
 
+    private val _securityInfo = MutableStateFlow<GeckoSession.ProgressDelegate.SecurityInformation?>(null)
+    val securityInfo: StateFlow<GeckoSession.ProgressDelegate.SecurityInformation?> = _securityInfo.asStateFlow()
+
     private val _isAnimationFinished = MutableStateFlow(false)
 
     private var isInitialized = false
@@ -116,6 +119,7 @@ class BrowserViewModel @Inject constructor(
                 securityInfo: GeckoSession.ProgressDelegate.SecurityInformation
             ) {
                 _isSecure.value = securityInfo.isSecure
+                _securityInfo.value = securityInfo
             }
         }
 
@@ -186,6 +190,7 @@ class BrowserViewModel @Inject constructor(
         // 3. Clear our own state flows to remove strings from the heap
         _currentUrl.value = ""
         _title.value = ""
+        _securityInfo.value = null
         
         // 4. Suggest Garbage Collection (though not guaranteed, it hints at sensitivity)
         System.gc()

@@ -15,22 +15,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -50,6 +55,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,6 +64,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.delay
+import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoView
 
 /**
@@ -74,9 +81,11 @@ fun BrowserScreen(
     val progress by browserViewModel.progress.collectAsState()
     val isLoading by browserViewModel.isLoading.collectAsState()
     val isSecure by browserViewModel.isSecure.collectAsState()
+    val securityInfo by browserViewModel.securityInfo.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
     var isTextFieldFocused by remember { mutableStateOf(false) }
+    var showCertificateDialog by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
     // Use rememberSaveable so the webview remains shown if the activity is recreated
@@ -131,6 +140,13 @@ fun BrowserScreen(
         }
     }
 
+    if (showCertificateDialog && securityInfo != null) {
+        CertificateInfoDialog(
+            securityInfo = securityInfo!!,
+            onDismiss = { showCertificateDialog = false }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -178,12 +194,17 @@ fun BrowserScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (isSecure && !isTextFieldFocused) {
-                            Icon(
-                                Icons.Default.Lock,
-                                contentDescription = "Secure",
-                                modifier = Modifier.size(12.dp),
-                                tint = Color(0xFFBB86FC)
-                            )
+                            IconButton(
+                                onClick = { showCertificateDialog = true },
+                                modifier = Modifier.size(18.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Lock,
+                                    contentDescription = "Secure Connection",
+                                    modifier = Modifier.size(12.dp),
+                                    tint = Color(0xFFBB86FC)
+                                )
+                            }
                             Spacer(modifier = Modifier.width(6.dp))
                         }
                         
@@ -295,5 +316,68 @@ fun BrowserScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun CertificateInfoDialog(
+    securityInfo: GeckoSession.ProgressDelegate.SecurityInformation,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Security Information",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = if (securityInfo.isSecure) "Connection is secure" else "Connection is not secure",
+                    color = if (securityInfo.isSecure) Color(0xFFBB86FC) else Color.Red,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                securityInfo.certificate?.let { cert ->
+                    InfoItem("Subject", cert.subjectDN.name)
+                    InfoItem("Issuer", cert.issuerDN.name)
+                    InfoItem("Valid From", cert.notBefore.toString())
+                    InfoItem("Valid Until", cert.notAfter.toString())
+                    InfoItem("Algorithm", cert.sigAlgName)
+                } ?: Text("No certificate information available", color = Color.Gray)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close", color = Color(0xFFBB86FC))
+            }
+        },
+        containerColor = Color(0xFF121212),
+        textContentColor = Color.White,
+        titleContentColor = Color.White
+    )
+}
+
+@Composable
+fun InfoItem(label: String, value: String) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.Gray
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.White
+        )
     }
 }
