@@ -182,7 +182,6 @@ fun AppNavigation() {
                         navController.navigateUp()
                     },
                     onSaveLumina = {
-                        vm.onSave()
                         navController.navigateUp()
                     },
                     onNavigateToAdvancedOptions = {

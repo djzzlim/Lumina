@@ -25,11 +25,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Adb
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Cloud
@@ -54,7 +55,6 @@ import androidx.compose.material.icons.filled.LocalFlorist
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MedicalServices
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Notifications
@@ -129,7 +129,7 @@ fun NewLuminaScreen(
         topBar = {
             NewLuminaTopAppBar(
                 onClose = onNavigateBack,
-                onSave = onSaveLumina
+                onSave = { viewModel.onSave(onSuccess = onSaveLumina) }
             )
         },
         containerColor = Color.Black
@@ -151,6 +151,14 @@ fun NewLuminaScreen(
             }
 
             item {
+                if (uiState.error != null) {
+                    Text(
+                        text = uiState.error!!,
+                        color = Color.Red,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
                 WebsiteInputSection(
                     name = uiState.name,
                     url = uiState.url,
@@ -277,7 +285,8 @@ fun IconAndThemeSection(
     val icons = remember {
         listOf(
             // Social & Communication
-            Icons.Default.Language, Icons.Default.Email, Icons.Default.Chat, Icons.Default.Forum,
+            Icons.Default.Language, Icons.Default.Email,
+            Icons.AutoMirrored.Filled.Chat, Icons.Default.Forum,
             Icons.Default.Groups, Icons.Default.Person, Icons.Default.Public, Icons.Default.Share,
             
             // Entertainment & Media
@@ -307,7 +316,7 @@ fun IconAndThemeSection(
             Icons.Default.Science, Icons.Default.Adb, Icons.Default.Laptop, Icons.Default.Smartphone,
             
             // Reading & Writing
-            Icons.Default.MenuBook, Icons.Default.Edit
+            Icons.AutoMirrored.Filled.MenuBook, Icons.Default.Edit
         )
     }
 

@@ -39,7 +39,8 @@ data class NewLuminaUiState(
     val disableWebGl: Boolean = true,
     val randomizeScreen: Boolean = true,
     val spoofHardware: Boolean = true,
-    val disablePayment: Boolean = true
+    val disablePayment: Boolean = true,
+    val error: String? = null
 )
 
 /**
@@ -55,11 +56,11 @@ class NewLuminaViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     fun onNameChange(newName: String) {
-        _uiState.update { it.copy(name = newName) }
+        _uiState.update { it.copy(name = newName, error = null) }
     }
 
     fun onUrlChange(newUrl: String) {
-        _uiState.update { it.copy(url = newUrl) }
+        _uiState.update { it.copy(url = newUrl, error = null) }
     }
 
     fun onIconSelected(newIcon: ImageVector) {
@@ -79,32 +80,46 @@ class NewLuminaViewModel @Inject constructor(
         }
     }
 
-    fun onSave() {
+    fun onSave(onSuccess: () -> Unit) {
+        val state = _uiState.value
+        if (state.name.isBlank()) {
+            _uiState.update { it.copy(error = "You have to put a name") }
+            return
+        }
+        if (state.url.isBlank() || state.url == "https://") {
+            _uiState.update { it.copy(error = "You have to put a website URL") }
+            return
+        }
+
         viewModelScope.launch {
-            val profileId = profileManager.getCurrentProfileId().first() 
-                ?: throw IllegalStateException("No profile selected")
-            
-            val state = _uiState.value
-            val luminaInfo = LuminaInfo(
-                profileId = profileId,
-                name = state.name,
-                url = state.url,
-                icon = getIconName(state.selectedIcon),
-                color = state.selectedColor.toArgb().toLong(),
-                isEphemeral = state.isEphemeral,
-                isWebRtcDisabled = state.isWebRtcDisabled,
-                afpEnabled = state.afpEnabled,
-                randomizeUserAgent = state.randomizeUserAgent,
-                spoofLocale = state.spoofLocale,
-                spoofTimezone = state.spoofTimezone,
-                randomizeCanvas = state.randomizeCanvas,
-                disableAudioContext = state.disableAudioContext,
-                disableWebGl = state.disableWebGl,
-                randomizeScreen = state.randomizeScreen,
-                spoofHardware = state.spoofHardware,
-                disablePayment = state.disablePayment
-            )
-            repository.insertLumina(luminaInfo)
+            try {
+                val profileId = profileManager.getCurrentProfileId().first() 
+                    ?: throw IllegalStateException("No profile selected")
+                
+                val luminaInfo = LuminaInfo(
+                    profileId = profileId,
+                    name = state.name.trim(),
+                    url = state.url.trim(),
+                    icon = getIconName(state.selectedIcon),
+                    color = state.selectedColor.toArgb().toLong(),
+                    isEphemeral = state.isEphemeral,
+                    isWebRtcDisabled = state.isWebRtcDisabled,
+                    afpEnabled = state.afpEnabled,
+                    randomizeUserAgent = state.randomizeUserAgent,
+                    spoofLocale = state.spoofLocale,
+                    spoofTimezone = state.spoofTimezone,
+                    randomizeCanvas = state.randomizeCanvas,
+                    disableAudioContext = state.disableAudioContext,
+                    disableWebGl = state.disableWebGl,
+                    randomizeScreen = state.randomizeScreen,
+                    spoofHardware = state.spoofHardware,
+                    disablePayment = state.disablePayment
+                )
+                repository.insertLumina(luminaInfo)
+                onSuccess()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Error saving: ${e.message}") }
+            }
         }
     }
 
