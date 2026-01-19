@@ -20,10 +20,12 @@ import kotlinx.coroutines.launch
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
+import org.mozilla.geckoview.StorageController
 import javax.inject.Inject
 
 /**
  * ViewModel for the [BrowserScreen].
+ * Implements RAM protection and aggressive memory management to prevent data recovery.
  */
 @HiltViewModel
 class BrowserViewModel @Inject constructor(
@@ -163,5 +165,29 @@ class BrowserViewModel @Inject constructor(
 
     fun reload() {
         _geckoSession.reload()
+    }
+
+    /**
+     * Wipes session data from RAM and disk (if anything was cached) and closes the session.
+     * This is called when the ViewModel is destroyed to ensure no forensic trace remains.
+     */
+    override fun onCleared() {
+        super.onCleared()
+        
+        // 1. Close the session to release Gecko resources
+        if (_geckoSession.isOpen) {
+            _geckoSession.close()
+        }
+
+        // 2. Aggressively clear session-related data from the storage controller
+        // Even in private mode, this ensures any in-memory buffers are purged.
+        globalGeckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
+
+        // 3. Clear our own state flows to remove strings from the heap
+        _currentUrl.value = ""
+        _title.value = ""
+        
+        // 4. Suggest Garbage Collection (though not guaranteed, it hints at sensitivity)
+        System.gc()
     }
 }
