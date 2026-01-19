@@ -1,5 +1,7 @@
 package com.example.lumina.features.browser
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -53,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.TextStyle
@@ -84,11 +87,12 @@ fun BrowserScreen(
     val isSecure by browserViewModel.isSecure.collectAsState()
     val securityInfo by browserViewModel.securityInfo.collectAsState()
     val canGoBack by browserViewModel.canGoBack.collectAsState()
-
+    val isFullScreen by browserViewModel.isFullScreen.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     var isTextFieldFocused by remember { mutableStateOf(false) }
     var showCertificateDialog by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
 
     // Use rememberSaveable so the webview remains shown if the activity is recreated
     var showWebView by rememberSaveable { mutableStateOf(false) }
@@ -104,10 +108,21 @@ fun BrowserScreen(
 
     // Handle back button: go back in browser history if possible, otherwise close screen
     BackHandler(enabled = true) {
-        if (canGoBack) {
+        if (isFullScreen) {
+            browserViewModel.onFullScreen(false)
+        } else if (canGoBack) {
             browserViewModel.goBack()
         } else {
             onClose()
+        }
+    }
+
+    // Allow screen rotation in Browser, but reset to portrait on exit
+    DisposableEffect(Unit) {
+        val activity = context as? Activity
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        onDispose {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
 
@@ -164,155 +179,162 @@ fun BrowserScreen(
             .background(Color.Black)
             .padding(WindowInsets.statusBars.asPaddingValues())
     ) {
-        // Modern Minimalist Address Bar
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color.Black,
-            tonalElevation = 1.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp, horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+        if (!isFullScreen) {
+            // Modern Minimalist Address Bar
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.Black,
+                tonalElevation = 1.dp
             ) {
-                IconButton(
-                    onClick = {
-                        if (canGoBack) {
-                            browserViewModel.goBack()
-                        } else {
-                            onClose()
-                        }
-                    }, 
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack, 
-                        contentDescription = "Back",
-                        modifier = Modifier.size(20.dp),
-                        tint = Color.White
-                    )
-                }
-
-                Surface(
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .height(36.dp)
-                        .onFocusChanged { 
-                            isTextFieldFocused = it.isFocused 
-                            if (it.isFocused) {
-                                searchQuery = currentUrl
-                            } else {
-                                searchQuery = if (title.isNotEmpty()) title else currentUrl.formatForDisplay()
-                            }
-                        },
-                    shape = RoundedCornerShape(18.dp),
-                    color = Color.White.copy(alpha = 0.1f)
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp, horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    IconButton(
+                        onClick = {
+                            onClose()
+                        },
+                        modifier = Modifier.size(40.dp)
                     ) {
-                        if (isSecure && !isTextFieldFocused) {
-                            IconButton(
-                                onClick = { showCertificateDialog = true },
-                                modifier = Modifier.size(18.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Lock,
-                                    contentDescription = "Secure Connection",
-                                    modifier = Modifier.size(12.dp),
-                                    tint = Color(0xFFBB86FC)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(6.dp))
-                        }
-                        
-                        BasicTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                            textStyle = TextStyle(
-                                color = Color.White,
-                                fontSize = 13.sp
-                            ),
-                            cursorBrush = SolidColor(Color(0xFFBB86FC)),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-                            keyboardActions = KeyboardActions(onGo = {
-                                browserViewModel.onSearchQuery(searchQuery)
-                                focusManager.clearFocus()
-                            }),
-                            decorationBox = { innerTextField ->
-                                if (searchQuery.isEmpty()) {
-                                    Text(
-                                        "Search or enter address",
-                                        fontSize = 13.sp,
-                                        color = Color.Gray
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            modifier = Modifier.size(20.dp),
+                            tint = Color.White
+                        )
+                    }
+
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp)
+                            .onFocusChanged {
+                                isTextFieldFocused = it.isFocused
+                                if (it.isFocused) {
+                                    searchQuery = currentUrl
+                                } else {
+                                    searchQuery = if (title.isNotEmpty()) title else currentUrl.formatForDisplay()
+                                }
+                            },
+                        shape = RoundedCornerShape(18.dp),
+                        color = Color.White.copy(alpha = 0.1f)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (isSecure && !isTextFieldFocused) {
+                                IconButton(
+                                    onClick = { showCertificateDialog = true },
+                                    modifier = Modifier.size(18.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Lock,
+                                        contentDescription = "Secure Connection",
+                                        modifier = Modifier.size(12.dp),
+                                        tint = Color(0xFFBB86FC)
                                     )
                                 }
-                                innerTextField()
+                                Spacer(modifier = Modifier.width(6.dp))
                             }
-                        )
 
-                        if (searchQuery.isNotEmpty() && isTextFieldFocused) {
-                            IconButton(
-                                onClick = { searchQuery = "" },
-                                modifier = Modifier.size(20.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Clear,
-                                    contentDescription = "Clear",
-                                    modifier = Modifier.size(14.dp),
-                                    tint = Color.Gray
-                                )
+                            BasicTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                textStyle = TextStyle(
+                                    color = Color.White,
+                                    fontSize = 13.sp
+                                ),
+                                cursorBrush = SolidColor(Color(0xFFBB86FC)),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+                                keyboardActions = KeyboardActions(onGo = {
+                                    browserViewModel.onSearchQuery(searchQuery)
+                                    focusManager.clearFocus()
+                                }),
+                                decorationBox = { innerTextField ->
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            "Search or enter address",
+                                            fontSize = 13.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            )
+
+                            if (searchQuery.isNotEmpty() && isTextFieldFocused) {
+                                IconButton(
+                                    onClick = { searchQuery = "" },
+                                    modifier = Modifier.size(20.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Clear,
+                                        contentDescription = "Clear",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = Color.Gray
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                IconButton(
-                    onClick = { 
-                        if (isTextFieldFocused) {
-                            browserViewModel.onSearchQuery(searchQuery)
-                            focusManager.clearFocus()
-                        } else {
-                            browserViewModel.reload()
-                        }
-                    },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        if (isTextFieldFocused) Icons.Default.Search else Icons.Default.Refresh,
-                        contentDescription = if (isTextFieldFocused) "Search" else "Reload",
-                        modifier = Modifier.size(20.dp),
-                        tint = Color(0xFFBB86FC)
+                    IconButton(
+                        onClick = {
+                            if (isTextFieldFocused) {
+                                browserViewModel.onSearchQuery(searchQuery)
+                                focusManager.clearFocus()
+                            } else {
+                                browserViewModel.reload()
+                            }
+                        },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            if (isTextFieldFocused) Icons.Default.Search else Icons.Default.Refresh,
+                            contentDescription = if (isTextFieldFocused) "Search" else "Reload",
+                            modifier = Modifier.size(20.dp),
+                            tint = Color(0xFFBB86FC)
+                        )
+                    }
+                }
+            }
+
+            // Integrated Slim Progress Indicator
+            Box(modifier = Modifier
+                .fillMaxWidth()
+                .height(1.5.dp)) {
+                if (isLoading) {
+                    LinearProgressIndicator(
+                        progress = { progress.toFloat() / 100f },
+                        modifier = Modifier.fillMaxSize(),
+                        color = Color(0xFFBB86FC),
+                        trackColor = Color.Transparent
                     )
                 }
             }
         }
 
-        // Integrated Slim Progress Indicator
-        Box(modifier = Modifier.fillMaxWidth().height(1.5.dp)) {
-            if (isLoading) {
-                LinearProgressIndicator(
-                    progress = { progress.toFloat() / 100f },
-                    modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFFBB86FC),
-                    trackColor = Color.Transparent
-                )
-            }
+        val pullToRefreshBoxModifier = if (isFullScreen) {
+            Modifier.fillMaxSize()
+        } else {
+            Modifier.weight(1f)
         }
-
         // Pull-to-Refresh Content
         PullToRefreshBox(
             state = pullToRefreshState,
             isRefreshing = isRefreshing,
-            onRefresh = { 
+            onRefresh = {
                 isRefreshing = true
-                browserViewModel.reload() 
+                browserViewModel.reload()
             },
-            modifier = Modifier.weight(1f)
+            modifier = pullToRefreshBoxModifier
         ) {
             if (showWebView) {
                 AndroidView(

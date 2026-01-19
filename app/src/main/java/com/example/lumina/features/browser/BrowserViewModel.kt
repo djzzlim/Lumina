@@ -120,6 +120,8 @@ class BrowserViewModel @Inject constructor(
      */
     val canGoBack: StateFlow<Boolean> = _canGoBack.asStateFlow()
 
+    private val _isFullScreen = MutableStateFlow(false)
+    val isFullScreen: StateFlow<Boolean> = _isFullScreen.asStateFlow()
     /**
      * Internal state to track if the screen transition animation has finished.
      * Prevents the browser from loading content until the UI is ready to avoid stutter.
@@ -205,6 +207,10 @@ class BrowserViewModel @Inject constructor(
             override fun onTitleChange(session: GeckoSession, title: String?) {
                 _title.value = title ?: ""
             }
+
+            override fun onFullScreen(session: GeckoSession, fullScreen: Boolean) {
+                _isFullScreen.value = fullScreen
+            }
         }
     }
 
@@ -250,6 +256,10 @@ class BrowserViewModel @Inject constructor(
      */
     fun reload() {
         _geckoSession.reload()
+    }
+
+    fun onFullScreen(isFullScreen: Boolean) {
+        _isFullScreen.value = isFullScreen
     }
 
     /**
