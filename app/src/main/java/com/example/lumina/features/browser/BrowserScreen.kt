@@ -1,6 +1,7 @@
 package com.example.lumina.features.browser
 
 import android.view.ViewGroup
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -82,6 +83,7 @@ fun BrowserScreen(
     val isLoading by browserViewModel.isLoading.collectAsState()
     val isSecure by browserViewModel.isSecure.collectAsState()
     val securityInfo by browserViewModel.securityInfo.collectAsState()
+    val canGoBack by browserViewModel.canGoBack.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
     var isTextFieldFocused by remember { mutableStateOf(false) }
@@ -98,6 +100,15 @@ fun BrowserScreen(
             showWebView = true
         }
         browserViewModel.onAnimationFinished()
+    }
+
+    // Handle back button: go back in browser history if possible, otherwise close screen
+    BackHandler(enabled = true) {
+        if (canGoBack) {
+            browserViewModel.goBack()
+        } else {
+            onClose()
+        }
     }
 
     // Lifecycle observer to handle GeckoSession active state when backgrounding/foregrounding
@@ -165,7 +176,16 @@ fun BrowserScreen(
                     .padding(vertical = 6.dp, horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
+                IconButton(
+                    onClick = {
+                        if (canGoBack) {
+                            browserViewModel.goBack()
+                        } else {
+                            onClose()
+                        }
+                    }, 
+                    modifier = Modifier.size(40.dp)
+                ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack, 
                         contentDescription = "Back",

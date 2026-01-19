@@ -24,8 +24,14 @@ import org.mozilla.geckoview.StorageController
 import javax.inject.Inject
 
 /**
- * ViewModel for the [BrowserScreen].
+ * ViewModel for the Browser screen.
  * Implements RAM protection and aggressive memory management to prevent data recovery.
+ *
+ * @property luminaRepository Repository for accessing Lumina profile data.
+ * @property profileManager Manager for handling Lumina profiles.
+ * @property globalGeckoRuntime The shared GeckoRuntime instance.
+ * @property applicationContext The application context.
+ * @param savedStateHandle Handle to saved state, used to retrieve the luminaId.
  */
 @HiltViewModel
 class BrowserViewModel @Inject constructor(
@@ -36,11 +42,20 @@ class BrowserViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
+    /**
+     * The ID of the Lumina profile being browsed.
+     */
     private val luminaId: Long = savedStateHandle.get<Long>("luminaId")!!
     
+    /**
+     * [StateFlow] emitting the [LuminaInfo] for the current profile.
+     */
     val luminaInfo: StateFlow<LuminaInfo?> = luminaRepository.getLuminaById(luminaId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
+    /**
+     * The global [GeckoRuntime] used by this session.
+     */
     val geckoRuntime: GeckoRuntime = globalGeckoRuntime
 
     // Initialize GeckoSession with Private Mode enabled.
@@ -51,31 +66,69 @@ class BrowserViewModel @Inject constructor(
             .build()
     )
     
+    /**
+     * The [GeckoSession] instance used for browsing.
+     * Initialized in private mode to ensure data is not persisted.
+     */
     val geckoSession: GeckoSession get() = _geckoSession
 
     private val _progress = MutableStateFlow(0)
+    /**
+     * [StateFlow] emitting the current page loading progress (0-100).
+     */
     val progress: StateFlow<Int> = _progress.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
+    /**
+     * [StateFlow] emitting whether a page is currently loading.
+     */
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _currentUrl = MutableStateFlow("")
+    /**
+     * [StateFlow] emitting the current URL of the loaded page.
+     */
     val currentUrl: StateFlow<String> = _currentUrl.asStateFlow()
 
     private val _title = MutableStateFlow("")
+    /**
+     * [StateFlow] emitting the title of the current page.
+     */
     val title: StateFlow<String> = _title.asStateFlow()
 
     private val _isAtTop = MutableStateFlow(true)
+    /**
+     * [StateFlow] emitting whether the page is scrolled to the top.
+     */
     val isAtTop: StateFlow<Boolean> = _isAtTop.asStateFlow()
 
     private val _isSecure = MutableStateFlow(false)
+    /**
+     * [StateFlow] emitting whether the current connection is secure (HTTPS).
+     */
     val isSecure: StateFlow<Boolean> = _isSecure.asStateFlow()
 
     private val _securityInfo = MutableStateFlow<GeckoSession.ProgressDelegate.SecurityInformation?>(null)
+    /**
+     * [StateFlow] emitting detailed security information for the current page.
+     */
     val securityInfo: StateFlow<GeckoSession.ProgressDelegate.SecurityInformation?> = _securityInfo.asStateFlow()
 
+    private val _canGoBack = MutableStateFlow(false)
+    /**
+     * [StateFlow] emitting whether the browser can navigate back in history.
+     */
+    val canGoBack: StateFlow<Boolean> = _canGoBack.asStateFlow()
+
+    /**
+     * Internal state to track if the screen transition animation has finished.
+     * Prevents the browser from loading content until the UI is ready to avoid stutter.
+     */
     private val _isAnimationFinished = MutableStateFlow(false)
 
+    /**
+     * Flag to ensure the [GeckoSession] is opened and the initial URL is loaded only once.
+     */
     private var isInitialized = false
 
     init {
@@ -101,12 +154,16 @@ class BrowserViewModel @Inject constructor(
     }
 
     /**
-     * Signal that the screen transition animation has finished.
+     * Signals that the screen transition animation has finished.
+     * This triggers the initial page load if [luminaInfo] is available.
      */
     fun onAnimationFinished() {
         _isAnimationFinished.value = true
     }
 
+    /**
+     * Sets up delegates for the [GeckoSession] to monitor progress, navigation, scrolling, and content changes.
+     */
     private fun setupDelegates() {
         _geckoSession.progressDelegate = object : GeckoSession.ProgressDelegate {
             override fun onProgressChange(session: GeckoSession, progress: Int) {
@@ -132,6 +189,10 @@ class BrowserViewModel @Inject constructor(
             ) {
                 _currentUrl.value = url ?: ""
             }
+
+            override fun onCanGoBack(session: GeckoSession, canGoBack: Boolean) {
+                _canGoBack.value = canGoBack
+            }
         }
 
         _geckoSession.scrollDelegate = object : GeckoSession.ScrollDelegate {
@@ -147,6 +208,11 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Applies settings from [LuminaInfo] to the [GeckoSession].
+     *
+     * @param info The [LuminaInfo] containing settings like user agent randomization and tracking protection.
+     */
     private fun applySettings(info: LuminaInfo) {
         _geckoSession.settings.userAgentMode = if (info.randomizeUserAgent)
             GeckoSessionSettings.USER_AGENT_MODE_MOBILE
@@ -156,6 +222,11 @@ class BrowserViewModel @Inject constructor(
         _geckoSession.settings.allowJavascript = true
     }
 
+    /**
+     * Navigates to a new URL or performs a search query.
+     *
+     * @param query The URL or search term entered by the user.
+     */
     fun onSearchQuery(query: String) {
         if (query.isBlank()) return
         
@@ -167,6 +238,16 @@ class BrowserViewModel @Inject constructor(
         _geckoSession.loadUri(url)
     }
 
+    /**
+     * Navigates back in history if possible.
+     */
+    fun goBack() {
+        _geckoSession.goBack()
+    }
+
+    /**
+     * Reloads the current page in the [GeckoSession].
+     */
     fun reload() {
         _geckoSession.reload()
     }
