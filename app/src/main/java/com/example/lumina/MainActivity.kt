@@ -1,6 +1,7 @@
 package com.example.lumina
 
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -36,6 +37,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Prevents screenshots, screen recordings, and hides content in the Recents (Multitasking) screen.
+        // This is a key forensic protection measure.
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         
         // Ensure the default profile exists and is set correctly
         lifecycleScope.launch {
