@@ -18,57 +18,65 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Adb
-import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Brush
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.CrueltyFree
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.DownhillSkiing
 import androidx.compose.material.icons.filled.Eco
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FilterVintage
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Flight
-import androidx.compose.material.icons.filled.FlutterDash
+import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Laptop
+import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.LocalFlorist
-import androidx.compose.material.icons.filled.Nightlight
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.MedicalServices
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Park
-import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.Sailing
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Sports
-import androidx.compose.material.icons.filled.SportsBaseball
-import androidx.compose.material.icons.filled.SportsBasketball
-import androidx.compose.material.icons.filled.SportsFootball
-import androidx.compose.material.icons.filled.SportsSoccer
-import androidx.compose.material.icons.filled.SportsTennis
+import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.VideogameAsset
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.WaterDrop
-import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -82,10 +90,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -263,24 +273,51 @@ fun IconAndThemeSection(
     onIconSelected: (ImageVector) -> Unit,
     onColorSelected: (Color) -> Unit
 ) {
-    val icons = listOf(
-        Icons.Default.Language, Icons.Default.Star, Icons.Default.Favorite, Icons.Default.Home,
-        Icons.Default.DirectionsCar, Icons.Default.Flight, Icons.Default.ShoppingCart, Icons.Default.Notifications,
-        Icons.Default.Delete, Icons.Default.LocalFireDepartment, Icons.Default.FlashOn, Icons.Default.Cloud,
-        Icons.Default.WbSunny, Icons.Default.Nightlight, Icons.Default.AccessTime, Icons.Default.Settings,
-        Icons.Default.VideogameAsset, Icons.Default.Face, Icons.Default.Visibility, Icons.Default.Sailing,
-        Icons.Default.Tv, Icons.Default.Flag, Icons.Default.SportsSoccer, Icons.Default.SportsBaseball,
-        Icons.Default.SportsBasketball, Icons.Default.SportsFootball, Icons.Default.SportsTennis, Icons.Default.DownhillSkiing,
-        Icons.Default.Circle, Icons.Default.Sports, Icons.Default.EmojiEvents, Icons.Default.Pets, Icons.Default.Adb,
-        Icons.Default.FlutterDash, Icons.Default.CrueltyFree, Icons.Default.BugReport, Icons.Default.WaterDrop,
-        Icons.Default.Eco, Icons.Default.LocalFlorist, Icons.Default.Park, Icons.Default.FilterVintage, Icons.Default.Science
-    )
+    // Optimization: Reduced to 50 icons to improve performance and fix lag.
+    val icons = remember {
+        listOf(
+            // Social & Communication
+            Icons.Default.Language, Icons.Default.Email, Icons.Default.Chat, Icons.Default.Forum,
+            Icons.Default.Groups, Icons.Default.Person, Icons.Default.Public, Icons.Default.Share,
+            
+            // Entertainment & Media
+            Icons.Default.Star, Icons.Default.Favorite, Icons.Default.PlayCircle, Icons.Default.Movie,
+            Icons.Default.MusicNote, Icons.Default.VideogameAsset, Icons.Default.Tv, Icons.Default.Radio,
+            
+            // Photography & Art
+            Icons.Default.CameraAlt, Icons.Default.PhotoLibrary, Icons.Default.Brush, Icons.Default.Palette,
+            
+            // Utility & Tools
+            Icons.Default.Home, Icons.Default.Settings, Icons.Default.Build, Icons.Default.Search,
+            Icons.Default.Notifications, Icons.Default.Lock, Icons.Default.Shield, Icons.Default.Key,
+            
+            // Commerce & Finance
+            Icons.Default.ShoppingCart, Icons.Default.Storefront, Icons.Default.Wallet, Icons.Default.CreditCard,
+            
+            // Travel & Transport
+            Icons.Default.DirectionsCar, Icons.Default.Flight, Icons.Default.Explore, Icons.Default.Map,
+            
+            // Food & Drink
+            Icons.Default.Restaurant, Icons.Default.LocalCafe, Icons.Default.Fastfood, Icons.Default.LocalFlorist,
+            
+            // Health & Nature
+            Icons.Default.MedicalServices, Icons.Default.FitnessCenter, Icons.Default.Eco, Icons.Default.Cloud,
+            
+            // Tech & Science
+            Icons.Default.Science, Icons.Default.Adb, Icons.Default.Laptop, Icons.Default.Smartphone,
+            
+            // Reading & Writing
+            Icons.Default.MenuBook, Icons.Default.Edit
+        )
+    }
 
-    val colors = listOf(
-        Color(0xFF00A2FF), Color(0xFFFF3B30), Color(0xFFFF9500), Color(0xFFFFCC00),
-        Color(0xFF4CD964), Color(0xFF5AC8FA), Color(0xFF007AFF), Color(0xFF5856D6),
-        Color(0xFFFF2D55), Color(0xFF8E8E93), Color(0xFFAF52DE), Color(0xFFBB86FC)
-    )
+    val colors = remember {
+        listOf(
+            Color(0xFF00A2FF), Color(0xFFFF3B30), Color(0xFFFF9500), Color(0xFFFFCC00),
+            Color(0xFF4CD964), Color(0xFF5AC8FA), Color(0xFF007AFF), Color(0xFF5856D6),
+            Color(0xFFFF2D55), Color(0xFF8E8E93), Color(0xFFAF52DE), Color(0xFFBB86FC)
+        )
+    }
 
     Column {
         Text("ICON & THEME", color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
@@ -290,7 +327,10 @@ fun IconAndThemeSection(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                items(colors) { color ->
+                items(
+                    items = colors,
+                    key = { it.toArgb() }
+                ) { color ->
                     Box(
                         modifier = Modifier
                             .size(32.dp)
@@ -309,24 +349,27 @@ fun IconAndThemeSection(
             HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 16.dp))
 
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 48.dp),
+                columns = GridCells.Fixed(5), // Use fixed columns to reduce measurement overhead
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.heightIn(max = 240.dp)
             ) {
-                items(icons) { icon ->
+                itemsIndexed(
+                    items = icons,
+                    key = { index, icon -> "${icon.name}_$index" } // Ensure unique keys to fix selection bug
+                ) { _, icon ->
                     Box(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(if (selectedIcon == icon) Color.White.copy(alpha = 0.1f) else Color.Transparent)
+                            .background(if (selectedIcon.name == icon.name) Color.White.copy(alpha = 0.1f) else Color.Transparent)
                             .clickable { onIconSelected(icon) },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
-                            tint = if (selectedIcon == icon) selectedColor else Color.Gray,
+                            tint = if (selectedIcon.name == icon.name) selectedColor else Color.Gray,
                             modifier = Modifier.size(32.dp)
                         )
                     }
