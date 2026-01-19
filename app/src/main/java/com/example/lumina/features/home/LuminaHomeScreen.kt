@@ -437,7 +437,7 @@ private fun getIconVector(iconName: String): ImageVector {
             "Science" -> Icons.Default.Science
             else -> Icons.Default.Language
         }
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         Icons.Default.Language
     }
 }
