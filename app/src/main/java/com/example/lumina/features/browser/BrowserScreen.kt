@@ -73,6 +73,16 @@ import kotlinx.coroutines.delay
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoView
 
+/**
+ * The main browser screen of the Lumina app.
+ *
+ * This screen provides a full-featured web browsing experience using Mozilla GeckoView.
+ * It includes an address bar, navigation controls, security information, and supports
+ * full-screen media playback.
+ *
+ * @param onClose Callback to be invoked when the browser screen should be closed.
+ * @param browserViewModel The ViewModel that manages the browser's state and logic.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrowserScreen(
@@ -355,6 +365,15 @@ fun BrowserScreen(
     }
 }
 
+/**
+ * A dialog that displays security information for the current web page.
+ *
+ * It shows whether the connection is secure and provides details about the
+ * SSL/TLS certificate if available.
+ *
+ * @param securityInfo The security information to display.
+ * @param onDismiss Callback to be invoked when the dialog should be dismissed.
+ */
 @Composable
 fun CertificateInfoDialog(
     securityInfo: GeckoSession.ProgressDelegate.SecurityInformation,
@@ -402,6 +421,12 @@ fun CertificateInfoDialog(
     )
 }
 
+/**
+ * A helper composable to display a labeled piece of information.
+ *
+ * @param label The label for the information (e.g., "Subject").
+ * @param value The value of the information.
+ */
 @Composable
 fun InfoItem(label: String, value: String) {
     Column(modifier = Modifier.padding(vertical = 4.dp)) {

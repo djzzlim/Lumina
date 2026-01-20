@@ -97,6 +97,20 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.example.lumina.core.database.LuminaInfo
 
+/**
+ * The primary home screen of the Lumina app.
+ *
+ * This screen displays a grid of "Lumina" items (bookmarked sites) associated with the current profile.
+ * It allows for adding new items, scanning QR codes, editing existing items, and managing profiles.
+ * It also supports a selection mode for batch deletion of items.
+ *
+ * @param viewModel The ViewModel providing the home screen's state and logic.
+ * @param onNavigateToScanner Callback to navigate to the QR scanner screen.
+ * @param onNavigateToAddLumina Callback to navigate to the screen for adding a new Lumina item.
+ * @param onNavigateToBrowser Callback to navigate to the browser screen for a specific item.
+ * @param onNavigateToEditLumina Callback to navigate to the screen for editing a specific item.
+ * @param onNavigateToProfiles Callback to navigate to the profile management screen.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LuminaHomeScreen(
@@ -174,6 +188,9 @@ fun LuminaHomeScreen(
     }
 }
 
+/**
+ * The top app bar for the home screen in its default state.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeTopAppBar(
@@ -227,6 +244,9 @@ fun HomeTopAppBar(
     )
 }
 
+/**
+ * The top app bar displayed when the home screen is in selection mode.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectionTopAppBar(
@@ -267,6 +287,9 @@ fun SelectionTopAppBar(
     )
 }
 
+/**
+ * A grid that displays the list of Lumina items.
+ */
 @Composable
 fun LuminaItemsGrid(
     items: List<LuminaInfo>,
@@ -295,6 +318,9 @@ fun LuminaItemsGrid(
     }
 }
 
+/**
+ * A card representing a single Lumina item in the grid.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LuminaItemCard(
@@ -390,6 +416,9 @@ fun LuminaItemCard(
     }
 }
 
+/**
+ * Maps an icon name string to its corresponding [ImageVector].
+ */
 private fun getIconVector(iconName: String): ImageVector {
     return try {
         when (iconName) {
@@ -442,6 +471,9 @@ private fun getIconVector(iconName: String): ImageVector {
     }
 }
 
+/**
+ * Masks a URL string for display, typically showing only a portion of the host.
+ */
 private fun maskUrl(url: String): String {
     if (url.isEmpty()) return ""
     return try {

@@ -26,6 +26,23 @@ import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.StorageController
 import javax.inject.Inject
 
+/**
+ * ViewModel for the [BrowserScreen].
+ *
+ * This class manages the state and logic for the GeckoView-based browser, including:
+ * - Session lifecycle management.
+ * - Navigation and history.
+ * - Progress tracking and loading state.
+ * - Security and certificate information.
+ * - Full-screen state management.
+ * - Integration with [LuminaRepository] for site-specific settings.
+ *
+ * @property luminaRepository Repository for accessing Lumina site information.
+ * @property profileManager Manager for user profiles (unused in current snippet but injected).
+ * @property globalGeckoRuntime Shared GeckoRuntime instance.
+ * @property applicationContext Application context for resource access.
+ * @property savedStateHandle Handle for retrieving navigation arguments.
+ */
 @HiltViewModel
 class BrowserViewModel @Inject constructor(
     private val luminaRepository: LuminaRepository,
@@ -37,6 +54,9 @@ class BrowserViewModel @Inject constructor(
 
     private val luminaId: Long = savedStateHandle.get<Long>("luminaId")!!
 
+    /**
+     * The [LuminaInfo] associated with the current browser session.
+     */
     val luminaInfo: StateFlow<LuminaInfo?> = luminaRepository.getLuminaById(luminaId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
@@ -48,6 +68,9 @@ class BrowserViewModel @Inject constructor(
             .build()
     )
 
+    /**
+     * The current [GeckoSession] being used by the browser.
+     */
     val geckoSession: GeckoSession get() = _geckoSession
 
     private val _progress = MutableStateFlow(0)
@@ -103,10 +126,16 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Signals that the entry animation has finished, allowing the browser to start loading.
+     */
     fun onAnimationFinished() {
         _isAnimationFinished.value = true
     }
 
+    /**
+     * Sets up the GeckoView delegates to handle progress, navigation, history, scrolling, and content events.
+     */
     private fun setupDelegates() {
         _geckoSession.progressDelegate = object : GeckoSession.ProgressDelegate {
             override fun onProgressChange(session: GeckoSession, progress: Int) {
@@ -184,6 +213,9 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Applies the settings from the [LuminaInfo] to the current [GeckoSession].
+     */
     private fun applySettings(info: LuminaInfo) {
         _geckoSession.settings.userAgentMode = if (info.randomizeUserAgent)
             GeckoSessionSettings.USER_AGENT_MODE_MOBILE
@@ -193,6 +225,11 @@ class BrowserViewModel @Inject constructor(
         _geckoSession.settings.allowJavascript = true
     }
 
+    /**
+     * Handles a search query or URL entered by the user.
+     *
+     * @param query The search query or URL.
+     */
     fun onSearchQuery(query: String) {
         if (query.isBlank()) return
         isGoingBack = false
@@ -205,6 +242,11 @@ class BrowserViewModel @Inject constructor(
         _geckoSession.loadUri(url)
     }
 
+    /**
+     * Navigates back in the browser history if possible.
+     *
+     * @return True if navigation was performed, false otherwise.
+     */
     fun goBack(): Boolean {
         if (_geckoSession.isOpen && _canGoBack.value) {
             isGoingBack = true
@@ -214,12 +256,18 @@ class BrowserViewModel @Inject constructor(
         return false
     }
 
+    /**
+     * Stops the current page load.
+     */
     fun stopLoading() {
         if (_geckoSession.isOpen) {
             _geckoSession.stop()
         }
     }
 
+    /**
+     * Reloads the current page.
+     */
     fun reload() {
         if (_geckoSession.isOpen) {
             isGoingBack = false
@@ -227,6 +275,9 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Exits the browser's full-screen mode.
+     */
     fun exitFullScreen() {
         if (_geckoSession.isOpen) {
             _geckoSession.exitFullScreen()
