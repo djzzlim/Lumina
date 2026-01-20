@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
@@ -12,6 +11,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.lumina.core.ProfileManager
 import com.example.lumina.navigation.AppNavigation
@@ -21,7 +21,6 @@ import kotlinx.coroutines.launch
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.StorageController
 import javax.inject.Inject
-import kotlin.system.exitProcess
 
 /**
  * Main activity for the Lumina application.
@@ -50,7 +49,7 @@ class MainActivity : ComponentActivity() {
         // Redundancy: Clear data on start to ensure a clean slate
         geckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
         
-        enableEdgeToEdge()
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             LuminaTheme {
                 FixedTextToolbar {
@@ -68,9 +67,6 @@ class MainActivity : ComponentActivity() {
             
             // Shut down the runtime
             geckoRuntime.shutdown()
-            
-            // Completely terminate the app process
-            exitProcess(0)
         }
     }
 }

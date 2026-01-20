@@ -1,7 +1,5 @@
 package com.example.lumina.navigation
 
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -104,11 +102,6 @@ fun AppNavigation() {
                 }
             }
         ) {
-            // FORCE SHUTDOWN: When pressing back on Home screen, finish the activity
-            BackHandler {
-                (context as? ComponentActivity)?.finish()
-            }
-
             val vm: HomeViewModel = hiltViewModel()
             LuminaHomeScreen(
                 viewModel = vm,

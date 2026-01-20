@@ -57,19 +57,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.delay
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoView
+
 
 /**
  * Composable representing the browser screen with a modern UI.
@@ -88,11 +91,18 @@ fun BrowserScreen(
     val securityInfo by browserViewModel.securityInfo.collectAsState()
     val canGoBack by browserViewModel.canGoBack.collectAsState()
     val isFullScreen by browserViewModel.isFullScreen.collectAsState()
+    
+    val geckoView = remember { mutableStateOf<GeckoView?>(null) }
+    
     var searchQuery by remember { mutableStateOf("") }
     var isTextFieldFocused by remember { mutableStateOf(false) }
     var showCertificateDialog by remember { mutableStateOf(false) }
+    var isExitingFullScreen by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
+    val activity = context as Activity
+    val window = activity.window
+    val insetsController = remember { WindowCompat.getInsetsController(window, window.decorView) }
 
     // Use rememberSaveable so the webview remains shown if the activity is recreated
     var showWebView by rememberSaveable { mutableStateOf(false) }
@@ -106,10 +116,20 @@ fun BrowserScreen(
         browserViewModel.onAnimationFinished()
     }
 
-    // Handle back button: go back in browser history if possible, otherwise close screen
-    BackHandler(enabled = true) {
+    // Reset isExitingFullScreen after fullscreen exit is complete
+    LaunchedEffect(isFullScreen) {
+        if (!isFullScreen && isExitingFullScreen) {
+            // Give a delay for GeckoView to settle and update its state
+            delay(500)
+            isExitingFullScreen = false
+        }
+    }
+
+    // Handle system back button (Swipe gesture or System bar back button)
+    // We only enable the BackHandler when we actually want to intercept back (fullscreen or history)
+    BackHandler(enabled = isFullScreen || canGoBack) {
         if (isFullScreen) {
-            browserViewModel.onFullScreen(false)
+            browserViewModel.exitFullScreen()
         } else if (canGoBack) {
             browserViewModel.goBack()
         } else {
@@ -117,17 +137,27 @@ fun BrowserScreen(
         }
     }
 
-    // Allow screen rotation in Browser, but reset to portrait on exit
-    DisposableEffect(Unit) {
-        val activity = context as? Activity
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+
+    // Handle orientation changes for fullscreen and system UI
+    DisposableEffect(isFullScreen) {
+        if (isFullScreen) {
+            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            insetsController.hide(WindowInsetsCompat.Type.systemBars())
+            insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        } else {
+            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            insetsController.show(WindowInsetsCompat.Type.systemBars())
+            insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+        }
         onDispose {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            insetsController.show(WindowInsetsCompat.Type.systemBars())
+            insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
         }
     }
 
     // Lifecycle observer to handle GeckoSession active state when backgrounding/foregrounding
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -194,13 +224,14 @@ fun BrowserScreen(
                 ) {
                     IconButton(
                         onClick = {
+                            // The button in the browser UI always closes the browser
                             onClose()
                         },
                         modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = "Close Browser",
                             modifier = Modifier.size(20.dp),
                             tint = Color.White
                         )
@@ -346,6 +377,7 @@ fun BrowserScreen(
                             )
                             setSession(browserViewModel.geckoSession)
                             isNestedScrollingEnabled = true
+                            geckoView.value = this
                         }
                     },
                     modifier = Modifier.fillMaxSize()
