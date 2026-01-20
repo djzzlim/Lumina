@@ -1,6 +1,7 @@
 package com.example.lumina.features.browser
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,16 +18,14 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import org.mozilla.geckoview.AllowOrDeny
+import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.StorageController
 import javax.inject.Inject
 
-/**
- * ViewModel for the Browser screen.
- * Implements RAM protection and aggressive memory management to prevent data recovery.
- */
 @HiltViewModel
 class BrowserViewModel @Inject constructor(
     private val luminaRepository: LuminaRepository,
@@ -37,7 +36,7 @@ class BrowserViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val luminaId: Long = savedStateHandle.get<Long>("luminaId")!!
-    
+
     val luminaInfo: StateFlow<LuminaInfo?> = luminaRepository.getLuminaById(luminaId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
@@ -48,7 +47,7 @@ class BrowserViewModel @Inject constructor(
             .usePrivateMode(true)
             .build()
     )
-    
+
     val geckoSession: GeckoSession get() = _geckoSession
 
     private val _progress = MutableStateFlow(0)
@@ -75,15 +74,16 @@ class BrowserViewModel @Inject constructor(
     private val _canGoBack = MutableStateFlow(false)
     val canGoBack: StateFlow<Boolean> = _canGoBack.asStateFlow()
 
-    private val _isFullScreen = MutableStateFlow(false)
-    val isFullScreen: StateFlow<Boolean> = _isFullScreen.asStateFlow()
+    private val _isAppLevelFullscreen = MutableStateFlow(false)
+    val isAppLevelFullscreen: StateFlow<Boolean> = _isAppLevelFullscreen.asStateFlow()
 
     private val _isAnimationFinished = MutableStateFlow(false)
     private var isInitialized = false
+    private var isGoingBack = false
 
     init {
         setupDelegates()
-        
+
         viewModelScope.launch {
             combine(luminaInfo.filterNotNull(), _isAnimationFinished) { info, finished ->
                 if (finished) info else null
@@ -112,6 +112,9 @@ class BrowserViewModel @Inject constructor(
             override fun onProgressChange(session: GeckoSession, progress: Int) {
                 _progress.value = progress
                 _isLoading.value = progress < 100
+                if (progress == 100 && isGoingBack) {
+                    isGoingBack = false
+                }
             }
 
             override fun onSecurityChange(
@@ -128,9 +131,25 @@ class BrowserViewModel @Inject constructor(
                 session: GeckoSession,
                 url: String?,
                 permissions: List<GeckoSession.PermissionDelegate.ContentPermission>,
-                isRedirection: Boolean
+                hasUserGesture: Boolean
             ) {
                 _currentUrl.value = url ?: ""
+            }
+
+            override fun onLoadRequest(session: GeckoSession, request: GeckoSession.NavigationDelegate.LoadRequest): GeckoResult<AllowOrDeny>? {
+                if (request.target == GeckoSession.NavigationDelegate.TARGET_WINDOW_NEW) {
+                    session.loadUri(request.uri)
+                    return GeckoResult.fromValue(AllowOrDeny.DENY)
+                }
+                if (request.hasUserGesture) {
+                    isGoingBack = false
+                }
+                return GeckoResult.fromValue(AllowOrDeny.ALLOW)
+            }
+
+            override fun onNewSession(session: GeckoSession, uri: String): GeckoResult<GeckoSession>? {
+                session.loadUri(uri)
+                return null
             }
 
             override fun onCanGoBack(session: GeckoSession, canGoBack: Boolean) {
@@ -143,7 +162,6 @@ class BrowserViewModel @Inject constructor(
                 session: GeckoSession,
                 historyList: GeckoSession.HistoryDelegate.HistoryList
             ) {
-                // Only allow going back if we are at an index > 0 in the current session's history
                 _canGoBack.value = historyList.currentIndex > 0
             }
         }
@@ -160,7 +178,8 @@ class BrowserViewModel @Inject constructor(
             }
 
             override fun onFullScreen(session: GeckoSession, fullScreen: Boolean) {
-                _isFullScreen.value = fullScreen
+                Log.d("BrowserViewModel", "onFullScreen: $fullScreen")
+                _isAppLevelFullscreen.value = fullScreen
             }
         }
     }
@@ -176,31 +195,43 @@ class BrowserViewModel @Inject constructor(
 
     fun onSearchQuery(query: String) {
         if (query.isBlank()) return
-        
+        isGoingBack = false
         val url = if (query.contains(".") && !query.contains(" ")) {
-            if (query.startsWith("http")) query else "https://$query"
-        } else {
+            if (query.startsWith("http")) query else "https://www.google.com/search?q=$query"
+        }
+        else {
             "https://www.google.com/search?q=$query"
         }
         _geckoSession.loadUri(url)
     }
 
-    fun goBack() {
-        if (_geckoSession.isOpen) {
+    fun goBack(): Boolean {
+        if (_geckoSession.isOpen && _canGoBack.value) {
+            isGoingBack = true
             _geckoSession.goBack()
+            return true
+        }
+        return false
+    }
+
+    fun stopLoading() {
+        if (_geckoSession.isOpen) {
+            _geckoSession.stop()
         }
     }
 
     fun reload() {
         if (_geckoSession.isOpen) {
+            isGoingBack = false
             _geckoSession.reload()
         }
     }
 
     fun exitFullScreen() {
-        // First request Gecko to exit fullscreen
-        _geckoSession.exitFullScreen()
-        // The update to _isFullScreen.value will happen via onFullScreen callback
+        if (_geckoSession.isOpen) {
+            _geckoSession.exitFullScreen()
+        }
+        _isAppLevelFullscreen.value = false
     }
 
     override fun onCleared() {
@@ -211,7 +242,6 @@ class BrowserViewModel @Inject constructor(
         globalGeckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
         _currentUrl.value = ""
         _title.value = ""
-        _securityInfo.value = null
         System.gc()
     }
 }
