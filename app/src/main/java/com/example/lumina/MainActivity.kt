@@ -46,8 +46,11 @@ class MainActivity : ComponentActivity() {
             profileManager.createDefaultProfileIfNeeded()
         }
         
-        // Redundancy: Clear data on start to ensure a clean slate
-        geckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
+        // Only clear runtime storage on a fresh cold-start, not on activity recreation (e.g. rotation)
+        if (savedInstanceState == null) {
+            // Cold start: clear any leftover runtime data for a clean slate
+            geckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
+        }
         
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
