@@ -34,9 +34,25 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(
+    startUrl: String? = null,
+    onUrlHandled: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val context = LocalContext.current
+
+    LaunchedEffect(startUrl) {
+        if (startUrl != null) {
+            val encodedUrl = URLEncoder.encode(
+                startUrl,
+                StandardCharsets.UTF_8.toString()
+            )
+            navController.navigate(
+                "${ScreenRoutes.NEW_LUMINA_BASE}?${ScreenRoutes.NEW_LUMINA_URL_ARG}=$encodedUrl"
+            )
+            onUrlHandled()
+        }
+    }
 
     fun safeNavigate(route: String) {
         if (navController.currentDestination?.route != route) {

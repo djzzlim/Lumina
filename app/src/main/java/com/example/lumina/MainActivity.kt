@@ -1,11 +1,14 @@
 package com.example.lumina
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalTextToolbar
@@ -17,6 +20,7 @@ import com.example.lumina.core.ProfileManager
 import com.example.lumina.navigation.AppNavigation
 import com.example.lumina.ui.theme.LuminaTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.StorageController
@@ -33,6 +37,8 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var profileManager: ProfileManager
+
+    private val urlState = MutableStateFlow<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,13 +58,31 @@ class MainActivity : ComponentActivity() {
             geckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
         }
         
+        handleIntent(intent)
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        
         setContent {
+            val startUrl by urlState.collectAsState()
             LuminaTheme {
                 FixedTextToolbar {
-                    AppNavigation()
+                    AppNavigation(
+                        startUrl = startUrl,
+                        onUrlHandled = { urlState.value = null }
+                    )
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent) {
+        if (intent.action == Intent.ACTION_VIEW) {
+            urlState.value = intent.dataString
         }
     }
 
