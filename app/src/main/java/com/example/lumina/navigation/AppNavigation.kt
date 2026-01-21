@@ -144,7 +144,11 @@ fun AppNavigation(
         }
 
         composable(ScreenRoutes.SETTINGS_SCREEN) {
-            SettingsScreen()
+            SettingsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
         }
 
         composable(ScreenRoutes.PROFILES_SCREEN) {
