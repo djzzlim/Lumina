@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -101,7 +102,7 @@ fun BrowserScreen(
 
     var searchQuery by remember { mutableStateOf("") }
     var isTextFieldFocused by remember { mutableStateOf(false) }
-    var showCertificateDialog by remember { mutableStateOf(false) }
+    var showSecurityDialog by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
     val activity = context as Activity
@@ -187,10 +188,12 @@ fun BrowserScreen(
         }
     }
 
-    if (showCertificateDialog && securityInfo != null) {
-        CertificateInfoDialog(
-            securityInfo = securityInfo!!,
-            onDismiss = { showCertificateDialog = false }
+    if (showSecurityDialog) {
+        ConnectionInfoDialog(
+            isSecure = isSecure,
+            currentUrl = currentUrl,
+            securityInfo = securityInfo,
+            onDismiss = { showSecurityDialog = false }
         )
     }
 
@@ -245,16 +248,16 @@ fun BrowserScreen(
                                 .padding(horizontal = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (isSecure && !isTextFieldFocused) {
+                            if (!isTextFieldFocused && currentUrl.isNotEmpty()) {
                                 IconButton(
-                                    onClick = { showCertificateDialog = true },
+                                    onClick = { showSecurityDialog = true },
                                     modifier = Modifier.size(18.dp)
                                 ) {
                                     Icon(
-                                        Icons.Default.Lock,
-                                        contentDescription = "Secure Connection",
+                                        imageVector = if (isSecure) Icons.Default.Lock else Icons.Default.LockOpen,
+                                        contentDescription = if (isSecure) "Secure Connection" else "Unsecured Connection",
                                         modifier = Modifier.size(12.dp),
-                                        tint = Color(0xFFBB86FC)
+                                        tint = if (isSecure) Color(0xFFBB86FC) else Color.Red
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -366,24 +369,28 @@ fun BrowserScreen(
 }
 
 /**
- * A dialog that displays security information for the current web page.
+ * A dialog that displays connection and security information for the current web page.
  *
- * It shows whether the connection is secure and provides details about the
+ * It shows whether the connection is secure, the URL, and provides details about the
  * SSL/TLS certificate if available.
  *
- * @param securityInfo The security information to display.
+ * @param isSecure Whether the current connection is secure.
+ * @param currentUrl The current URL of the page.
+ * @param securityInfo The security information from GeckoView.
  * @param onDismiss Callback to be invoked when the dialog should be dismissed.
  */
 @Composable
-fun CertificateInfoDialog(
-    securityInfo: GeckoSession.ProgressDelegate.SecurityInformation,
+fun ConnectionInfoDialog(
+    isSecure: Boolean,
+    currentUrl: String,
+    securityInfo: GeckoSession.ProgressDelegate.SecurityInformation?,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                "Security Information",
+                "Connection Information",
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White
             )
@@ -395,19 +402,42 @@ fun CertificateInfoDialog(
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = if (securityInfo.isSecure) "Connection is secure" else "Connection is not secure",
-                    color = if (securityInfo.isSecure) Color(0xFFBB86FC) else Color.Red,
+                    text = if (isSecure) "Connection is secure" else "Connection is not secure",
+                    color = if (isSecure) Color(0xFFBB86FC) else Color.Red,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
-                securityInfo.certificate?.let { cert ->
-                    InfoItem("Subject", cert.subjectDN.name)
-                    InfoItem("Issuer", cert.issuerDN.name)
-                    InfoItem("Valid From", cert.notBefore.toString())
-                    InfoItem("Valid Until", cert.notAfter.toString())
-                    InfoItem("Algorithm", cert.sigAlgName)
-                } ?: Text("No certificate information available", color = Color.Gray)
+                InfoItem("URL", currentUrl)
+
+                if (isSecure) {
+                    Text(
+                        "Your information (for example, passwords or credit card numbers) is private when it is sent to this site.",
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                } else {
+                    Text(
+                        "You should not enter any sensitive information on this site (for example, passwords or credit cards), because it could be stolen by attackers.",
+                        fontSize = 12.sp,
+                        color = Color.Red.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+
+                val certificate = securityInfo?.certificate
+                if (certificate != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Certificate Details", fontWeight = FontWeight.SemiBold, color = Color.White, fontSize = 14.sp)
+                    InfoItem("Subject", certificate.subjectDN.name)
+                    InfoItem("Issuer", certificate.issuerDN.name)
+                    InfoItem("Valid From", certificate.notBefore.toString())
+                    InfoItem("Valid Until", certificate.notAfter.toString())
+                    InfoItem("Algorithm", certificate.sigAlgName)
+                } else if (isSecure) {
+                    Text("No detailed certificate information available", color = Color.Gray, fontSize = 12.sp)
+                }
             }
         },
         confirmButton = {
