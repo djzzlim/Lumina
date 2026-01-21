@@ -357,10 +357,20 @@ fun BrowserScreen(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT
                         )
-                        setSession(browserViewModel.geckoSession)
                         isNestedScrollingEnabled = true
                         geckoView.value = this
                     }
+                },
+                update = { view ->
+                    // Ensure the view is always displaying the current session
+                    if (view.session != browserViewModel.geckoSession) {
+                        view.setSession(browserViewModel.geckoSession)
+                    }
+                },
+                onRelease = { view ->
+                    // Detach session when the view is destroyed/leaves composition
+                    view.releaseSession()
+                    geckoView.value = null
                 },
                 modifier = Modifier.fillMaxSize()
             )
