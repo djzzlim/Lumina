@@ -35,8 +35,17 @@ class ProfileRepository @Inject constructor(
      */
     suspend fun createProfile(name: String): Profile {
         val profile = Profile(name = name)
-        profileDao.insertOrUpdate(profile)
+        profileDao.insert(profile)
         return profile
+    }
+
+    /**
+     * Updates an existing [Profile] in the database.
+     *
+     * @param profile The profile to update.
+     */
+    suspend fun updateProfile(profile: Profile) {
+        profileDao.update(profile)
     }
 
     /**

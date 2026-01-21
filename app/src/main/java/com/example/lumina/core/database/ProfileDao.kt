@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -21,12 +22,20 @@ interface ProfileDao {
     fun getProfiles(): Flow<List<Profile>>
 
     /**
-     * Inserts a new [Profile] or updates an existing one if the ID already exists.
+     * Inserts a new [Profile].
      *
-     * @param profile The profile to insert or update.
+     * @param profile The profile to insert.
      */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertOrUpdate(profile: Profile)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(profile: Profile)
+
+    /**
+     * Updates an existing [Profile].
+     *
+     * @param profile The profile to update.
+     */
+    @Update
+    suspend fun update(profile: Profile)
 
     /**
      * Deletes a specific [Profile] from the database.

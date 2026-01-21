@@ -1,6 +1,7 @@
 package com.example.lumina.features.profiles
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,41 +51,82 @@ fun ProfilesScreen(
 ) {
     val profiles by profilesViewModel.profiles.collectAsState(initial = emptyList())
     val currentProfileId by profilesViewModel.currentProfileId.collectAsState(initial = null)
-    var showDialog by remember { mutableStateOf(false) }
-    var newProfileName by remember { mutableStateOf("") }
+    
+    var showAddDialog by remember { mutableStateOf(false) }
+    var editingProfile by remember { mutableStateOf<Profile?>(null) }
+    var profileNameInput by remember { mutableStateOf("") }
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { showDialog = true }) {
+            FloatingActionButton(onClick = { 
+                profileNameInput = ""
+                showAddDialog = true 
+            }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Profile")
             }
         }
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
-            if (showDialog) {
+            // Add Profile Dialog
+            if (showAddDialog) {
                 AlertDialog(
-                    onDismissRequest = { showDialog = false },
+                    onDismissRequest = { showAddDialog = false },
                     title = { Text("New Profile") },
                     text = {
                         TextField(
-                            value = newProfileName,
-                            onValueChange = { newProfileName = it },
+                            value = profileNameInput,
+                            onValueChange = { profileNameInput = it },
                             label = { Text("Profile Name") }
                         )
                     },
                     confirmButton = {
                         Button(
                             onClick = {
-                                profilesViewModel.createProfile(newProfileName)
-                                showDialog = false
-                                newProfileName = ""
+                                if (profileNameInput.isNotBlank()) {
+                                    profilesViewModel.createProfile(profileNameInput)
+                                    showAddDialog = false
+                                    profileNameInput = ""
+                                }
                             }
                         ) {
                             Text("Create")
                         }
                     },
                     dismissButton = {
-                        Button(onClick = { showDialog = false }) {
+                        Button(onClick = { showAddDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+
+            // Edit Profile Dialog
+            editingProfile?.let { profile ->
+                AlertDialog(
+                    onDismissRequest = { editingProfile = null },
+                    title = { Text("Edit Profile") },
+                    text = {
+                        TextField(
+                            value = profileNameInput,
+                            onValueChange = { profileNameInput = it },
+                            label = { Text("Profile Name") }
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                if (profileNameInput.isNotBlank()) {
+                                    profilesViewModel.updateProfile(profile.copy(name = profileNameInput))
+                                    editingProfile = null
+                                    profileNameInput = ""
+                                }
+                            }
+                        ) {
+                            Text("Save")
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = { editingProfile = null }) {
                             Text("Cancel")
                         }
                     }
@@ -100,7 +142,11 @@ fun ProfilesScreen(
                             profilesViewModel.switchProfile(profile.id)
                             onNavigateBack() // Go back to main screen after switching
                         },
-                        onDelete = { profilesViewModel.deleteProfile(profile) }
+                        onDelete = { profilesViewModel.deleteProfile(profile) },
+                        onEdit = {
+                            profileNameInput = profile.name
+                            editingProfile = profile
+                        }
                     )
                 }
             }
@@ -115,18 +161,24 @@ fun ProfilesScreen(
  * @param isCurrent Whether this is the currently active profile.
  * @param onSwitch Callback to be invoked when the profile is clicked to be switched.
  * @param onDelete Callback to be invoked when the delete icon is clicked.
+ * @param onEdit Callback to be invoked when the profile is long-clicked.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ProfileListItem(
     profile: Profile,
     isCurrent: Boolean,
     onSwitch: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onSwitch() }
+            .combinedClickable(
+                onClick = { onSwitch() },
+                onLongClick = { onEdit() }
+            )
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

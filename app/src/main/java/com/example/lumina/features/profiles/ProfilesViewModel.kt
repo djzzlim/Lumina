@@ -48,6 +48,17 @@ class ProfilesViewModel @Inject constructor(
     }
 
     /**
+     * Updates an existing profile.
+     *
+     * @param profile The [Profile] entity to update.
+     */
+    fun updateProfile(profile: Profile) {
+        viewModelScope.launch {
+            profileRepository.updateProfile(profile)
+        }
+    }
+
+    /**
      * Deletes the specified profile.
      *
      * @param profile The [Profile] entity to delete.

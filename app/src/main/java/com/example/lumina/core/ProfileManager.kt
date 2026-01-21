@@ -52,13 +52,13 @@ class ProfileManager @Inject constructor(
      * profile state.
      */
     suspend fun createDefaultProfileIfNeeded() {
-        profileRepository.getProfiles().first().let { profiles ->
-            if (profiles.isEmpty()) {
-                profileRepository.createProfile("Default")
-                profileRepository.getProfiles().first().let { newProfiles ->
-                    setCurrentProfile(newProfiles.first().id)
-                }
-            }
+        val profiles = profileRepository.getProfiles().first()
+        if (profiles.isEmpty()) {
+            val newProfile = profileRepository.createProfile("Default")
+            setCurrentProfile(newProfile.id)
+        } else if (currentProfileId.value == null) {
+            // If profiles exist but none is selected, select the first one
+            setCurrentProfile(profiles.first().id)
         }
     }
 }
