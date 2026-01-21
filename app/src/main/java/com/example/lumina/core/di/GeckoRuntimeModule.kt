@@ -40,6 +40,7 @@ object GeckoRuntimeModule {
         val dnsProvider = runBlocking { appPreferences.dnsProviderFlow.first() }
 
         val runtimeSettings = GeckoRuntimeSettings.Builder()
+            .aboutConfigEnabled(true)
             .trustedRecursiveResolverUri(dnsProvider.uri)
             .trustedRecursiveResolverMode(dnsProvider.mode)
             .build()

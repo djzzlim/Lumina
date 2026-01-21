@@ -242,7 +242,9 @@ class BrowserViewModel @Inject constructor(
     fun onSearchQuery(query: String) {
         if (query.isBlank()) return
         isGoingBack = false
-        val url = if (query.contains(".") && !query.contains(" ")) {
+        val url = if (query.equals("about:config", ignoreCase = true)) {
+            "about:config"
+        } else if (query.contains(".") && !query.contains(" ")) {
             if (query.startsWith("http")) query else "https://" + query
         } else {
             searchEngine.value.url + query
