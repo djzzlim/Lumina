@@ -36,13 +36,14 @@ class ProfilesViewModel @Inject constructor(
     val currentProfileId: Flow<String?> = profileManager.getCurrentProfileId()
 
     /**
-     * Creates a new profile with the given name.
+     * Creates a new profile with the given name and automatically switches to it.
      *
      * @param name The name of the new profile.
      */
     fun createProfile(name: String) {
         viewModelScope.launch {
-            profileRepository.createProfile(name)
+            val newProfile = profileRepository.createProfile(name)
+            profileManager.setCurrentProfile(newProfile.id)
         }
     }
 

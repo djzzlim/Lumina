@@ -31,10 +31,12 @@ class ProfileRepository @Inject constructor(
      * Creates a new [Profile] with the given name and inserts it into the database.
      *
      * @param name The name of the profile to create.
+     * @return The created [Profile] object.
      */
-    suspend fun createProfile(name: String) {
+    suspend fun createProfile(name: String): Profile {
         val profile = Profile(name = name)
         profileDao.insertOrUpdate(profile)
+        return profile
     }
 
     /**
