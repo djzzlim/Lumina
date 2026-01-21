@@ -193,10 +193,6 @@ class BrowserViewModel @Inject constructor(
                 session.loadUri(uri)
                 return null
             }
-
-            override fun onCanGoBack(session: GeckoSession, canGoBack: Boolean) {
-                _canGoBack.value = canGoBack
-            }
         }
 
         _geckoSession.historyDelegate = object : GeckoSession.HistoryDelegate {
