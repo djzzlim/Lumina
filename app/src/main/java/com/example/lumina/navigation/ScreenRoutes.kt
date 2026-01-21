@@ -51,4 +51,7 @@ object ScreenRoutes {
 
     /** Route for edit advanced options screen. */
     const val EDIT_ADVANCED_OPTIONS = "edit_advanced_options_screen"
+
+    /** Route for the settings screen. */
+    const val SETTINGS_SCREEN = "settings_screen"
 }

@@ -40,7 +40,7 @@ android {
         }
     }
 
-    packagingOptions {
+    packaging {
         jniLibs {
             useLegacyPackaging = true
         }
@@ -60,6 +60,9 @@ kapt {
 }
 
 dependencies {
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.datastore.core)
+
     // SQLCipher for database encryption
     implementation(libs.sqlcipher)
     implementation(libs.androidx.ui.graphics)
@@ -75,6 +78,7 @@ dependencies {
     implementation(libs.camera.view)
 
     // ViewModel
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     // GeckoView
@@ -85,6 +89,7 @@ dependencies {
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.datastore.core)
     kapt(libs.androidx.room.compiler)
 
     // Hilt
@@ -92,6 +97,7 @@ dependencies {
     kapt(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
 
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

@@ -119,7 +119,8 @@ fun LuminaHomeScreen(
     onNavigateToAddLumina: () -> Unit,
     onNavigateToBrowser: (Long) -> Unit,
     onNavigateToEditLumina: (Long) -> Unit,
-    onNavigateToProfiles: () -> Unit
+    onNavigateToProfiles: () -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var isNavigating by remember { mutableStateOf(false) }
@@ -151,7 +152,8 @@ fun LuminaHomeScreen(
                     onNavigateToScanner = { if (!isNavigating) { isNavigating = true; onNavigateToScanner() } },
                     onNavigateToAddLumina = { if (!isNavigating) { isNavigating = true; onNavigateToAddLumina() } },
                     onToggleSelectionMode = viewModel::toggleSelectionMode,
-                    onNavigateToProfiles = { if (!isNavigating) { isNavigating = true; onNavigateToProfiles() } }
+                    onNavigateToProfiles = { if (!isNavigating) { isNavigating = true; onNavigateToProfiles() } },
+                    onNavigateToSettings = { if (!isNavigating) { isNavigating = true; onNavigateToSettings() } }
                 )
             }
         },
@@ -197,7 +199,8 @@ fun HomeTopAppBar(
     onNavigateToScanner: () -> Unit,
     onNavigateToAddLumina: () -> Unit,
     onToggleSelectionMode: () -> Unit,
-    onNavigateToProfiles: () -> Unit
+    onNavigateToProfiles: () -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     TopAppBar(
         title = {
@@ -234,6 +237,13 @@ fun HomeTopAppBar(
                 Icon(
                     Icons.Default.Person,
                     contentDescription = "Profiles",
+                    tint = Color(0xFFBB86FC)
+                )
+            }
+            IconButton(onClick = onNavigateToSettings) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
                     tint = Color(0xFFBB86FC)
                 )
             }

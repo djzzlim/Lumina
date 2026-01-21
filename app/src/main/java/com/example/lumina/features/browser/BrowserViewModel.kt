@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.lumina.core.AppPreferences
 import com.example.lumina.core.LuminaRepository
 import com.example.lumina.core.ProfileManager
 import com.example.lumina.core.database.LuminaInfo
@@ -48,6 +49,7 @@ class BrowserViewModel @Inject constructor(
     private val luminaRepository: LuminaRepository,
     private val profileManager: ProfileManager,
     private val globalGeckoRuntime: GeckoRuntime,
+    private val appPreferences: AppPreferences,
     @ApplicationContext private val applicationContext: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -104,8 +106,19 @@ class BrowserViewModel @Inject constructor(
     private var isInitialized = false
     private var isGoingBack = false
 
+    private val searchEngine = appPreferences.searchEngineFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, com.example.lumina.core.SearchEngine.Google)
+
     init {
         setupDelegates()
+
+        // Observe and apply DNS changes dynamically
+        viewModelScope.launch {
+            appPreferences.dnsProviderFlow.collect { dnsProvider ->
+                globalGeckoRuntime.settings.setTrustedRecursiveResolverUri(dnsProvider.uri)
+                globalGeckoRuntime.settings.setTrustedRecursiveResolverMode(dnsProvider.mode)
+            }
+        }
 
         viewModelScope.launch {
             combine(luminaInfo.filterNotNull(), _isAnimationFinished) { info, finished ->
@@ -234,11 +247,11 @@ class BrowserViewModel @Inject constructor(
         if (query.isBlank()) return
         isGoingBack = false
         val url = if (query.contains(".") && !query.contains(" ")) {
-            if (query.startsWith("http")) query else "https://www.google.com/search?q=$query"
+            if (query.startsWith("http")) query else "https://" + query
+        } else {
+            searchEngine.value.url + query
         }
-        else {
-            "https://www.google.com/search?q=$query"
-        }
+        Log.d("BrowserViewModel", "Loading URL: $url using engine: ${searchEngine.value}")
         _geckoSession.loadUri(url)
     }
 

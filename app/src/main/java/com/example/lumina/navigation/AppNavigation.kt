@@ -30,6 +30,7 @@ import com.example.lumina.features.new_lumina.NewLuminaScreen
 import com.example.lumina.features.new_lumina.NewLuminaViewModel
 import com.example.lumina.features.profiles.ProfilesScreen
 import com.example.lumina.features.qr_scanner.QRCodeScannerScreen
+import com.example.lumina.features.settings.SettingsScreen
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
@@ -135,8 +136,15 @@ fun AppNavigation(
                 },
                 onNavigateToProfiles = {
                     safeNavigate(ScreenRoutes.PROFILES_SCREEN)
+                },
+                onNavigateToSettings = {
+                    safeNavigate(ScreenRoutes.SETTINGS_SCREEN)
                 }
             )
+        }
+
+        composable(ScreenRoutes.SETTINGS_SCREEN) {
+            SettingsScreen()
         }
 
         composable(ScreenRoutes.PROFILES_SCREEN) {

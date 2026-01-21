@@ -1,11 +1,14 @@
 package com.example.lumina.core.di
 
 import android.content.Context
+import com.example.lumina.core.AppPreferences
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoRuntimeSettings
 import javax.inject.Singleton
@@ -30,25 +33,18 @@ object GeckoRuntimeModule {
      */
     @Provides
     @Singleton
-    fun provideGeckoRuntime(@ApplicationContext context: Context): GeckoRuntime {
-        // Create basic runtime settings.
+    fun provideGeckoRuntime(
+        @ApplicationContext context: Context,
+        appPreferences: AppPreferences
+    ): GeckoRuntime {
+        val dnsProvider = runBlocking { appPreferences.dnsProviderFlow.first() }
+
         val runtimeSettings = GeckoRuntimeSettings.Builder()
+            .trustedRecursiveResolverUri(dnsProvider.uri)
+            .trustedRecursiveResolverMode(dnsProvider.mode)
             .build()
 
-        // Create the runtime instance.
         val runtime = GeckoRuntime.create(context, runtimeSettings)
-
-        // Configure Cloudflare (1.1.1.1) as the DNS-over-HTTPS (DoH) provider.
-        // We set these directly on the runtime settings as they are not available on the Builder.
-        // network.trr.mode: 2 = DoH with fallback to system DNS.
-        // Note: The correct way to set preferences in GeckoView is through runtime.settings.
-        // Some versions use a Bundle-like interface or specific setters.
-        // If the preferences API is not available in this specific version, 
-        // these lines may need adjustment to match the available GeckoView API.
-        
-        // For now, we remove the erroneous .config() call which was causing the build failure.
-        // If specific TRR settings are required and this doesn't compile, 
-        // we'll verify the exact preference API for this version.
 
         return runtime
     }
