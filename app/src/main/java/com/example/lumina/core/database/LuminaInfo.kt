@@ -17,7 +17,6 @@ import androidx.room.PrimaryKey
  * @property url The URL associated with this entry.
  * @property icon The name or identifier of the icon to display.
  * @property color The color associated with this entry, stored as a Long.
- * @property isEphemeral Whether this session should be ephemeral (no data persisted).
  * @property isWebRtcDisabled Whether WebRTC should be disabled to prevent IP leaks.
  * @property afpEnabled Whether Advanced Fingerprinting Protection is enabled.
  * @property randomizeUserAgent Whether to use a randomized User-Agent.
@@ -50,7 +49,6 @@ data class LuminaInfo(
     val url: String,
     val icon: String, // Storing icon name as string
     val color: Long,   // Storing color as Long
-    val isEphemeral: Boolean = false,
     val isWebRtcDisabled: Boolean = true,
     val afpEnabled: Boolean = true,
     val randomizeUserAgent: Boolean = true,

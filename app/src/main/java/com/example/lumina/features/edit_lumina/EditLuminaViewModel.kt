@@ -112,7 +112,6 @@ class EditLuminaViewModel @Inject constructor(
                         url = info.url,
                         selectedIcon = getIconVector(info.icon),
                         selectedColor = Color(info.color.toInt()),
-                        isEphemeral = info.isEphemeral,
                         isWebRtcDisabled = info.isWebRtcDisabled,
                         afpEnabled = info.afpEnabled,
                         randomizeUserAgent = info.randomizeUserAgent,
@@ -153,7 +152,6 @@ class EditLuminaViewModel @Inject constructor(
                 url = state.url.trim(),
                 icon = getIconName(state.selectedIcon),
                 color = state.selectedColor.toArgb().toLong(),
-                isEphemeral = state.isEphemeral,
                 isWebRtcDisabled = state.isWebRtcDisabled,
                 afpEnabled = state.afpEnabled,
                 randomizeUserAgent = state.randomizeUserAgent,
@@ -251,7 +249,6 @@ class EditLuminaViewModel @Inject constructor(
     }
 
     // Advanced Options Toggles
-    fun setEphemeral(enabled: Boolean) = _uiState.update { it.copy(isEphemeral = enabled) }
     fun setWebRtcDisabled(disabled: Boolean) = _uiState.update { it.copy(isWebRtcDisabled = disabled) }
     fun setAfpEnabled(enabled: Boolean) = _uiState.update { it.copy(afpEnabled = enabled) }
     fun setRandomizeUserAgent(enabled: Boolean) = _uiState.update { it.copy(randomizeUserAgent = enabled) }

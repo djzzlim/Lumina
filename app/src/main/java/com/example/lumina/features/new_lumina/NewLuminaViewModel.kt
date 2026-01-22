@@ -28,7 +28,6 @@ data class NewLuminaUiState(
     val url: String = "https://",
     val selectedIcon: ImageVector = Icons.Default.Language,
     val selectedColor: Color = Color(0xFF00A2FF),
-    val isEphemeral: Boolean = false,
     val isWebRtcDisabled: Boolean = true,
     val afpEnabled: Boolean = true,
     val randomizeUserAgent: Boolean = true,
@@ -102,7 +101,6 @@ class NewLuminaViewModel @Inject constructor(
                     url = state.url.trim(),
                     icon = getIconName(state.selectedIcon),
                     color = state.selectedColor.toArgb().toLong(),
-                    isEphemeral = state.isEphemeral,
                     isWebRtcDisabled = state.isWebRtcDisabled,
                     afpEnabled = state.afpEnabled,
                     randomizeUserAgent = state.randomizeUserAgent,
@@ -128,7 +126,6 @@ class NewLuminaViewModel @Inject constructor(
     }
 
     // --- Events from Advanced Options ---
-    fun setEphemeral(enabled: Boolean) = _uiState.update { it.copy(isEphemeral = enabled) }
     fun setWebRtcDisabled(disabled: Boolean) = _uiState.update { it.copy(isWebRtcDisabled = disabled) }
     fun setAfpEnabled(enabled: Boolean) = _uiState.update { it.copy(afpEnabled = enabled) }
     fun setRandomizeUserAgent(enabled: Boolean) = _uiState.update { it.copy(randomizeUserAgent = enabled) }

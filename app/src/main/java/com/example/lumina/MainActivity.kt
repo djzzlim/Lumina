@@ -15,13 +15,11 @@ import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.lifecycleScope
 import com.example.lumina.core.ProfileManager
 import com.example.lumina.navigation.AppNavigation
 import com.example.lumina.ui.theme.LuminaTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.StorageController
 import javax.inject.Inject
@@ -46,11 +44,6 @@ class MainActivity : ComponentActivity() {
         // Prevents screenshots, screen recordings, and hides content in the Recents (Multitasking) screen.
         // This is a key forensic protection measure.
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        
-        // Ensure the default profile exists and is set correctly
-        lifecycleScope.launch {
-            profileManager.createDefaultProfileIfNeeded()
-        }
         
         // Only clear runtime storage on a fresh cold-start, not on activity recreation (e.g. rotation)
         if (savedInstanceState == null) {

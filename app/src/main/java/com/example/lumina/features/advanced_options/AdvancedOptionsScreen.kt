@@ -44,11 +44,10 @@ import com.example.lumina.ui.theme.LuminaTheme
  * Composable representing the Advanced Options screen.
  *
  * This screen allows users to configure advanced privacy and browser settings
- * for a Lumina instance, such as ephemeral storage, anti-fingerprinting measures,
+ * for a Lumina instance, such as anti-fingerprinting measures,
  * and WebRTC configuration.
  *
  * @param uiState The current state of advanced options.
- * @param onEphemeralChange Callback for toggling ephemeral storage.
  * @param onWebRtcDisabledChange Callback for toggling WebRTC.
  * @param onAfpEnabledChange Callback for toggling global anti-fingerprinting.
  * @param onRandomizeUserAgentChange Callback for toggling user agent randomization.
@@ -66,7 +65,6 @@ import com.example.lumina.ui.theme.LuminaTheme
 @Composable
 fun AdvancedOptionsScreen(
     uiState: NewLuminaUiState,
-    onEphemeralChange: (Boolean) -> Unit,
     onWebRtcDisabledChange: (Boolean) -> Unit,
     onAfpEnabledChange: (Boolean) -> Unit,
     onRandomizeUserAgentChange: (Boolean) -> Unit,
@@ -98,16 +96,6 @@ fun AdvancedOptionsScreen(
                 color = Color.White,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
-
-            // --- Storage Section ---
-            SectionTitle("STORAGE")
-            ToggleRow(
-                text = "Ephemeral",
-                checked = uiState.isEphemeral,
-                onCheckedChange = onEphemeralChange
-            )
-            HelpText("Ephemeral lumina will automatically reset when they're closed and will not store any data")
-            Spacer(modifier = Modifier.height(24.dp))
 
             // --- Antifingerprinting Section ---
             SectionTitle("ANTIFINGERPRINTING")
@@ -359,7 +347,6 @@ fun AdvancedOptionsScreenPreview() {
     LuminaTheme {
         AdvancedOptionsScreen(
             uiState = NewLuminaUiState(),
-            onEphemeralChange = {},
             onWebRtcDisabledChange = {},
             onAfpEnabledChange = {},
             onRandomizeUserAgentChange = {},

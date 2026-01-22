@@ -6,6 +6,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,6 +27,7 @@ class ProfileManager @Inject constructor(
 ) {
     private val prefs: SharedPreferences = context.getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
     private val currentProfileId = MutableStateFlow(prefs.getString("current_profile_id", null))
+    private val initializationMutex = Mutex()
 
     /**
      * Returns a [Flow] of the currently active profile ID.
@@ -52,13 +55,15 @@ class ProfileManager @Inject constructor(
      * profile state.
      */
     suspend fun createDefaultProfileIfNeeded() {
-        val profiles = profileRepository.getProfiles().first()
-        if (profiles.isEmpty()) {
-            val newProfile = profileRepository.createProfile("Default")
-            setCurrentProfile(newProfile.id)
-        } else if (currentProfileId.value == null) {
-            // If profiles exist but none is selected, select the first one
-            setCurrentProfile(profiles.first().id)
+        initializationMutex.withLock {
+            val profiles = profileRepository.getProfiles().first()
+            if (profiles.isEmpty()) {
+                val newProfile = profileRepository.createProfile("Default")
+                setCurrentProfile(newProfile.id)
+            } else if (currentProfileId.value == null) {
+                // If profiles exist but none is selected, select the first one
+                setCurrentProfile(profiles.first().id)
+            }
         }
     }
 }

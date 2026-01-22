@@ -227,7 +227,6 @@ fun AppNavigation(
 
                 AdvancedOptionsScreen(
                     uiState = uiState,
-                    onEphemeralChange = vm::setEphemeral,
                     onWebRtcDisabledChange = vm::setWebRtcDisabled,
                     onAfpEnabledChange = vm::setAfpEnabled,
                     onRandomizeUserAgentChange = vm::setRandomizeUserAgent,
@@ -286,7 +285,6 @@ fun AppNavigation(
 
                 AdvancedOptionsScreen(
                     uiState = uiState,
-                    onEphemeralChange = vm::setEphemeral,
                     onWebRtcDisabledChange = vm::setWebRtcDisabled,
                     onAfpEnabledChange = vm::setAfpEnabled,
                     onRandomizeUserAgentChange = vm::setRandomizeUserAgent,
