@@ -5,6 +5,7 @@ import android.content.pm.ActivityInfo
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,11 +29,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,6 +67,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -74,6 +80,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.delay
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoView
+import org.mozilla.geckoview.WebRequestError
 
 /**
  * The main browser screen of the Lumina app.
@@ -98,6 +105,7 @@ fun BrowserScreen(
     val isSecure by browserViewModel.isSecure.collectAsState()
     val securityInfo by browserViewModel.securityInfo.collectAsState()
     val isAppLevelFullscreen by browserViewModel.isAppLevelFullscreen.collectAsState()
+    val lastError by browserViewModel.lastError.collectAsState()
 
     val geckoView = remember { mutableStateOf<GeckoView?>(null) }
 
@@ -352,32 +360,195 @@ fun BrowserScreen(
             },
             modifier = Modifier.weight(1f)
         ) {
-            AndroidView(
-                factory = { factoryContext ->
-                    GeckoView(factoryContext).apply {
-                        layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
-                        isNestedScrollingEnabled = true
-                        geckoView.value = this
-                    }
-                },
-                update = { view ->
-                    // Ensure the view is always displaying the current session
-                    if (view.session != browserViewModel.geckoSession) {
-                        view.setSession(browserViewModel.geckoSession)
-                    }
-                },
-                onRelease = { view ->
-                    // Detach session when the view is destroyed/leaves composition
-                    view.releaseSession()
-                    geckoView.value = null
-                },
-                modifier = Modifier.fillMaxSize()
-            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                AndroidView(
+                    factory = { factoryContext ->
+                        GeckoView(factoryContext).apply {
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                            isNestedScrollingEnabled = true
+                            geckoView.value = this
+                        }
+                    },
+                    update = { view ->
+                        // Ensure the view is always displaying the current session
+                        if (view.session != browserViewModel.geckoSession) {
+                            view.setSession(browserViewModel.geckoSession)
+                        }
+                    },
+                    onRelease = { view ->
+                        // Detach session when the view is destroyed/leaves composition
+                        view.releaseSession()
+                        geckoView.value = null
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                if (lastError != null) {
+                    BrowserErrorScreen(
+                        error = lastError!!,
+                        onReload = { browserViewModel.reload() },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
         }
     }
+}
+
+/**
+ * A screen that displays error information when a web page fails to load.
+ */
+@Composable
+fun BrowserErrorScreen(
+    error: WebRequestError,
+    onReload: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val (title, description, errorCode) = remember(error) {
+        getErrorDetails(error)
+    }
+
+    Column(
+        modifier = modifier
+            .background(Color(0xFF121212))
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = if (error.category == WebRequestError.ERROR_CATEGORY_NETWORK) Icons.Default.CloudOff else Icons.Default.ErrorOutline,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = Color.Gray
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = Color.White,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Button(
+            onClick = onReload,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFBB86FC),
+                contentColor = Color.Black
+            ),
+            shape = RoundedCornerShape(24.dp),
+            modifier = Modifier.height(48.dp).padding(horizontal = 16.dp)
+        ) {
+            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Try again", fontWeight = FontWeight.Bold)
+        }
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        Text(
+            text = errorCode,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.Gray.copy(alpha = 0.5f)
+        )
+    }
+}
+
+private fun getErrorDetails(error: WebRequestError): Triple<String, String, String> {
+    val title: String
+    val description: String
+    val codeString: String
+
+    when (error.code) {
+        WebRequestError.ERROR_UNKNOWN_HOST -> {
+            title = "This site can't be reached"
+            description = "The server's IP address could not be found. Check your internet connection or try running a connectivity check."
+            codeString = "ERR_NAME_NOT_RESOLVED"
+        }
+        WebRequestError.ERROR_CONNECTION_REFUSED -> {
+            title = "Unable to connect"
+            description = "The connection was refused. The site might be temporarily down or you might be experiencing network issues."
+            codeString = "ERR_CONNECTION_REFUSED"
+        }
+        WebRequestError.ERROR_NET_TIMEOUT -> {
+            title = "Connection timed out"
+            description = "The site took too long to respond. Try reloading the page or check your internet connection."
+            codeString = "ERR_CONNECTION_TIMED_OUT"
+        }
+        WebRequestError.ERROR_NET_INTERRUPT -> {
+            title = "Connection interrupted"
+            description = "The network connection was lost during the page load."
+            codeString = "ERR_CONNECTION_ABORTED"
+        }
+        WebRequestError.ERROR_NET_RESET -> {
+            title = "Connection reset"
+            description = "The connection was reset by the server."
+            codeString = "ERR_CONNECTION_RESET"
+        }
+        WebRequestError.ERROR_PROXY_CONNECTION_REFUSED -> {
+            title = "Proxy connection failed"
+            description = "The proxy server is refusing connections. Check your proxy settings."
+            codeString = "ERR_PROXY_CONNECTION_FAILED"
+        }
+        WebRequestError.ERROR_MALFORMED_URI -> {
+            title = "Invalid URL"
+            description = "The address you entered is not valid."
+            codeString = "ERR_INVALID_URL"
+        }
+        WebRequestError.ERROR_UNKNOWN_PROTOCOL -> {
+            title = "Unknown Protocol"
+            description = "The address uses a protocol that is not supported or recognized."
+            codeString = "ERR_UNKNOWN_URL_SCHEME"
+        }
+        WebRequestError.ERROR_REDIRECT_LOOP -> {
+            title = "Too many redirects"
+            description = "The page isn't working. This site has a redirect loop."
+            codeString = "ERR_TOO_MANY_REDIRECTS"
+        }
+        WebRequestError.ERROR_OFFLINE -> {
+            title = "No internet connection"
+            description = "Your device is offline. Connect to the internet and try again."
+            codeString = "ERR_INTERNET_DISCONNECTED"
+        }
+        WebRequestError.ERROR_FILE_NOT_FOUND -> {
+            title = "404 Not Found"
+            description = "The file or page you are looking for could not be found."
+            codeString = "ERR_FILE_NOT_FOUND"
+        }
+        WebRequestError.ERROR_SECURITY_SSL -> {
+            title = "Security connection failed"
+            description = "A secure connection could not be established. This could be due to an invalid certificate or a security risk."
+            codeString = "ERR_SSL_PROTOCOL_ERROR"
+        }
+        WebRequestError.ERROR_SECURITY_BAD_CERT -> {
+            title = "Your connection is not private"
+            description = "Attackers might be trying to steal your information (for example, passwords, messages, or credit cards)."
+            codeString = "ERR_CERT_AUTHORITY_INVALID"
+        }
+        else -> {
+            title = "Something went wrong"
+            description = "An unexpected error occurred while loading the page."
+            codeString = "ERR_FAILED (Code: ${error.code})"
+        }
+    }
+
+    return Triple(title, description, codeString)
 }
 
 /**

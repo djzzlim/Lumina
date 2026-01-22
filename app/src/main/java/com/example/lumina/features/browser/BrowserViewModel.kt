@@ -27,6 +27,7 @@ import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.StorageController
+import org.mozilla.geckoview.WebRequestError
 import javax.inject.Inject
 
 /**
@@ -95,6 +96,9 @@ class BrowserViewModel @Inject constructor(
 
     private val _isAppLevelFullscreen = MutableStateFlow(false)
     val isAppLevelFullscreen: StateFlow<Boolean> = _isAppLevelFullscreen.asStateFlow()
+
+    private val _lastError = MutableStateFlow<WebRequestError?>(null)
+    val lastError: StateFlow<WebRequestError?> = _lastError.asStateFlow()
 
     private val _isAnimationFinished = MutableStateFlow(false)
     private var isInitialized = false
@@ -184,11 +188,19 @@ class BrowserViewModel @Inject constructor(
                 if (request.hasUserGesture) {
                     isGoingBack = false
                 }
+                // Clear error when a new load starts
+                _lastError.value = null
                 return GeckoResult.fromValue(AllowOrDeny.ALLOW)
             }
 
             override fun onNewSession(session: GeckoSession, uri: String): GeckoResult<GeckoSession>? {
                 session.loadUri(uri)
+                return null
+            }
+
+            override fun onLoadError(session: GeckoSession, uri: String?, error: WebRequestError): GeckoResult<String>? {
+                Log.e("BrowserViewModel", "Load error: ${error.code} for URI: $uri")
+                _lastError.value = error
                 return null
             }
         }
@@ -251,6 +263,7 @@ class BrowserViewModel @Inject constructor(
             searchEngine.value.url + query
         }
         Log.d("BrowserViewModel", "Loading URL: $url using engine: ${searchEngine.value}")
+        _lastError.value = null
         _geckoSession.loadUri(url)
     }
 
@@ -262,6 +275,7 @@ class BrowserViewModel @Inject constructor(
     fun goBack(): Boolean {
         if (_geckoSession.isOpen && _canGoBack.value) {
             isGoingBack = true
+            _lastError.value = null
             _geckoSession.goBack()
             return true
         }
@@ -283,6 +297,7 @@ class BrowserViewModel @Inject constructor(
     fun reload() {
         if (_geckoSession.isOpen) {
             isGoingBack = false
+            _lastError.value = null
             _geckoSession.reload()
         }
     }
