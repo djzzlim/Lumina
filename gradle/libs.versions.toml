@@ -1,6 +1,6 @@
 [versions]
 agp = "9.0.0"
-geckoview = "145.0.20251106194447"
+geckoview = "147.0.20260116091309"
 kotlin = "2.3.0"
 ksp = "2.3.3"
 coreKtx = "1.17.0"

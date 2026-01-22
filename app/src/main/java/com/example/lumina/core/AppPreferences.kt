@@ -29,6 +29,8 @@ class AppPreferences @Inject constructor(
                 else -> SearchEngine.Google
             }
         }
+
+    val isolationStrategyFlow: Flow<Int> = settingsDataStore.webContentIsolationStrategyFlow
 }
 
 sealed class DnsProvider(val uri: String, val mode: Int) {

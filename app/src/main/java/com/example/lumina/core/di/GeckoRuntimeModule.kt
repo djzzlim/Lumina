@@ -38,12 +38,15 @@ object GeckoRuntimeModule {
         appPreferences: AppPreferences
     ): GeckoRuntime {
         val dnsProvider = runBlocking { appPreferences.dnsProviderFlow.first() }
+        val isolationStrategy = runBlocking { appPreferences.isolationStrategyFlow.first() }
 
         val runtimeSettings = GeckoRuntimeSettings.Builder()
             .aboutConfigEnabled(true)
+            .fissionEnabled(true) // Required for isolation strategy to take effect
             .trustedRecursiveResolverUri(dnsProvider.uri)
             .trustedRecursiveResolverMode(dnsProvider.mode)
             .build()
+            .setWebContentIsolationStrategy(isolationStrategy)
 
         val runtime = GeckoRuntime.create(context, runtimeSettings)
 
