@@ -45,6 +45,7 @@ object GeckoRuntimeModule {
             .fissionEnabled(true) // Required for isolation strategy to take effect
             .trustedRecursiveResolverUri(dnsProvider.uri)
             .trustedRecursiveResolverMode(dnsProvider.mode)
+            .allowInsecureConnections(GeckoRuntimeSettings.HTTPS_ONLY)
             .build()
             .setWebContentIsolationStrategy(isolationStrategy)
 

@@ -32,14 +32,6 @@ import javax.inject.Inject
 
 /**
  * ViewModel for the [BrowserScreen].
- *
- * This class manages the state and logic for the GeckoView-based browser, including:
- * - Session lifecycle management.
- * - Navigation and history.
- * - Progress tracking and loading state.
- * - Security and certificate information.
- * - Full-screen state management.
- * - Integration with [LuminaRepository] for site-specific settings.
  */
 @HiltViewModel
 class BrowserViewModel @Inject constructor(
@@ -53,9 +45,6 @@ class BrowserViewModel @Inject constructor(
 
     private val luminaId: Long = savedStateHandle.get<Long>("luminaId")!!
 
-    /**
-     * The [LuminaInfo] associated with the current browser session.
-     */
     val luminaInfo: StateFlow<LuminaInfo?> = luminaRepository.getLuminaById(luminaId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
@@ -65,9 +54,6 @@ class BrowserViewModel @Inject constructor(
             .build()
     )
 
-    /**
-     * The current [GeckoSession] being used by the browser.
-     */
     val geckoSession: GeckoSession get() = _geckoSession
 
     private val _progress = MutableStateFlow(0)
@@ -103,6 +89,10 @@ class BrowserViewModel @Inject constructor(
     private val _isAnimationFinished = MutableStateFlow(false)
     private var isInitialized = false
     private var isGoingBack = false
+    
+    private var lastAttemptedUrl: String? = null
+    private var lastCommittedUrl: String = ""
+    private var lastCommittedTitle: String = ""
 
     private val searchEngine = appPreferences.searchEngineFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, com.example.lumina.core.SearchEngine.Google)
@@ -110,7 +100,6 @@ class BrowserViewModel @Inject constructor(
     init {
         setupDelegates()
 
-        // Observe and apply DNS changes dynamically
         viewModelScope.launch {
             appPreferences.dnsProviderFlow.collect { dnsProvider ->
                 globalGeckoRuntime.settings.setTrustedRecursiveResolverUri(dnsProvider.uri)
@@ -128,7 +117,9 @@ class BrowserViewModel @Inject constructor(
                         _geckoSession.setActive(true)
                     }
                     applySettings(info)
+                    resetSecurityState()
                     _geckoSession.loadUri(info.url)
+                    lastAttemptedUrl = info.url
                     isInitialized = true
                 } else {
                     applySettings(info)
@@ -137,21 +128,21 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Signals that the entry animation has finished, allowing the browser to start loading.
-     */
+    private fun resetSecurityState() {
+        _isSecure.value = false
+        _securityInfo.value = null
+    }
+
     fun onAnimationFinished() {
         _isAnimationFinished.value = true
     }
 
-    /**
-     * Sets up the GeckoView delegates to handle progress, navigation, history, scrolling, and content events.
-     */
     private fun setupDelegates() {
         _geckoSession.progressDelegate = object : GeckoSession.ProgressDelegate {
             override fun onProgressChange(session: GeckoSession, progress: Int) {
                 _progress.value = progress
                 _isLoading.value = progress < 100
+                
                 if (progress == 100 && isGoingBack) {
                     isGoingBack = false
                 }
@@ -177,7 +168,10 @@ class BrowserViewModel @Inject constructor(
                 permissions: List<GeckoSession.PermissionDelegate.ContentPermission>,
                 hasUserGesture: Boolean
             ) {
-                _currentUrl.value = url ?: ""
+                if (url != null && url.isNotEmpty()) {
+                    lastCommittedUrl = url
+                    _currentUrl.value = url
+                }
             }
 
             override fun onLoadRequest(session: GeckoSession, request: GeckoSession.NavigationDelegate.LoadRequest): GeckoResult<AllowOrDeny> {
@@ -185,22 +179,23 @@ class BrowserViewModel @Inject constructor(
                     session.loadUri(request.uri)
                     return GeckoResult.fromValue(AllowOrDeny.DENY)
                 }
-                if (request.hasUserGesture) {
-                    isGoingBack = false
-                }
-                // Clear error when a new load starts
+                
+                lastAttemptedUrl = request.uri
                 _lastError.value = null
+                _title.value = "" 
+                resetSecurityState()
+                
                 return GeckoResult.fromValue(AllowOrDeny.ALLOW)
             }
 
-            override fun onNewSession(session: GeckoSession, uri: String): GeckoResult<GeckoSession>? {
-                session.loadUri(uri)
-                return null
-            }
-
             override fun onLoadError(session: GeckoSession, uri: String?, error: WebRequestError): GeckoResult<String>? {
-                Log.e("BrowserViewModel", "Load error: ${error.code} for URI: $uri")
+                Log.e("BrowserViewModel", "Load error: ${error.code} URI: $uri")
                 _lastError.value = error
+                resetSecurityState()
+                if (uri != null) {
+                    _currentUrl.value = uri
+                    lastAttemptedUrl = uri
+                }
                 return null
             }
         }
@@ -214,18 +209,23 @@ class BrowserViewModel @Inject constructor(
         _geckoSession.contentDelegate = object : GeckoSession.ContentDelegate {
             override fun onTitleChange(session: GeckoSession, title: String?) {
                 _title.value = title ?: ""
+                
+                if (title?.contains("404", ignoreCase = true) == true && title.contains("Not Found", ignoreCase = true)) {
+                    if (_lastError.value == null) {
+                        _lastError.value = WebRequestError(WebRequestError.ERROR_FILE_NOT_FOUND, WebRequestError.ERROR_CATEGORY_URI)
+                        resetSecurityState()
+                    }
+                } else if (_lastError.value == null) {
+                    lastCommittedTitle = title ?: ""
+                }
             }
 
             override fun onFullScreen(session: GeckoSession, fullScreen: Boolean) {
-                Log.d("BrowserViewModel", "onFullScreen: $fullScreen")
                 _isAppLevelFullscreen.value = fullScreen
             }
         }
     }
 
-    /**
-     * Applies the settings from the [LuminaInfo] to the current [GeckoSession].
-     */
     @androidx.annotation.OptIn(ExperimentalGeckoViewApi::class)
     @OptIn(ExperimentalGeckoViewApi::class)
     private fun applySettings(info: LuminaInfo) {
@@ -236,7 +236,6 @@ class BrowserViewModel @Inject constructor(
         _geckoSession.settings.useTrackingProtection = info.afpEnabled
         _geckoSession.settings.allowJavascript = true
 
-        // Implement WebRTC disable if configured
         val webRtcEnabled = !info.isWebRtcDisabled
         GeckoPreferenceController.setGeckoPref(
             "media.peerconnection.enabled",
@@ -245,11 +244,6 @@ class BrowserViewModel @Inject constructor(
         )
     }
 
-    /**
-     * Handles a search query or URL entered by the user.
-     *
-     * @param query The search query or URL.
-     */
     fun onSearchQuery(query: String) {
         if (query.isBlank()) return
         isGoingBack = false
@@ -262,49 +256,54 @@ class BrowserViewModel @Inject constructor(
         } else {
             searchEngine.value.url + query
         }
-        Log.d("BrowserViewModel", "Loading URL: $url using engine: ${searchEngine.value}")
+        
+        lastAttemptedUrl = url
         _lastError.value = null
+        _currentUrl.value = url
+        _title.value = "" 
+        resetSecurityState()
         _geckoSession.loadUri(url)
     }
 
-    /**
-     * Navigates back in the browser history if possible.
-     *
-     * @return True if navigation was performed, false otherwise.
-     */
     fun goBack(): Boolean {
+        if (_lastError.value != null) {
+            _lastError.value = null
+            resetSecurityState()
+            
+            if (lastAttemptedUrl != lastCommittedUrl && lastCommittedUrl.isNotEmpty()) {
+                _currentUrl.value = lastCommittedUrl
+                _title.value = lastCommittedTitle
+                _geckoSession.stop()
+                _geckoSession.reload() 
+                return true
+            }
+        }
+        
         if (_geckoSession.isOpen && _canGoBack.value) {
             isGoingBack = true
             _lastError.value = null
+            resetSecurityState()
             _geckoSession.goBack()
             return true
         }
         return false
     }
 
-    /**
-     * Stops the current page load.
-     */
-    fun stopLoading() {
-        if (_geckoSession.isOpen) {
-            _geckoSession.stop()
-        }
-    }
-
-    /**
-     * Reloads the current page.
-     */
     fun reload() {
         if (_geckoSession.isOpen) {
             isGoingBack = false
+            val hadError = _lastError.value != null
             _lastError.value = null
-            _geckoSession.reload()
+            resetSecurityState()
+            
+            if (hadError && lastAttemptedUrl != null) {
+                _geckoSession.loadUri(lastAttemptedUrl!!)
+            } else {
+                _geckoSession.reload()
+            }
         }
     }
 
-    /**
-     * Exits the browser's full-screen mode.
-     */
     fun exitFullScreen() {
         if (_geckoSession.isOpen) {
             _geckoSession.exitFullScreen()
@@ -318,8 +317,6 @@ class BrowserViewModel @Inject constructor(
             _geckoSession.close()
         }
         globalGeckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
-        _currentUrl.value = ""
-        _title.value = ""
         System.gc()
     }
 }
