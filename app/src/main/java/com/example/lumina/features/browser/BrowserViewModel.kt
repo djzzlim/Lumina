@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.mozilla.geckoview.AllowOrDeny
+import org.mozilla.geckoview.ExperimentalGeckoViewApi
+import org.mozilla.geckoview.GeckoPreferenceController
 import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoSession
@@ -37,20 +39,14 @@ import javax.inject.Inject
  * - Security and certificate information.
  * - Full-screen state management.
  * - Integration with [LuminaRepository] for site-specific settings.
- *
- * @property luminaRepository Repository for accessing Lumina site information.
- * @property profileManager Manager for user profiles (unused in current snippet but injected).
- * @property globalGeckoRuntime Shared GeckoRuntime instance.
- * @property applicationContext Application context for resource access.
- * @property savedStateHandle Handle for retrieving navigation arguments.
  */
 @HiltViewModel
 class BrowserViewModel @Inject constructor(
     private val luminaRepository: LuminaRepository,
-    private val profileManager: ProfileManager,
+    @Suppress("UNUSED_PARAMETER") private val profileManager: ProfileManager,
     private val globalGeckoRuntime: GeckoRuntime,
     private val appPreferences: AppPreferences,
-    @ApplicationContext private val applicationContext: Context,
+    @param:ApplicationContext private val applicationContext: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -61,8 +57,6 @@ class BrowserViewModel @Inject constructor(
      */
     val luminaInfo: StateFlow<LuminaInfo?> = luminaRepository.getLuminaById(luminaId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
-
-    val geckoRuntime: GeckoRuntime = globalGeckoRuntime
 
     private val _geckoSession = GeckoSession(
         GeckoSessionSettings.Builder()
@@ -178,7 +172,7 @@ class BrowserViewModel @Inject constructor(
                 _currentUrl.value = url ?: ""
             }
 
-            override fun onLoadRequest(session: GeckoSession, request: GeckoSession.NavigationDelegate.LoadRequest): GeckoResult<AllowOrDeny>? {
+            override fun onLoadRequest(session: GeckoSession, request: GeckoSession.NavigationDelegate.LoadRequest): GeckoResult<AllowOrDeny> {
                 if (request.target == GeckoSession.NavigationDelegate.TARGET_WINDOW_NEW) {
                     session.loadUri(request.uri)
                     return GeckoResult.fromValue(AllowOrDeny.DENY)
@@ -225,6 +219,8 @@ class BrowserViewModel @Inject constructor(
     /**
      * Applies the settings from the [LuminaInfo] to the current [GeckoSession].
      */
+    @androidx.annotation.OptIn(ExperimentalGeckoViewApi::class)
+    @OptIn(ExperimentalGeckoViewApi::class)
     private fun applySettings(info: LuminaInfo) {
         _geckoSession.settings.userAgentMode = if (info.randomizeUserAgent)
             GeckoSessionSettings.USER_AGENT_MODE_MOBILE
@@ -232,6 +228,14 @@ class BrowserViewModel @Inject constructor(
             GeckoSessionSettings.USER_AGENT_MODE_DESKTOP
         _geckoSession.settings.useTrackingProtection = info.afpEnabled
         _geckoSession.settings.allowJavascript = true
+
+        // Implement WebRTC disable if configured
+        val webRtcEnabled = !info.isWebRtcDisabled
+        GeckoPreferenceController.setGeckoPref(
+            "media.peerconnection.enabled",
+            webRtcEnabled,
+            GeckoPreferenceController.PREF_BRANCH_USER
+        )
     }
 
     /**
@@ -245,7 +249,7 @@ class BrowserViewModel @Inject constructor(
         val url = if (query.equals("about:config", ignoreCase = true)) {
             "about:config"
         } else if (query.contains(".") && !query.contains(" ")) {
-            if (query.startsWith("http")) query else "https://" + query
+            if (query.startsWith("http")) query else "https://$query"
         } else {
             searchEngine.value.url + query
         }
