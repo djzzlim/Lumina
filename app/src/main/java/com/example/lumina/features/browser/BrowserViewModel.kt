@@ -163,6 +163,10 @@ class BrowserViewModel @Inject constructor(
         }
 
         _geckoSession.navigationDelegate = object : GeckoSession.NavigationDelegate {
+            override fun onCanGoBack(session: GeckoSession, canGoBack: Boolean) {
+                _canGoBack.value = canGoBack
+            }
+
             override fun onLocationChange(
                 session: GeckoSession,
                 url: String?,
@@ -186,15 +190,6 @@ class BrowserViewModel @Inject constructor(
             override fun onNewSession(session: GeckoSession, uri: String): GeckoResult<GeckoSession>? {
                 session.loadUri(uri)
                 return null
-            }
-        }
-
-        _geckoSession.historyDelegate = object : GeckoSession.HistoryDelegate {
-            override fun onHistoryStateChange(
-                session: GeckoSession,
-                historyList: GeckoSession.HistoryDelegate.HistoryList
-            ) {
-                _canGoBack.value = historyList.currentIndex > 0
             }
         }
 
