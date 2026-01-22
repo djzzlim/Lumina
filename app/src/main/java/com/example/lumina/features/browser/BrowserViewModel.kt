@@ -243,6 +243,8 @@ class BrowserViewModel @Inject constructor(
         isGoingBack = false
         val url = if (query.equals("about:config", ignoreCase = true)) {
             "about:config"
+        } else if (query.equals("about:support", ignoreCase = true)) {
+            "about:support"
         } else if (query.contains(".") && !query.contains(" ")) {
             if (query.startsWith("http")) query else "https://$query"
         } else {
