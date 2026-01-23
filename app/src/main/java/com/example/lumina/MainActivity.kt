@@ -22,6 +22,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.StorageController
+import java.util.regex.Pattern
 import javax.inject.Inject
 
 /**
@@ -74,9 +75,36 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent) {
-        if (intent.action == Intent.ACTION_VIEW) {
-            urlState.value = intent.dataString
+        when (intent.action) {
+            Intent.ACTION_VIEW -> {
+                urlState.value = intent.dataString
+            }
+            Intent.ACTION_SEND -> {
+                if ("text/plain" == intent.type) {
+                    val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
+                    if (sharedText != null) {
+                        urlState.value = extractUrl(sharedText) ?: sharedText
+                    }
+                }
+            }
         }
+    }
+
+    /**
+     * Extracts the first HTTP/HTTPS URL from a string using regex.
+     */
+    private fun extractUrl(text: String): String? {
+        val urlPattern = Pattern.compile(
+            "(?:^|[\\W])((ht|f)tp(s?):\\/\\/|www\\.)"
+                    + "(([\\w\\-]+\\.){1,}\\w+(:\\d+)?(\\/\\S*)?)",
+            Pattern.CASE_INSENSITIVE or Pattern.MULTILINE or Pattern.DOTALL
+        )
+        val matcher = urlPattern.matcher(text)
+        if (matcher.find()) {
+            val res = text.substring(matcher.start(1), matcher.end())
+            return if (!res.startsWith("http")) "https://$res" else res
+        }
+        return null
     }
 
     override fun onDestroy() {
