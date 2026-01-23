@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,6 +22,7 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     val customDnsUriKey = stringPreferencesKey("custom_dns_uri")
     val searchEngineKey = stringPreferencesKey("search_engine")
     val webContentIsolationStrategyKey = intPreferencesKey("web_content_isolation_strategy")
+    val autoCloseTimeoutKey = longPreferencesKey("auto_close_timeout") // Timeout in minutes, 0 for Never
 
     val dnsProviderFlow: Flow<String> = context.dataStore.data
         .map { preferences ->
@@ -40,6 +42,11 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     val webContentIsolationStrategyFlow: Flow<Int> = context.dataStore.data
         .map { preferences ->
             preferences[webContentIsolationStrategyKey] ?: GeckoRuntimeSettings.STRATEGY_ISOLATE_EVERYTHING
+        }
+
+    val autoCloseTimeoutFlow: Flow<Long> = context.dataStore.data
+        .map { preferences ->
+            preferences[autoCloseTimeoutKey] ?: 0L // Default to Never
         }
 
     val data: Flow<Preferences> = context.dataStore.data
@@ -65,6 +72,12 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     suspend fun saveWebContentIsolationStrategy(strategy: Int) {
         context.dataStore.edit { settings ->
             settings[webContentIsolationStrategyKey] = strategy
+        }
+    }
+
+    suspend fun saveAutoCloseTimeout(timeoutMinutes: Long) {
+        context.dataStore.edit { settings ->
+            settings[autoCloseTimeoutKey] = timeoutMinutes
         }
     }
 }

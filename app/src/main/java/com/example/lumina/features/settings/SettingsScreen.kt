@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.lumina.core.AutoCloseTimeout
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +61,12 @@ fun SettingsScreen(
     val selectedDns by viewModel.dnsProvider.collectAsStateWithLifecycle()
     val savedCustomDnsUri by viewModel.customDnsUri.collectAsStateWithLifecycle()
     val selectedSearchEngine by viewModel.searchEngine.collectAsStateWithLifecycle()
+    val selectedAutoCloseTimeoutMinutes by viewModel.autoCloseTimeout.collectAsStateWithLifecycle()
     
+    val selectedAutoCloseName = remember(selectedAutoCloseTimeoutMinutes) {
+        AutoCloseTimeout.fromMinutes(selectedAutoCloseTimeoutMinutes).name
+    }
+
     // Use local state for the text field to prevent cursor jumping
     var localCustomDnsUri by remember { mutableStateOf("") }
     
@@ -150,6 +156,18 @@ fun SettingsScreen(
                         currentValue = selectedSearchEngine,
                         options = viewModel.searchEngineOptions,
                         onOptionSelected = viewModel::setSearchEngine
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            item {
+                SettingsSection(title = "PRIVACY") {
+                    SettingsDropdownItem(
+                        label = "Auto-Close Inactive Tabs",
+                        currentValue = selectedAutoCloseName,
+                        options = viewModel.autoCloseOptions,
+                        onOptionSelected = viewModel::setAutoCloseTimeout
                     )
                 }
                 Spacer(modifier = Modifier.height(24.dp))

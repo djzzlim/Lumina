@@ -102,6 +102,7 @@ fun BrowserScreen(
     val isAppLevelFullscreen by browserViewModel.isAppLevelFullscreen.collectAsState()
     val lastError by browserViewModel.lastError.collectAsState()
     val showInsecureWarning by browserViewModel.showInsecureWarning.collectAsState()
+    val shouldClose by browserViewModel.shouldClose.collectAsState()
 
     val geckoView = remember { mutableStateOf<GeckoView?>(null) }
 
@@ -122,6 +123,13 @@ fun BrowserScreen(
             showWebView = true
         }
         browserViewModel.onAnimationFinished()
+    }
+
+    // React to auto-close signal
+    LaunchedEffect(shouldClose) {
+        if (shouldClose) {
+            onClose()
+        }
     }
 
     BackHandler(enabled = true) {
@@ -161,9 +169,11 @@ fun BrowserScreen(
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
                     browserViewModel.geckoSession.setActive(true)
+                    browserViewModel.onAppForegrounded()
                 }
                 Lifecycle.Event.ON_PAUSE -> {
                     browserViewModel.geckoSession.setActive(false)
+                    browserViewModel.onAppBackgrounded()
                 }
                 else -> {}
             }
@@ -205,7 +215,6 @@ fun BrowserScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // 1. Overlay UI (Pinned to Top)
         if (!isAppLevelFullscreen) {
             Column(
                 modifier = Modifier
@@ -351,12 +360,11 @@ fun BrowserScreen(
             }
         }
 
-        // 2. Main Browser Content (Takes remaining space and handles its own IME padding)
         Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .imePadding() // Resizes only the browser area, not the address bar
+                .imePadding()
         ) {
             PullToRefreshBox(
                 state = pullToRefreshState,
@@ -413,7 +421,6 @@ fun BrowserScreen(
             }
         }
         
-        // 3. System Navigation Bar padding (Bottom)
         if (!isAppLevelFullscreen) {
             Box(modifier = Modifier.fillMaxWidth().navigationBarsPadding())
         }

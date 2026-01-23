@@ -11,12 +11,15 @@ import com.example.lumina.core.ProfileManager
 import com.example.lumina.core.database.LuminaInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.mozilla.geckoview.AllowOrDeny
@@ -26,11 +29,19 @@ import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
+import org.mozilla.geckoview.StorageController
 import org.mozilla.geckoview.WebRequestError
 import javax.inject.Inject
 
 /**
  * ViewModel for the [BrowserScreen].
+ *
+ * This class manages the lifecycle and logic of a single browser "tab," including:
+ * - Forensic session isolation using [sessionContextId].
+ * - Secure background auto-close logic with data wiping.
+ * - Robust back-navigation handling to prevent history skipping.
+ * - HTTPS-First logic with automatic HTTP fallback and insecure warnings.
+ * - Real-time security UI state management.
  */
 @HiltViewModel
 class BrowserViewModel @Inject constructor(
@@ -44,19 +55,28 @@ class BrowserViewModel @Inject constructor(
 
     private val luminaId: Long = savedStateHandle.get<Long>("luminaId")!!
     
-    // Create a unique context ID for this specific "tab" instance
+    /**
+     * Unique identifier for this session's data container.
+     * Prevents cookies/history from leaking between different tabs.
+     */
     private val sessionContextId = "lumina_session_$luminaId"
 
+    /**
+     * The profile info for the current site being browsed.
+     */
     val luminaInfo: StateFlow<LuminaInfo?> = luminaRepository.getLuminaById(luminaId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     private val _geckoSession = GeckoSession(
         GeckoSessionSettings.Builder()
             .usePrivateMode(true)
-            .contextId(sessionContextId) // Isolate this tab from others
+            .contextId(sessionContextId)
             .build()
     )
 
+    /**
+     * The GeckoView session instance for this tab.
+     */
     val geckoSession: GeckoSession get() = _geckoSession
 
     private val _progress = MutableStateFlow(0)
@@ -66,6 +86,9 @@ class BrowserViewModel @Inject constructor(
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _currentUrl = MutableStateFlow("")
+    /**
+     * The URL currently displayed in the address bar.
+     */
     val currentUrl: StateFlow<String> = _currentUrl.asStateFlow()
 
     private val _title = MutableStateFlow("")
@@ -87,20 +110,35 @@ class BrowserViewModel @Inject constructor(
     val isAppLevelFullscreen: StateFlow<Boolean> = _isAppLevelFullscreen.asStateFlow()
 
     private val _lastError = MutableStateFlow<WebRequestError?>(null)
+    /**
+     * Stores the last encounter [WebRequestError] to trigger the error UI.
+     */
     val lastError: StateFlow<WebRequestError?> = _lastError.asStateFlow()
 
     private val _showInsecureWarning = MutableStateFlow<String?>(null)
+    /**
+     * Stores the URL that triggered an insecure (HTTP) warning.
+     */
     val showInsecureWarning: StateFlow<String?> = _showInsecureWarning.asStateFlow()
+
+    private val _shouldClose = MutableStateFlow(false)
+    /**
+     * Signal sent to the UI to navigate back to the home screen (e.g. after background timeout).
+     */
+    val shouldClose: StateFlow<Boolean> = _shouldClose.asStateFlow()
 
     private val _isAnimationFinished = MutableStateFlow(false)
     private var isInitialized = false
     private var isGoingBack = false
     
+    // Internal tracking for history and fallback logic
     private var lastAttemptedUrl: String? = null
     private var lastCommittedUrl: String = ""
     private var lastCommittedTitle: String = ""
     private var wasHttpsForced = false
     private val allowedInsecureHosts = mutableSetOf<String>()
+    
+    private var autoCloseJob: Job? = null
 
     private val searchEngine = appPreferences.searchEngineFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, com.example.lumina.core.SearchEngine.Google)
@@ -108,6 +146,7 @@ class BrowserViewModel @Inject constructor(
     init {
         setupDelegates()
 
+        // Apply DNS settings dynamically as they change in Settings
         viewModelScope.launch {
             appPreferences.dnsProviderFlow.collect { dnsProvider ->
                 globalGeckoRuntime.settings.setTrustedRecursiveResolverUri(dnsProvider.uri)
@@ -115,6 +154,7 @@ class BrowserViewModel @Inject constructor(
             }
         }
 
+        // Initialize the browser only after the entry animation is finished
         viewModelScope.launch {
             combine(luminaInfo.filterNotNull(), _isAnimationFinished) { info, finished ->
                 if (finished) info else null
@@ -134,13 +174,55 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Resets the security indicators. Called before new loads to prevent showing stale certificate info.
+     */
     private fun resetSecurityState() {
         _isSecure.value = false
         _securityInfo.value = null
     }
 
+    /**
+     * Signals that the Compose entry animation is done, triggering the initial URL load.
+     */
     fun onAnimationFinished() {
         _isAnimationFinished.value = true
+    }
+
+    /**
+     * Handles background inactivity logic. Starts a timer based on user settings.
+     * If the timeout is reached, it performs a forensic wipe of the session data.
+     */
+    fun onAppBackgrounded() {
+        autoCloseJob?.cancel()
+        autoCloseJob = viewModelScope.launch {
+            val timeout = appPreferences.autoCloseTimeoutFlow.first()
+            if (timeout.minutes > 0) {
+                Log.d("BrowserViewModel", "App backgrounded. Auto-close scheduled in ${timeout.minutes} minutes.")
+                delay(timeout.minutes * 60 * 1000)
+                Log.d("BrowserViewModel", "Timeout reached. Performing forensic wipe.")
+                
+                if (_geckoSession.isOpen) {
+                    _geckoSession.close()
+                }
+                
+                // Forensic cleanup: wipe only this context's data
+                globalGeckoRuntime.storageController.clearDataForSessionContext(sessionContextId)
+                
+                // Flush storage to ensure deletion persists immediately
+                globalGeckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
+                
+                _shouldClose.value = true
+            }
+        }
+    }
+
+    /**
+     * Cancels the auto-close timer when the user returns to the app.
+     */
+    fun onAppForegrounded() {
+        autoCloseJob?.cancel()
+        autoCloseJob = null
     }
 
     private fun setupDelegates() {
@@ -175,6 +257,7 @@ class BrowserViewModel @Inject constructor(
                 hasUserGesture: Boolean
             ) {
                 if (url != null && url.isNotEmpty()) {
+                    // Page has successfully started rendering a new location
                     lastCommittedUrl = url
                     _currentUrl.value = url
                     if (url.startsWith("https")) wasHttpsForced = false
@@ -189,14 +272,18 @@ class BrowserViewModel @Inject constructor(
 
                 val host = try { android.net.Uri.parse(request.uri).host ?: "" } catch (e: Exception) { "" }
 
+                // Trigger the Insecure Connection Warning for HTTP sites not yet whitelisted
                 if (request.uri.startsWith("http://") && !request.isRedirect) {
                     if (!allowedInsecureHosts.contains(host)) {
+                        _currentUrl.value = request.uri
                         _showInsecureWarning.value = request.uri
+                        resetSecurityState()
                         _geckoSession.stop()
                         return GeckoResult.fromValue(AllowOrDeny.DENY)
                     }
                 }
                 
+                // Immediate UI update for user-triggered navigations
                 if (!request.isRedirect) {
                     lastAttemptedUrl = request.uri
                     _currentUrl.value = request.uri
@@ -212,6 +299,7 @@ class BrowserViewModel @Inject constructor(
             override fun onLoadError(session: GeckoSession, uri: String?, error: WebRequestError): GeckoResult<String>? {
                 Log.e("BrowserViewModel", "Load error: ${error.code} URI: $uri")
                 
+                // Automatic fallback to HTTP if an upgraded HTTPS request failed
                 if (wasHttpsForced && uri?.startsWith("https://") == true) {
                     val httpFallback = uri.replaceFirst("https://", "http://")
                     wasHttpsForced = false
@@ -239,6 +327,7 @@ class BrowserViewModel @Inject constructor(
             override fun onTitleChange(session: GeckoSession, title: String?) {
                 _title.value = title ?: ""
                 
+                // Fallback detection for HTTP 404 errors (not protocol errors)
                 if (title?.contains("404", ignoreCase = true) == true && title.contains("Not Found", ignoreCase = true)) {
                     if (_lastError.value == null) {
                         _lastError.value = WebRequestError(WebRequestError.ERROR_FILE_NOT_FOUND, WebRequestError.ERROR_CATEGORY_URI)
@@ -255,6 +344,9 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Configures the [GeckoSession] based on the site-specific [LuminaInfo].
+     */
     @androidx.annotation.OptIn(ExperimentalGeckoViewApi::class)
     @OptIn(ExperimentalGeckoViewApi::class)
     private fun applySettings(info: LuminaInfo) {
@@ -273,6 +365,10 @@ class BrowserViewModel @Inject constructor(
         )
     }
 
+    /**
+     * Loads a URL with optional protocol upgrading.
+     * @param allowUpgrade If true, automatically attempts to upgrade http:// to https://.
+     */
     private fun loadUrl(url: String, allowUpgrade: Boolean = true) {
         var targetUrl = url
         wasHttpsForced = false
@@ -297,6 +393,9 @@ class BrowserViewModel @Inject constructor(
         _geckoSession.loadUri(targetUrl)
     }
 
+    /**
+     * Processes a search query or URL entered by the user.
+     */
     fun onSearchQuery(query: String) {
         if (query.isBlank()) return
         isGoingBack = false
@@ -313,6 +412,9 @@ class BrowserViewModel @Inject constructor(
         loadUrl(url)
     }
 
+    /**
+     * Dismisses the Insecure Warning and allows the [http://] load to proceed.
+     */
     fun proceedToInsecureSite() {
         val url = _showInsecureWarning.value ?: return
         val host = try { android.net.Uri.parse(url).host ?: "" } catch (e: Exception) { "" }
@@ -321,20 +423,34 @@ class BrowserViewModel @Inject constructor(
         _geckoSession.loadUri(url)
     }
 
+    /**
+     * Cancels an insecure load and reverts the UI to the last safe page.
+     */
     fun cancelInsecureSite() {
         _showInsecureWarning.value = null
         if (lastCommittedUrl.isNotEmpty()) {
             _currentUrl.value = lastCommittedUrl
             _title.value = lastCommittedTitle
+            _geckoSession.stop()
+            _geckoSession.reload()
         }
     }
 
+    /**
+     * Navigates back.
+     * Priority:
+     * 1. Dismiss Insecure Warning.
+     * 2. Dismiss Error Screen.
+     * 3. Navigate Gecko history.
+     */
     fun goBack(): Boolean {
         if (_showInsecureWarning.value != null) {
             _showInsecureWarning.value = null
             if (lastCommittedUrl.isNotEmpty()) {
                 _currentUrl.value = lastCommittedUrl
                 _title.value = lastCommittedTitle
+                _geckoSession.stop()
+                _geckoSession.reload()
             }
             return true
         }
@@ -344,12 +460,14 @@ class BrowserViewModel @Inject constructor(
             resetSecurityState()
             
             if (lastAttemptedUrl != lastCommittedUrl && lastCommittedUrl.isNotEmpty()) {
+                // Navigation to new page failed. Return to last good page.
                 _currentUrl.value = lastCommittedUrl
                 _title.value = lastCommittedTitle
                 _geckoSession.stop()
                 _geckoSession.reload() 
                 return true
             } else {
+                // Error is on an already committed page. History back is required.
                 if (_geckoSession.isOpen && _canGoBack.value) {
                     isGoingBack = true
                     _geckoSession.goBack()
@@ -359,6 +477,7 @@ class BrowserViewModel @Inject constructor(
             }
         }
         
+        // Standard browser back
         if (_geckoSession.isOpen && _canGoBack.value) {
             isGoingBack = true
             _lastError.value = null
@@ -369,6 +488,9 @@ class BrowserViewModel @Inject constructor(
         return false
     }
 
+    /**
+     * Reloads the current page. Specifically handles re-triggering loads from error screens.
+     */
     fun reload() {
         if (_geckoSession.isOpen) {
             isGoingBack = false
@@ -384,6 +506,9 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Forces an exit from media fullscreen mode.
+     */
     fun exitFullScreen() {
         if (_geckoSession.isOpen) {
             _geckoSession.exitFullScreen()
@@ -391,12 +516,15 @@ class BrowserViewModel @Inject constructor(
         _isAppLevelFullscreen.value = false
     }
 
+    /**
+     * Lifecycle cleanup. Performs a final forensic wipe of session data.
+     */
     override fun onCleared() {
         super.onCleared()
+        autoCloseJob?.cancel()
         if (_geckoSession.isOpen) {
             _geckoSession.close()
         }
-        // Wipe all data for this specific session context
         globalGeckoRuntime.storageController.clearDataForSessionContext(sessionContextId)
         System.gc()
     }
