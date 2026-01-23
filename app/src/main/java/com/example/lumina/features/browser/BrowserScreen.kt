@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -84,13 +85,6 @@ import org.mozilla.geckoview.WebRequestError
 
 /**
  * The main browser screen of the Lumina app.
- *
- * This screen provides a full-featured web browsing experience using Mozilla GeckoView.
- * It includes an address bar, navigation controls, security information, and supports
- * full-screen media playback.
- *
- * @param onClose Callback to be invoked when the browser screen should be closed.
- * @param browserViewModel The ViewModel that manages the browser's state and logic.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,6 +100,7 @@ fun BrowserScreen(
     val securityInfo by browserViewModel.securityInfo.collectAsState()
     val isAppLevelFullscreen by browserViewModel.isAppLevelFullscreen.collectAsState()
     val lastError by browserViewModel.lastError.collectAsState()
+    val showInsecureWarning by browserViewModel.showInsecureWarning.collectAsState()
 
     val geckoView = remember { mutableStateOf<GeckoView?>(null) }
 
@@ -153,14 +148,12 @@ fun BrowserScreen(
             insetsController.show(WindowInsetsCompat.Type.systemBars())
         }
         onDispose {
-            // Restore portrait orientation and system UI when leaving the browser screen or during recomposition
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
             insetsController.show(WindowInsetsCompat.Type.systemBars())
         }
     }
 
-    // Lifecycle observer to handle GeckoSession active state
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -373,13 +366,11 @@ fun BrowserScreen(
                         }
                     },
                     update = { view ->
-                        // Ensure the view is always displaying the current session
                         if (view.session != browserViewModel.geckoSession) {
                             view.setSession(browserViewModel.geckoSession)
                         }
                     },
                     onRelease = { view ->
-                        // Detach session when the view is destroyed/leaves composition
                         view.releaseSession()
                         geckoView.value = null
                     },
@@ -393,7 +384,96 @@ fun BrowserScreen(
                         modifier = Modifier.fillMaxSize()
                     )
                 }
+
+                if (showInsecureWarning != null) {
+                    InsecureConnectionWarning(
+                        url = showInsecureWarning!!,
+                        onProceed = { browserViewModel.proceedToInsecureSite() },
+                        onCancel = { browserViewModel.cancelInsecureSite() },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
+        }
+    }
+}
+
+/**
+ * A full-screen warning page shown when a user attempts to visit an insecure (HTTP) site.
+ */
+@Composable
+fun InsecureConnectionWarning(
+    url: String,
+    onProceed: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .background(Color(0xFF121212))
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Warning,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = Color(0xFFFFD700) // Gold Warning Color
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text(
+            text = "Insecure Connection",
+            style = MaterialTheme.typography.headlineSmall,
+            color = Color.White,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "You are attempting to visit an insecure website:\n$url",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.Gray,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        Text(
+            text = "Attackers might be trying to steal your information (for example, passwords, messages, or credit cards) if you continue.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray.copy(alpha = 0.8f),
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(40.dp))
+        
+        Button(
+            onClick = onCancel,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFBB86FC),
+                contentColor = Color.Black
+            ),
+            shape = RoundedCornerShape(24.dp),
+            modifier = Modifier.fillMaxWidth().height(48.dp)
+        ) {
+            Text("Back to Safety", fontWeight = FontWeight.Bold)
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        TextButton(
+            onClick = onProceed
+        ) {
+            Text(
+                "I understand the risks, proceed anyway",
+                color = Color.Red.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.labelLarge
+            )
         }
     }
 }
@@ -531,6 +611,11 @@ private fun getErrorDetails(error: WebRequestError): Triple<String, String, Stri
             description = "The file or page you are looking for could not be found."
             codeString = "ERR_FILE_NOT_FOUND"
         }
+        WebRequestError.ERROR_HTTPS_ONLY -> {
+            title = "HTTPS-Only Mode"
+            description = "This site does not support a secure connection, and HTTPS-Only Mode is enabled."
+            codeString = "ERR_HTTPS_ONLY_FAILED"
+        }
         WebRequestError.ERROR_SECURITY_SSL -> {
             title = "Security connection failed"
             description = "A secure connection could not be established. This could be due to an invalid certificate or a security risk."
@@ -553,14 +638,6 @@ private fun getErrorDetails(error: WebRequestError): Triple<String, String, Stri
 
 /**
  * A dialog that displays connection and security information for the current web page.
- *
- * It shows whether the connection is secure, the URL, and provides details about the
- * SSL/TLS certificate if available.
- *
- * @param isSecure Whether the current connection is secure.
- * @param currentUrl The current URL of the page.
- * @param securityInfo The security information from GeckoView.
- * @param onDismiss Callback to be invoked when the dialog should be dismissed.
  */
 @Composable
 fun ConnectionInfoDialog(
@@ -636,9 +713,6 @@ fun ConnectionInfoDialog(
 
 /**
  * A helper composable to display a labeled piece of information.
- *
- * @param label The label for the information (e.g., "Subject").
- * @param value The value of the information.
  */
 @Composable
 fun InfoItem(label: String, value: String) {

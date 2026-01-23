@@ -86,6 +86,9 @@ class BrowserViewModel @Inject constructor(
     private val _lastError = MutableStateFlow<WebRequestError?>(null)
     val lastError: StateFlow<WebRequestError?> = _lastError.asStateFlow()
 
+    private val _showInsecureWarning = MutableStateFlow<String?>(null)
+    val showInsecureWarning: StateFlow<String?> = _showInsecureWarning.asStateFlow()
+
     private val _isAnimationFinished = MutableStateFlow(false)
     private var isInitialized = false
     private var isGoingBack = false
@@ -94,6 +97,7 @@ class BrowserViewModel @Inject constructor(
     private var lastCommittedUrl: String = ""
     private var lastCommittedTitle: String = ""
     private var wasHttpsForced = false
+    private val allowedInsecureHosts = mutableSetOf<String>()
 
     private val searchEngine = appPreferences.searchEngineFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, com.example.lumina.core.SearchEngine.Google)
@@ -118,7 +122,7 @@ class BrowserViewModel @Inject constructor(
                         _geckoSession.setActive(true)
                     }
                     applySettings(info)
-                    loadUrlSmart(info.url)
+                    loadUrl(info.url)
                     isInitialized = true
                 } else {
                     applySettings(info)
@@ -176,14 +180,30 @@ class BrowserViewModel @Inject constructor(
 
             override fun onLoadRequest(session: GeckoSession, request: GeckoSession.NavigationDelegate.LoadRequest): GeckoResult<AllowOrDeny> {
                 if (request.target == GeckoSession.NavigationDelegate.TARGET_WINDOW_NEW) {
-                    loadUrlSmart(request.uri)
+                    loadUrl(request.uri)
                     return GeckoResult.fromValue(AllowOrDeny.DENY)
                 }
+
+                val host = try { android.net.Uri.parse(request.uri).host ?: "" } catch (e: Exception) { "" }
+
+                // Block insecure (HTTP) requests and show warning ONLY for non-redirects
+                if (request.uri.startsWith("http://") && !request.isRedirect) {
+                    if (!allowedInsecureHosts.contains(host)) {
+                        _showInsecureWarning.value = request.uri
+                        _geckoSession.stop()
+                        return GeckoResult.fromValue(AllowOrDeny.DENY)
+                    }
+                }
                 
-                lastAttemptedUrl = request.uri
-                _lastError.value = null
-                _title.value = "" 
-                resetSecurityState()
+                // Update UI immediately for direct user navigation (links/search)
+                if (!request.isRedirect) {
+                    lastAttemptedUrl = request.uri
+                    _currentUrl.value = request.uri
+                    _lastError.value = null
+                    _showInsecureWarning.value = null
+                    _title.value = "" 
+                    resetSecurityState()
+                }
                 
                 return GeckoResult.fromValue(AllowOrDeny.ALLOW)
             }
@@ -193,9 +213,8 @@ class BrowserViewModel @Inject constructor(
                 
                 if (wasHttpsForced && uri?.startsWith("https://") == true) {
                     val httpFallback = uri.replaceFirst("https://", "http://")
-                    Log.d("BrowserViewModel", "HTTPS failed, falling back to: $httpFallback")
                     wasHttpsForced = false
-                    // Replace history entry so the failed HTTPS doesn't block "Back" navigation
+                    // REPLACE_HISTORY to avoid cluttering stack with failed HTTPS
                     _geckoSession.load(GeckoSession.Loader().uri(httpFallback).flags(GeckoSession.LOAD_FLAGS_REPLACE_HISTORY))
                     return null
                 }
@@ -254,24 +273,28 @@ class BrowserViewModel @Inject constructor(
         )
     }
 
-    private fun loadUrlSmart(url: String) {
-        var finalUrl = url
+    private fun loadUrl(url: String, allowUpgrade: Boolean = true) {
+        var targetUrl = url
         wasHttpsForced = false
+        val host = try { android.net.Uri.parse(url).host ?: "" } catch (e: Exception) { "" }
 
-        if (url.startsWith("http://")) {
-            finalUrl = url.replaceFirst("http://", "https://")
-            wasHttpsForced = true
-        } else if (!url.startsWith("https://") && !url.startsWith("about:") && !url.startsWith("file:")) {
-            finalUrl = "https://$url"
-            wasHttpsForced = true
+        if (allowUpgrade && !allowedInsecureHosts.contains(host)) {
+            if (!url.startsWith("http") && !url.startsWith("about:") && !url.startsWith("file:")) {
+                targetUrl = "https://$url"
+                wasHttpsForced = true
+            } else if (url.startsWith("http://")) {
+                targetUrl = url.replaceFirst("http://", "https://")
+                wasHttpsForced = true
+            }
         }
 
-        lastAttemptedUrl = finalUrl
+        lastAttemptedUrl = targetUrl
         _lastError.value = null
-        _currentUrl.value = finalUrl
+        _showInsecureWarning.value = null
+        _currentUrl.value = targetUrl
         _title.value = "" 
         resetSecurityState()
-        _geckoSession.loadUri(finalUrl)
+        _geckoSession.loadUri(targetUrl)
     }
 
     fun onSearchQuery(query: String) {
@@ -282,39 +305,62 @@ class BrowserViewModel @Inject constructor(
         } else if (query.equals("about:support", ignoreCase = true)) {
             "about:support"
         } else if (query.contains(".") && !query.contains(" ")) {
-            if (query.startsWith("http")) query else "https://$query"
+            query 
         } else {
             searchEngine.value.url + query
         }
         
-        loadUrlSmart(url)
+        loadUrl(url)
+    }
+
+    fun proceedToInsecureSite() {
+        val url = _showInsecureWarning.value ?: return
+        val host = try { android.net.Uri.parse(url).host ?: "" } catch (e: Exception) { "" }
+        allowedInsecureHosts.add(host)
+        _showInsecureWarning.value = null
+        // Standard loadUri to ensure it's added to history properly
+        _geckoSession.loadUri(url)
+    }
+
+    fun cancelInsecureSite() {
+        _showInsecureWarning.value = null
+        // Revert UI to the page we are actually still on
+        if (lastCommittedUrl.isNotEmpty()) {
+            _currentUrl.value = lastCommittedUrl
+            _title.value = lastCommittedTitle
+        }
     }
 
     fun goBack(): Boolean {
+        if (_showInsecureWarning.value != null) {
+            _showInsecureWarning.value = null
+            if (lastCommittedUrl.isNotEmpty()) {
+                _currentUrl.value = lastCommittedUrl
+                _title.value = lastCommittedTitle
+            }
+            return true
+        }
+
         if (_lastError.value != null) {
             _lastError.value = null
             resetSecurityState()
             
             if (lastAttemptedUrl != lastCommittedUrl && lastCommittedUrl.isNotEmpty()) {
-                // Navigation to new page failed. Dismiss error and reload current valid page.
                 _currentUrl.value = lastCommittedUrl
                 _title.value = lastCommittedTitle
                 _geckoSession.stop()
                 _geckoSession.reload() 
-                return true // Consume back press
+                return true
             } else {
-                // Error is on a page that actually committed. Standard history back is needed.
                 if (_geckoSession.isOpen && _canGoBack.value) {
                     isGoingBack = true
                     _geckoSession.goBack()
                     return true
                 }
-                // If nowhere to go back, error is cleared, return true to stay on empty/blank page
-                return true
+                return false
             }
         }
         
-        // Standard session back
         if (_geckoSession.isOpen && _canGoBack.value) {
             isGoingBack = true
             _lastError.value = null
@@ -333,7 +379,7 @@ class BrowserViewModel @Inject constructor(
             resetSecurityState()
             
             if (hadError && lastAttemptedUrl != null) {
-                _geckoSession.loadUri(lastAttemptedUrl!!)
+                loadUrl(lastAttemptedUrl!!, allowUpgrade = false)
             } else {
                 _geckoSession.reload()
             }
