@@ -18,12 +18,18 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class SettingsDataStore @Inject constructor(@ApplicationContext private val context: Context) {
 
     val dnsProviderKey = stringPreferencesKey("dns_provider")
+    val customDnsUriKey = stringPreferencesKey("custom_dns_uri")
     val searchEngineKey = stringPreferencesKey("search_engine")
     val webContentIsolationStrategyKey = intPreferencesKey("web_content_isolation_strategy")
 
     val dnsProviderFlow: Flow<String> = context.dataStore.data
         .map { preferences ->
             preferences[dnsProviderKey] ?: "Cloudflare"
+        }
+
+    val customDnsUriFlow: Flow<String> = context.dataStore.data
+        .map { preferences ->
+            preferences[customDnsUriKey] ?: ""
         }
 
     val searchEngineFlow: Flow<String> = context.dataStore.data
@@ -41,6 +47,12 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     suspend fun saveDnsProvider(dnsProvider: String) {
         context.dataStore.edit { settings ->
             settings[dnsProviderKey] = dnsProvider
+        }
+    }
+
+    suspend fun saveCustomDnsUri(uri: String) {
+        context.dataStore.edit { settings ->
+            settings[customDnsUriKey] = uri
         }
     }
 

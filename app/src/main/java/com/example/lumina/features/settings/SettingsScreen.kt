@@ -3,6 +3,7 @@ package com.example.lumina.features.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
@@ -28,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,7 +41,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -48,11 +57,21 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
-    val dnsOptions = listOf("Cloudflare", "Google", "AdGuard", "Quad9")
-    val searchEngineOptions = listOf("Google", "DuckDuckGo", "Brave Search")
-
     val selectedDns by viewModel.dnsProvider.collectAsStateWithLifecycle()
+    val savedCustomDnsUri by viewModel.customDnsUri.collectAsStateWithLifecycle()
     val selectedSearchEngine by viewModel.searchEngine.collectAsStateWithLifecycle()
+    
+    // Use local state for the text field to prevent cursor jumping
+    var localCustomDnsUri by remember { mutableStateOf("") }
+    
+    // Update local state when the saved state changes (e.g. on initial load)
+    LaunchedEffect(savedCustomDnsUri) {
+        if (localCustomDnsUri != savedCustomDnsUri) {
+            localCustomDnsUri = savedCustomDnsUri
+        }
+    }
+
+    val focusManager = LocalFocusManager.current
 
     Scaffold(
         topBar = {
@@ -89,9 +108,37 @@ fun SettingsScreen(
                     SettingsDropdownItem(
                         label = "DNS Provider",
                         currentValue = selectedDns,
-                        options = dnsOptions,
+                        options = viewModel.dnsOptions,
                         onOptionSelected = viewModel::setDnsProvider
                     )
+                    
+                    if (selectedDns == "Custom") {
+                        HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("Custom DNS Endpoint", color = Color.Gray, fontSize = 12.sp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            BasicTextField(
+                                value = localCustomDnsUri,
+                                onValueChange = { 
+                                    localCustomDnsUri = it
+                                    viewModel.setCustomDnsUri(it) // Save to disk
+                                },
+                                textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
+                                cursorBrush = SolidColor(Color(0xFFBB86FC)),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                                modifier = Modifier.fillMaxWidth(),
+                                decorationBox = { innerTextField ->
+                                    Box {
+                                        if (localCustomDnsUri.isEmpty()) {
+                                            Text("https://example.com/dns-query", color = Color.DarkGray)
+                                        }
+                                        innerTextField()
+                                    }
+                                }
+                            )
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
             }
@@ -101,7 +148,7 @@ fun SettingsScreen(
                     SettingsDropdownItem(
                         label = "Search Engine",
                         currentValue = selectedSearchEngine,
-                        options = searchEngineOptions,
+                        options = viewModel.searchEngineOptions,
                         onOptionSelected = viewModel::setSearchEngine
                     )
                 }
