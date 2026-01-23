@@ -15,22 +15,11 @@ import javax.inject.Singleton
 
 /**
  * Hilt module for providing the singleton [GeckoRuntime] instance.
- *
- * This module configures the global Gecko runtime settings, including privacy
- * features like DNS-over-HTTPS (DoH).
  */
 @Module
 @InstallIn(SingletonComponent::class)
 object GeckoRuntimeModule {
 
-    /**
-     * Provides a singleton instance of [GeckoRuntime].
-     *
-     * Configures Cloudflare (1.1.1.1) as the default DNS-over-HTTPS provider.
-     *
-     * @param context The application context.
-     * @return A configured [GeckoRuntime] instance.
-     */
     @Provides
     @Singleton
     fun provideGeckoRuntime(
@@ -42,15 +31,13 @@ object GeckoRuntimeModule {
 
         val runtimeSettings = GeckoRuntimeSettings.Builder()
             .aboutConfigEnabled(true)
-            .fissionEnabled(true) // Required for isolation strategy to take effect
+            .fissionEnabled(true)
             .trustedRecursiveResolverUri(dnsProvider.uri)
             .trustedRecursiveResolverMode(dnsProvider.mode)
-            .allowInsecureConnections(GeckoRuntimeSettings.HTTPS_ONLY)
+            .allowInsecureConnections(GeckoRuntimeSettings.ALLOW_ALL) // Allow HTTP fallback
             .build()
             .setWebContentIsolationStrategy(isolationStrategy)
 
-        val runtime = GeckoRuntime.create(context, runtimeSettings)
-
-        return runtime
+        return GeckoRuntime.create(context, runtimeSettings)
     }
 }

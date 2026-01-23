@@ -93,6 +93,7 @@ class BrowserViewModel @Inject constructor(
     private var lastAttemptedUrl: String? = null
     private var lastCommittedUrl: String = ""
     private var lastCommittedTitle: String = ""
+    private var wasHttpsForced = false
 
     private val searchEngine = appPreferences.searchEngineFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, com.example.lumina.core.SearchEngine.Google)
@@ -117,9 +118,7 @@ class BrowserViewModel @Inject constructor(
                         _geckoSession.setActive(true)
                     }
                     applySettings(info)
-                    resetSecurityState()
-                    _geckoSession.loadUri(info.url)
-                    lastAttemptedUrl = info.url
+                    loadUrlSmart(info.url)
                     isInitialized = true
                 } else {
                     applySettings(info)
@@ -171,12 +170,13 @@ class BrowserViewModel @Inject constructor(
                 if (url != null && url.isNotEmpty()) {
                     lastCommittedUrl = url
                     _currentUrl.value = url
+                    if (url.startsWith("https")) wasHttpsForced = false
                 }
             }
 
             override fun onLoadRequest(session: GeckoSession, request: GeckoSession.NavigationDelegate.LoadRequest): GeckoResult<AllowOrDeny> {
                 if (request.target == GeckoSession.NavigationDelegate.TARGET_WINDOW_NEW) {
-                    session.loadUri(request.uri)
+                    loadUrlSmart(request.uri)
                     return GeckoResult.fromValue(AllowOrDeny.DENY)
                 }
                 
@@ -190,6 +190,16 @@ class BrowserViewModel @Inject constructor(
 
             override fun onLoadError(session: GeckoSession, uri: String?, error: WebRequestError): GeckoResult<String>? {
                 Log.e("BrowserViewModel", "Load error: ${error.code} URI: $uri")
+                
+                if (wasHttpsForced && uri?.startsWith("https://") == true) {
+                    val httpFallback = uri.replaceFirst("https://", "http://")
+                    Log.d("BrowserViewModel", "HTTPS failed, falling back to: $httpFallback")
+                    wasHttpsForced = false
+                    // Replace history entry so the failed HTTPS doesn't block "Back" navigation
+                    _geckoSession.load(GeckoSession.Loader().uri(httpFallback).flags(GeckoSession.LOAD_FLAGS_REPLACE_HISTORY))
+                    return null
+                }
+
                 _lastError.value = error
                 resetSecurityState()
                 if (uri != null) {
@@ -244,6 +254,26 @@ class BrowserViewModel @Inject constructor(
         )
     }
 
+    private fun loadUrlSmart(url: String) {
+        var finalUrl = url
+        wasHttpsForced = false
+
+        if (url.startsWith("http://")) {
+            finalUrl = url.replaceFirst("http://", "https://")
+            wasHttpsForced = true
+        } else if (!url.startsWith("https://") && !url.startsWith("about:") && !url.startsWith("file:")) {
+            finalUrl = "https://$url"
+            wasHttpsForced = true
+        }
+
+        lastAttemptedUrl = finalUrl
+        _lastError.value = null
+        _currentUrl.value = finalUrl
+        _title.value = "" 
+        resetSecurityState()
+        _geckoSession.loadUri(finalUrl)
+    }
+
     fun onSearchQuery(query: String) {
         if (query.isBlank()) return
         isGoingBack = false
@@ -257,12 +287,7 @@ class BrowserViewModel @Inject constructor(
             searchEngine.value.url + query
         }
         
-        lastAttemptedUrl = url
-        _lastError.value = null
-        _currentUrl.value = url
-        _title.value = "" 
-        resetSecurityState()
-        _geckoSession.loadUri(url)
+        loadUrlSmart(url)
     }
 
     fun goBack(): Boolean {
@@ -271,14 +296,25 @@ class BrowserViewModel @Inject constructor(
             resetSecurityState()
             
             if (lastAttemptedUrl != lastCommittedUrl && lastCommittedUrl.isNotEmpty()) {
+                // Navigation to new page failed. Dismiss error and reload current valid page.
                 _currentUrl.value = lastCommittedUrl
                 _title.value = lastCommittedTitle
                 _geckoSession.stop()
                 _geckoSession.reload() 
+                return true // Consume back press
+            } else {
+                // Error is on a page that actually committed. Standard history back is needed.
+                if (_geckoSession.isOpen && _canGoBack.value) {
+                    isGoingBack = true
+                    _geckoSession.goBack()
+                    return true
+                }
+                // If nowhere to go back, error is cleared, return true to stay on empty/blank page
                 return true
             }
         }
         
+        // Standard session back
         if (_geckoSession.isOpen && _canGoBack.value) {
             isGoingBack = true
             _lastError.value = null
