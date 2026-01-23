@@ -28,6 +28,7 @@ import androidx.room.PrimaryKey
  * @property randomizeScreen Whether to randomize screen resolution reporting.
  * @property spoofHardware Whether to spoof hardware information (e.g., number of cores).
  * @property disablePayment Whether to disable the Payment Request API.
+ * @property disableJavascript Whether to disable JavaScript execution.
  */
 @Entity(
     tableName = "luminas",
@@ -59,5 +60,6 @@ data class LuminaInfo(
     val disableWebGl: Boolean = true,
     val randomizeScreen: Boolean = true,
     val spoofHardware: Boolean = true,
-    val disablePayment: Boolean = true
+    val disablePayment: Boolean = true,
+    val disableJavascript: Boolean = false // Default to false (JavaScript enabled)
 )

@@ -350,13 +350,78 @@ class BrowserViewModel @Inject constructor(
     @androidx.annotation.OptIn(ExperimentalGeckoViewApi::class)
     @OptIn(ExperimentalGeckoViewApi::class)
     private fun applySettings(info: LuminaInfo) {
-        _geckoSession.settings.userAgentMode = if (info.randomizeUserAgent)
-            GeckoSessionSettings.USER_AGENT_MODE_MOBILE
-        else
-            GeckoSessionSettings.USER_AGENT_MODE_DESKTOP
-        _geckoSession.settings.useTrackingProtection = info.afpEnabled
-        _geckoSession.settings.allowJavascript = true
+        val desktopUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0"
+        val iphoneUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
 
+        _geckoSession.settings.apply {
+            // User-Agent and Platform Spoofing
+            if (info.randomizeUserAgent) {
+                userAgentOverride = desktopUA
+                GeckoPreferenceController.setGeckoPref("general.platform.override", "Win32", GeckoPreferenceController.PREF_BRANCH_USER)
+                GeckoPreferenceController.setGeckoPref("general.appversion.override", "5.0 (Windows)", GeckoPreferenceController.PREF_BRANCH_USER)
+                GeckoPreferenceController.setGeckoPref("general.oscpu.override", "Windows NT 10.0; Win64; x64", GeckoPreferenceController.PREF_BRANCH_USER)
+            } else {
+                userAgentOverride = iphoneUA
+                GeckoPreferenceController.setGeckoPref("general.platform.override", "iPhone", GeckoPreferenceController.PREF_BRANCH_USER)
+                GeckoPreferenceController.setGeckoPref("general.appversion.override", "5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", GeckoPreferenceController.PREF_BRANCH_USER)
+                GeckoPreferenceController.setGeckoPref("general.oscpu.override", "iPhone OS 17.0", GeckoPreferenceController.PREF_BRANCH_USER)
+            }
+            
+            useTrackingProtection = info.afpEnabled
+            allowJavascript = true
+        }
+
+        // Global Anti-Fingerprinting (Resist Fingerprinting)
+        GeckoPreferenceController.setGeckoPref(
+            "privacy.resistFingerprinting",
+            info.afpEnabled,
+            GeckoPreferenceController.PREF_BRANCH_USER
+        )
+
+        if (info.afpEnabled) {
+            // Force reported platform to match User-Agent in RFP mode
+            if (info.randomizeUserAgent) {
+                GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting.target_video_card", "Intel(R) HD Graphics 620", GeckoPreferenceController.PREF_BRANCH_USER)
+            }
+
+            // Canvas Protection
+            GeckoPreferenceController.setGeckoPref(
+                "privacy.resistFingerprinting.canvasSerialization",
+                info.randomizeCanvas,
+                GeckoPreferenceController.PREF_BRANCH_USER
+            )
+
+            // WebGL Protection
+            GeckoPreferenceController.setGeckoPref(
+                "webgl.disabled",
+                info.disableWebGl,
+                GeckoPreferenceController.PREF_BRANCH_USER
+            )
+
+            // Hardware Spoofing
+            if (info.spoofHardware) {
+                GeckoPreferenceController.setGeckoPref("dom.maxHardwareConcurrency", 2, GeckoPreferenceController.PREF_BRANCH_USER)
+                GeckoPreferenceController.setGeckoPref("dom.enable_performance", false, GeckoPreferenceController.PREF_BRANCH_USER)
+            }
+
+            // Locale Spoofing
+            if (info.spoofLocale) {
+                GeckoPreferenceController.setGeckoPref("intl.accept_languages", "en-US, en", GeckoPreferenceController.PREF_BRANCH_USER)
+            }
+
+            // Payment API Protection (Disabling all related hooks)
+            val paymentEnabled = !info.disablePayment
+            GeckoPreferenceController.setGeckoPref("dom.payments.enabled", paymentEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("dom.payment.request.enabled", paymentEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("dom.payments.canMakePayment.enabled", paymentEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
+        } else {
+            // Reset to default if AFP is off
+            GeckoPreferenceController.setGeckoPref("dom.payments.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("dom.payment.request.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("dom.payments.canMakePayment.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
+        }
+
+        // WebRTC protection
         val webRtcEnabled = !info.isWebRtcDisabled
         GeckoPreferenceController.setGeckoPref(
             "media.peerconnection.enabled",
