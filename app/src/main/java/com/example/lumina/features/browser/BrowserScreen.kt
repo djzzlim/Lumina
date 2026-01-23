@@ -125,7 +125,6 @@ fun BrowserScreen(
         browserViewModel.onAnimationFinished()
     }
 
-    // React to auto-close signal
     LaunchedEffect(shouldClose) {
         if (shouldClose) {
             onClose()
@@ -529,10 +528,10 @@ fun BrowserErrorScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            imageVector = if (error.category == WebRequestError.ERROR_CATEGORY_NETWORK) Icons.Default.CloudOff else Icons.Default.ErrorOutline,
+            imageVector = if (error.category == WebRequestError.ERROR_CATEGORY_NETWORK || error.category == WebRequestError.ERROR_CATEGORY_SAFEBROWSING) Icons.Default.CloudOff else Icons.Default.ErrorOutline,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
-            tint = Color.Gray
+            tint = if (error.category == WebRequestError.ERROR_CATEGORY_SAFEBROWSING) Color.Red else Color.Gray
         )
         
         Spacer(modifier = Modifier.height(24.dp))
@@ -540,7 +539,7 @@ fun BrowserErrorScreen(
         Text(
             text = title,
             style = MaterialTheme.typography.headlineSmall,
-            color = Color.White,
+            color = if (error.category == WebRequestError.ERROR_CATEGORY_SAFEBROWSING) Color.Red else Color.White,
             textAlign = TextAlign.Center
         )
         
@@ -654,6 +653,27 @@ private fun getErrorDetails(error: WebRequestError): Triple<String, String, Stri
             title = "Your connection is not private"
             description = "Attackers might be trying to steal your information (for example, passwords, messages, or credit cards)."
             codeString = "ERR_CERT_AUTHORITY_INVALID"
+        }
+        // Safe Browsing Errors
+        WebRequestError.ERROR_SAFEBROWSING_PHISHING_URI -> {
+            title = "Deceptive site ahead"
+            description = "Attackers on this site might trick you into doing something dangerous like installing software or revealing your personal information."
+            codeString = "ERR_SAFEBROWSING_PHISHING"
+        }
+        WebRequestError.ERROR_SAFEBROWSING_MALWARE_URI -> {
+            title = "Site contains malware"
+            description = "Attackers on this site might attempt to install dangerous programs on your device that steal or delete your information."
+            codeString = "ERR_SAFEBROWSING_MALWARE"
+        }
+        WebRequestError.ERROR_SAFEBROWSING_UNWANTED_URI -> {
+            title = "Site contains harmful apps"
+            description = "Attackers on this site might try to trick you into installing programs that harm your browsing experience."
+            codeString = "ERR_SAFEBROWSING_UNWANTED"
+        }
+        WebRequestError.ERROR_SAFEBROWSING_HARMFUL_URI -> {
+            title = "Harmful site ahead"
+            description = "This site has been reported as harmful. It might attempt to install dangerous software or reveal your personal information."
+            codeString = "ERR_SAFEBROWSING_HARMFUL"
         }
         else -> {
             title = "Something went wrong"
