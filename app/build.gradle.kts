@@ -20,13 +20,19 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Load API Key from local.properties
+        // Logic to load API Key:
+        // 1. Check local.properties (for local development)
+        // 2. Check System Environment variable (for GitHub Actions)
         val localProperties = Properties()
         val localPropertiesFile = rootProject.file("local.properties")
         if (localPropertiesFile.exists()) {
             localProperties.load(localPropertiesFile.inputStream())
         }
-        val safeBrowsingKey = localProperties.getProperty("GOOGLE_SAFE_BROWSING_KEY") ?: ""
+        
+        val safeBrowsingKey = localProperties.getProperty("GOOGLE_SAFE_BROWSING_KEY") 
+            ?: System.getenv("GOOGLE_SAFE_BROWSING_KEY") 
+            ?: ""
+
         buildConfigField("String", "SAFE_BROWSING_KEY", "\"$safeBrowsingKey\"")
     }
 
