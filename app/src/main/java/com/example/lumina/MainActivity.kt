@@ -2,6 +2,7 @@ package com.example.lumina
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
@@ -43,7 +44,7 @@ class MainActivity : ComponentActivity() {
         
         // Prevents screenshots, screen recordings, and hides content in the Recents (Multitasking) screen.
         // This is a key forensic protection measure.
-//        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         
         // Only clear runtime storage on a fresh cold-start, not on activity recreation (e.g. rotation)
         if (savedInstanceState == null) {
