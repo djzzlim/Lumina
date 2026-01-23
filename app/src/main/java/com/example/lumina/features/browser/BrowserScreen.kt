@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -203,197 +204,218 @@ fun BrowserScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .padding(WindowInsets.statusBars.asPaddingValues())
-            .navigationBarsPadding()
     ) {
+        // 1. Overlay UI (Pinned to Top)
         if (!isAppLevelFullscreen) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color.Black,
-                tonalElevation = 1.dp
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.Black)
+                    .padding(WindowInsets.statusBars.asPaddingValues())
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp, horizontal = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.Black,
+                    tonalElevation = 1.dp
                 ) {
-                    IconButton(
-                        onClick = { onClose() },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Close Browser",
-                            modifier = Modifier.size(20.dp),
-                            tint = Color.White
-                        )
-                    }
-
-                    Surface(
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .height(36.dp)
-                            .onFocusChanged {
-                                isTextFieldFocused = it.isFocused
-                                if (it.isFocused) {
-                                    searchQuery = currentUrl
-                                } else {
-                                    searchQuery = if (title.isNotEmpty()) title else currentUrl.formatForDisplay()
-                                }
-                            },
-                        shape = RoundedCornerShape(18.dp),
-                        color = Color.White.copy(alpha = 0.1f)
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        IconButton(
+                            onClick = { onClose() },
+                            modifier = Modifier.size(40.dp)
                         ) {
-                            if (!isTextFieldFocused && currentUrl.isNotEmpty()) {
-                                IconButton(
-                                    onClick = { showSecurityDialog = true },
-                                    modifier = Modifier.size(18.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = if (isSecure) Icons.Default.Lock else Icons.Default.LockOpen,
-                                        contentDescription = if (isSecure) "Secure Connection" else "Unsecured Connection",
-                                        modifier = Modifier.size(12.dp),
-                                        tint = if (isSecure) Color(0xFFBB86FC) else Color.Red
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(6.dp))
-                            }
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Close Browser",
+                                modifier = Modifier.size(20.dp),
+                                tint = Color.White
+                            )
+                        }
 
-                            BasicTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                textStyle = TextStyle(
-                                    color = Color.White,
-                                    fontSize = 13.sp
-                                ),
-                                cursorBrush = SolidColor(Color(0xFFBB86FC)),
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-                                keyboardActions = KeyboardActions(onGo = {
-                                    browserViewModel.onSearchQuery(searchQuery)
-                                    focusManager.clearFocus()
-                                }),
-                                decorationBox = { innerTextField ->
-                                    if (searchQuery.isEmpty()) {
-                                        Text(
-                                            "Search or enter address",
-                                            fontSize = 13.sp,
-                                            color = Color.Gray
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(36.dp)
+                                .onFocusChanged {
+                                    isTextFieldFocused = it.isFocused
+                                    if (it.isFocused) {
+                                        searchQuery = currentUrl
+                                    } else {
+                                        searchQuery = if (title.isNotEmpty()) title else currentUrl.formatForDisplay()
+                                    }
+                                },
+                            shape = RoundedCornerShape(18.dp),
+                            color = Color.White.copy(alpha = 0.1f)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (!isTextFieldFocused && currentUrl.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = { showSecurityDialog = true },
+                                        modifier = Modifier.size(18.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isSecure) Icons.Default.Lock else Icons.Default.LockOpen,
+                                            contentDescription = if (isSecure) "Secure Connection" else "Unsecured Connection",
+                                            modifier = Modifier.size(12.dp),
+                                            tint = if (isSecure) Color(0xFFBB86FC) else Color.Red
                                         )
                                     }
-                                    innerTextField()
+                                    Spacer(modifier = Modifier.width(6.dp))
                                 }
-                            )
 
-                            if (searchQuery.isNotEmpty() && isTextFieldFocused) {
-                                IconButton(
-                                    onClick = { searchQuery = "" },
-                                    modifier = Modifier.size(20.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Clear,
-                                        contentDescription = "Clear",
-                                        modifier = Modifier.size(14.dp),
-                                        tint = Color.Gray
-                                    )
+                                BasicTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true,
+                                    textStyle = TextStyle(
+                                        color = Color.White,
+                                        fontSize = 13.sp
+                                    ),
+                                    cursorBrush = SolidColor(Color(0xFFBB86FC)),
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+                                    keyboardActions = KeyboardActions(onGo = {
+                                        browserViewModel.onSearchQuery(searchQuery)
+                                        focusManager.clearFocus()
+                                    }),
+                                    decorationBox = { innerTextField ->
+                                        if (searchQuery.isEmpty()) {
+                                            Text(
+                                                "Search or enter address",
+                                                fontSize = 13.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
+                                        innerTextField()
+                                    }
+                                )
+
+                                if (searchQuery.isNotEmpty() && isTextFieldFocused) {
+                                    IconButton(
+                                        onClick = { searchQuery = "" },
+                                        modifier = Modifier.size(20.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Clear,
+                                            contentDescription = "Clear",
+                                            modifier = Modifier.size(14.dp),
+                                            tint = Color.Gray
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    IconButton(
-                        onClick = {
-                            if (isTextFieldFocused) {
-                                browserViewModel.onSearchQuery(searchQuery)
-                                focusManager.clearFocus()
-                            } else {
-                                browserViewModel.reload()
-                            }
-                        },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            if (isTextFieldFocused) Icons.Default.Search else Icons.Default.Refresh,
-                            contentDescription = if (isTextFieldFocused) "Search" else "Reload",
-                            modifier = Modifier.size(20.dp),
-                            tint = Color(0xFFBB86FC)
-                        )
+                        IconButton(
+                            onClick = {
+                                if (isTextFieldFocused) {
+                                    browserViewModel.onSearchQuery(searchQuery)
+                                    focusManager.clearFocus()
+                                } else {
+                                    browserViewModel.reload()
+                                }
+                            },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                if (isTextFieldFocused) Icons.Default.Search else Icons.Default.Refresh,
+                                contentDescription = if (isTextFieldFocused) "Search" else "Reload",
+                                modifier = Modifier.size(20.dp),
+                                tint = Color(0xFFBB86FC)
+                            )
+                        }
                     }
                 }
-            }
 
-            Box(modifier = Modifier
-                .fillMaxWidth()
-                .height(1.5.dp)) {
-                if (isLoading) {
-                    LinearProgressIndicator(
-                        progress = { progress.toFloat() / 100f },
-                        modifier = Modifier.fillMaxSize(),
-                        color = Color(0xFFBB86FC),
-                        trackColor = Color.Transparent
-                    )
+                Box(modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.5.dp)) {
+                    if (isLoading) {
+                        LinearProgressIndicator(
+                            progress = { progress.toFloat() / 100f },
+                            modifier = Modifier.fillMaxSize(),
+                            color = Color(0xFFBB86FC),
+                            trackColor = Color.Transparent
+                        )
+                    }
                 }
             }
         }
 
-        PullToRefreshBox(
-            state = pullToRefreshState,
-            isRefreshing = isRefreshing,
-            onRefresh = {
-                isRefreshing = true
-                browserViewModel.reload()
-            },
-            modifier = Modifier.weight(1f)
+        // 2. Main Browser Content (Takes remaining space and handles its own IME padding)
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .imePadding() // Resizes only the browser area, not the address bar
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                AndroidView(
-                    factory = { factoryContext ->
-                        GeckoView(factoryContext).apply {
-                            layoutParams = ViewGroup.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT
-                            )
-                            isNestedScrollingEnabled = true
-                            geckoView.value = this
-                        }
-                    },
-                    update = { view ->
-                        if (view.session != browserViewModel.geckoSession) {
-                            view.setSession(browserViewModel.geckoSession)
-                        }
-                    },
-                    onRelease = { view ->
-                        view.releaseSession()
-                        geckoView.value = null
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-
-                if (lastError != null) {
-                    BrowserErrorScreen(
-                        error = lastError!!,
-                        onReload = { browserViewModel.reload() },
+            PullToRefreshBox(
+                state = pullToRefreshState,
+                isRefreshing = isRefreshing,
+                onRefresh = {
+                    if (!isAppLevelFullscreen) {
+                        isRefreshing = true
+                        browserViewModel.reload()
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AndroidView(
+                        factory = { factoryContext ->
+                            GeckoView(factoryContext).apply {
+                                layoutParams = ViewGroup.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT
+                                )
+                                isNestedScrollingEnabled = true
+                                geckoView.value = this
+                            }
+                        },
+                        update = { view ->
+                            if (view.session != browserViewModel.geckoSession) {
+                                view.setSession(browserViewModel.geckoSession)
+                            }
+                        },
+                        onRelease = { view ->
+                            view.releaseSession()
+                            geckoView.value = null
+                        },
                         modifier = Modifier.fillMaxSize()
                     )
-                }
 
-                if (showInsecureWarning != null) {
-                    InsecureConnectionWarning(
-                        url = showInsecureWarning!!,
-                        onProceed = { browserViewModel.proceedToInsecureSite() },
-                        onCancel = { browserViewModel.cancelInsecureSite() },
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    if (lastError != null) {
+                        BrowserErrorScreen(
+                            error = lastError!!,
+                            onReload = { browserViewModel.reload() },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    if (showInsecureWarning != null) {
+                        InsecureConnectionWarning(
+                            url = showInsecureWarning!!,
+                            onProceed = { browserViewModel.proceedToInsecureSite() },
+                            onCancel = { browserViewModel.cancelInsecureSite() },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
+        }
+        
+        // 3. System Navigation Bar padding (Bottom)
+        if (!isAppLevelFullscreen) {
+            Box(modifier = Modifier.fillMaxWidth().navigationBarsPadding())
         }
     }
 }
@@ -420,7 +442,7 @@ fun InsecureConnectionWarning(
             imageVector = Icons.Default.Warning,
             contentDescription = null,
             modifier = Modifier.size(80.dp),
-            tint = Color(0xFFFFD700) // Gold Warning Color
+            tint = Color(0xFFFFD700)
         )
         
         Spacer(modifier = Modifier.height(24.dp))

@@ -184,18 +184,18 @@ class BrowserViewModel @Inject constructor(
                     return GeckoResult.fromValue(AllowOrDeny.DENY)
                 }
 
-                val host = try { android.net.Uri.parse(request.uri).host ?: "" } catch (e: Exception) { "" }
-
                 // Block insecure (HTTP) requests and show warning ONLY for non-redirects
                 if (request.uri.startsWith("http://") && !request.isRedirect) {
+                    val host = try { android.net.Uri.parse(request.uri).host ?: "" } catch (e: Exception) { "" }
                     if (!allowedInsecureHosts.contains(host)) {
+                        _currentUrl.value = request.uri
                         _showInsecureWarning.value = request.uri
-                        _geckoSession.stop()
+                        resetSecurityState()
+                        // DO NOT call stop() here as it kills the entire session including running scripts/videos
                         return GeckoResult.fromValue(AllowOrDeny.DENY)
                     }
                 }
                 
-                // Update UI immediately for direct user navigation (links/search)
                 if (!request.isRedirect) {
                     lastAttemptedUrl = request.uri
                     _currentUrl.value = request.uri
@@ -214,8 +214,7 @@ class BrowserViewModel @Inject constructor(
                 if (wasHttpsForced && uri?.startsWith("https://") == true) {
                     val httpFallback = uri.replaceFirst("https://", "http://")
                     wasHttpsForced = false
-                    // REPLACE_HISTORY to avoid cluttering stack with failed HTTPS
-                    _geckoSession.load(GeckoSession.Loader().uri(httpFallback).flags(GeckoSession.LOAD_FLAGS_REPLACE_HISTORY))
+                    _geckoSession.loadUri(httpFallback)
                     return null
                 }
 
@@ -318,13 +317,11 @@ class BrowserViewModel @Inject constructor(
         val host = try { android.net.Uri.parse(url).host ?: "" } catch (e: Exception) { "" }
         allowedInsecureHosts.add(host)
         _showInsecureWarning.value = null
-        // Standard loadUri to ensure it's added to history properly
         _geckoSession.loadUri(url)
     }
 
     fun cancelInsecureSite() {
         _showInsecureWarning.value = null
-        // Revert UI to the page we are actually still on
         if (lastCommittedUrl.isNotEmpty()) {
             _currentUrl.value = lastCommittedUrl
             _title.value = lastCommittedTitle
