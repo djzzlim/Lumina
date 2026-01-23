@@ -26,7 +26,6 @@ import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
-import org.mozilla.geckoview.StorageController
 import org.mozilla.geckoview.WebRequestError
 import javax.inject.Inject
 
@@ -44,6 +43,9 @@ class BrowserViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val luminaId: Long = savedStateHandle.get<Long>("luminaId")!!
+    
+    // Create a unique context ID for this specific "tab" instance
+    private val sessionContextId = "lumina_session_$luminaId"
 
     val luminaInfo: StateFlow<LuminaInfo?> = luminaRepository.getLuminaById(luminaId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
@@ -51,6 +53,7 @@ class BrowserViewModel @Inject constructor(
     private val _geckoSession = GeckoSession(
         GeckoSessionSettings.Builder()
             .usePrivateMode(true)
+            .contextId(sessionContextId) // Isolate this tab from others
             .build()
     )
 
@@ -184,14 +187,12 @@ class BrowserViewModel @Inject constructor(
                     return GeckoResult.fromValue(AllowOrDeny.DENY)
                 }
 
-                // Block insecure (HTTP) requests and show warning ONLY for non-redirects
+                val host = try { android.net.Uri.parse(request.uri).host ?: "" } catch (e: Exception) { "" }
+
                 if (request.uri.startsWith("http://") && !request.isRedirect) {
-                    val host = try { android.net.Uri.parse(request.uri).host ?: "" } catch (e: Exception) { "" }
                     if (!allowedInsecureHosts.contains(host)) {
-                        _currentUrl.value = request.uri
                         _showInsecureWarning.value = request.uri
-                        resetSecurityState()
-                        // DO NOT call stop() here as it kills the entire session including running scripts/videos
+                        _geckoSession.stop()
                         return GeckoResult.fromValue(AllowOrDeny.DENY)
                     }
                 }
@@ -214,7 +215,7 @@ class BrowserViewModel @Inject constructor(
                 if (wasHttpsForced && uri?.startsWith("https://") == true) {
                     val httpFallback = uri.replaceFirst("https://", "http://")
                     wasHttpsForced = false
-                    _geckoSession.loadUri(httpFallback)
+                    _geckoSession.load(GeckoSession.Loader().uri(httpFallback).flags(GeckoSession.LOAD_FLAGS_REPLACE_HISTORY))
                     return null
                 }
 
@@ -395,7 +396,8 @@ class BrowserViewModel @Inject constructor(
         if (_geckoSession.isOpen) {
             _geckoSession.close()
         }
-        globalGeckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
+        // Wipe all data for this specific session context
+        globalGeckoRuntime.storageController.clearDataForSessionContext(sessionContextId)
         System.gc()
     }
 }
