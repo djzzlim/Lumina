@@ -36,14 +36,6 @@ import javax.inject.Inject
 
 /**
  * ViewModel for the [BrowserScreen].
- *
- * This class manages the lifecycle and logic of a single browser "tab," including:
- * - Forensic session isolation using [sessionContextId].
- * - Secure background auto-close logic with data wiping.
- * - Robust back-navigation handling to prevent history skipping.
- * - HTTPS-First logic with automatic HTTP fallback and insecure warnings.
- * - Real-time security UI state management.
- * - Local AI-powered phishing detection integrated with Safe Browsing.
  */
 @HiltViewModel
 class BrowserViewModel @Inject constructor(
@@ -57,16 +49,8 @@ class BrowserViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val luminaId: Long = savedStateHandle.get<Long>("luminaId")!!
-    
-    /**
-     * Unique identifier for this session's data container.
-     * Prevents cookies/history from leaking between different tabs.
-     */
     private val sessionContextId = "lumina_session_$luminaId"
 
-    /**
-     * The profile info for the current site being browsed.
-     */
     val luminaInfo: StateFlow<LuminaInfo?> = luminaRepository.getLuminaById(luminaId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
@@ -77,9 +61,6 @@ class BrowserViewModel @Inject constructor(
             .build()
     )
 
-    /**
-     * The GeckoView session instance for this tab.
-     */
     val geckoSession: GeckoSession get() = _geckoSession
 
     private val _progress = MutableStateFlow(0)
@@ -89,9 +70,6 @@ class BrowserViewModel @Inject constructor(
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _currentUrl = MutableStateFlow("")
-    /**
-     * The URL currently displayed in the address bar.
-     */
     val currentUrl: StateFlow<String> = _currentUrl.asStateFlow()
 
     private val _title = MutableStateFlow("")
@@ -113,34 +91,21 @@ class BrowserViewModel @Inject constructor(
     val isAppLevelFullscreen: StateFlow<Boolean> = _isAppLevelFullscreen.asStateFlow()
 
     private val _lastError = MutableStateFlow<WebRequestError?>(null)
-    /**
-     * Stores the last encounter [WebRequestError] to trigger the error UI.
-     */
     val lastError: StateFlow<WebRequestError?> = _lastError.asStateFlow()
 
     private val _showInsecureWarning = MutableStateFlow<String?>(null)
-    /**
-     * Stores the URL that triggered an insecure (HTTP) warning.
-     */
     val showInsecureWarning: StateFlow<String?> = _showInsecureWarning.asStateFlow()
 
     private val _showPhishingWarning = MutableStateFlow<String?>(null)
-    /**
-     * Stores the URL that triggered a local AI phishing warning.
-     */
     val showPhishingWarning: StateFlow<String?> = _showPhishingWarning.asStateFlow()
 
     private val _shouldClose = MutableStateFlow(false)
-    /**
-     * Signal sent to the UI to navigate back to the home screen (e.g. after background timeout).
-     */
     val shouldClose: StateFlow<Boolean> = _shouldClose.asStateFlow()
 
     private val _isAnimationFinished = MutableStateFlow(false)
     private var isInitialized = false
     private var isGoingBack = false
     
-    // Internal tracking for history and fallback logic
     private var lastAttemptedUrl: String? = null
     private var lastCommittedUrl: String = ""
     private var lastCommittedTitle: String = ""
@@ -156,7 +121,7 @@ class BrowserViewModel @Inject constructor(
     init {
         setupDelegates()
 
-        // Apply DNS settings dynamically as they change in Settings
+        // Apply global settings dynamically
         viewModelScope.launch {
             appPreferences.dnsProviderFlow.collect { dnsProvider ->
                 globalGeckoRuntime.settings.setTrustedRecursiveResolverUri(dnsProvider.uri)
@@ -164,7 +129,16 @@ class BrowserViewModel @Inject constructor(
             }
         }
 
-        // Initialize the browser only after the entry animation is finished
+        // Dynamically toggle Google Safe Browsing based on preference
+        viewModelScope.launch {
+            appPreferences.safeBrowsingEnabledFlow.collect { enabled ->
+                Log.d("BrowserViewModel", "Setting Google Safe Browsing to: $enabled")
+                GeckoPreferenceController.setGeckoPref("browser.safebrowsing.malware.enabled", enabled, GeckoPreferenceController.PREF_BRANCH_USER)
+                GeckoPreferenceController.setGeckoPref("browser.safebrowsing.phishing.enabled", enabled, GeckoPreferenceController.PREF_BRANCH_USER)
+                GeckoPreferenceController.setGeckoPref("browser.safebrowsing.downloads.enabled", enabled, GeckoPreferenceController.PREF_BRANCH_USER)
+            }
+        }
+
         viewModelScope.launch {
             combine(luminaInfo.filterNotNull(), _isAnimationFinished) { info, finished ->
                 if (finished) info else null
@@ -184,52 +158,29 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Resets the security indicators. Called before new loads to prevent showing stale certificate info.
-     */
     private fun resetSecurityState() {
         _isSecure.value = false
         _securityInfo.value = null
     }
 
-    /**
-     * Signals that the Compose entry animation is done, triggering the initial URL load.
-     */
     fun onAnimationFinished() {
         _isAnimationFinished.value = true
     }
 
-    /**
-     * Handles background inactivity logic. Starts a timer based on user settings.
-     * If the timeout is reached, it performs a forensic wipe of the session data.
-     */
     fun onAppBackgrounded() {
         autoCloseJob?.cancel()
         autoCloseJob = viewModelScope.launch {
             val timeout = appPreferences.autoCloseTimeoutFlow.first()
             if (timeout.minutes > 0) {
-                Log.d("BrowserViewModel", "App backgrounded. Auto-close scheduled in ${timeout.minutes} minutes.")
                 delay(timeout.minutes * 60 * 1000)
-                Log.d("BrowserViewModel", "Timeout reached. Performing forensic wipe.")
-                
-                if (_geckoSession.isOpen) {
-                    _geckoSession.close()
-                }
-                
-                // Forensic cleanup: wipe only this context's data
+                if (_geckoSession.isOpen) _geckoSession.close()
                 globalGeckoRuntime.storageController.clearDataForSessionContext(sessionContextId)
-                
-                // Flush storage to ensure deletion persists immediately
                 globalGeckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
-                
                 _shouldClose.value = true
             }
         }
     }
 
-    /**
-     * Cancels the auto-close timer when the user returns to the app.
-     */
     fun onAppForegrounded() {
         autoCloseJob?.cancel()
         autoCloseJob = null
@@ -240,16 +191,10 @@ class BrowserViewModel @Inject constructor(
             override fun onProgressChange(session: GeckoSession, progress: Int) {
                 _progress.value = progress
                 _isLoading.value = progress < 100
-                
-                if (progress == 100 && isGoingBack) {
-                    isGoingBack = false
-                }
+                if (progress == 100 && isGoingBack) isGoingBack = false
             }
 
-            override fun onSecurityChange(
-                session: GeckoSession,
-                securityInfo: GeckoSession.ProgressDelegate.SecurityInformation
-            ) {
+            override fun onSecurityChange(session: GeckoSession, securityInfo: GeckoSession.ProgressDelegate.SecurityInformation) {
                 _isSecure.value = securityInfo.isSecure
                 _securityInfo.value = securityInfo
             }
@@ -260,14 +205,8 @@ class BrowserViewModel @Inject constructor(
                 _canGoBack.value = canGoBack
             }
 
-            override fun onLocationChange(
-                session: GeckoSession,
-                url: String?,
-                permissions: List<GeckoSession.PermissionDelegate.ContentPermission>,
-                hasUserGesture: Boolean
-            ) {
-                if (url != null && url.isNotEmpty()) {
-                    // Page has successfully started rendering a new location
+            override fun onLocationChange(session: GeckoSession, url: String?, permissions: List<GeckoSession.PermissionDelegate.ContentPermission>, hasUserGesture: Boolean) {
+                if (!url.isNullOrEmpty()) {
                     lastCommittedUrl = url
                     _currentUrl.value = url
                     if (url.startsWith("https")) wasHttpsForced = false
@@ -282,64 +221,7 @@ class BrowserViewModel @Inject constructor(
 
                 val host = try { android.net.Uri.parse(request.uri).host ?: "" } catch (e: Exception) { "" }
 
-                // Check for Phishing using Local AI model
-                if (!allowedPhishingHosts.contains(host)) {
-                    val result = GeckoResult<AllowOrDeny>()
-                    viewModelScope.launch {
-                        // Check if Local ML protection is enabled in settings
-                        val isLocalMLEnabled = appPreferences.localPhishingModelEnabledFlow.first()
-                        if (isLocalMLEnabled) {
-                            val isPhishing = phishingDetector.predict(request.uri)
-                            if (isPhishing) {
-                                _currentUrl.value = request.uri
-                                _showPhishingWarning.value = request.uri
-                                resetSecurityState()
-                                _geckoSession.stop()
-                                result.complete(AllowOrDeny.DENY)
-                                return@launch
-                            }
-                        }
-                        
-                        // Check for Insecure Connection Warning for HTTP sites
-                        if (request.uri.startsWith("http://") && !request.isRedirect) {
-                            if (!allowedInsecureHosts.contains(host)) {
-                                _currentUrl.value = request.uri
-                                _showInsecureWarning.value = request.uri
-                                resetSecurityState()
-                                _geckoSession.stop()
-                                result.complete(AllowOrDeny.DENY)
-                                return@launch
-                            }
-                        }
-                        result.complete(AllowOrDeny.ALLOW)
-                    }
-                    
-                    // Immediate UI update for user-triggered navigations (optimistic)
-                    if (!request.isRedirect) {
-                        lastAttemptedUrl = request.uri
-                        _currentUrl.value = request.uri
-                        _lastError.value = null
-                        _showInsecureWarning.value = null
-                        _showPhishingWarning.value = null
-                        _title.value = "" 
-                        resetSecurityState()
-                    }
-                    
-                    return result
-                }
-
-                // Trigger the Insecure Connection Warning for HTTP sites not yet whitelisted
-                if (request.uri.startsWith("http://") && !request.isRedirect) {
-                    if (!allowedInsecureHosts.contains(host)) {
-                        _currentUrl.value = request.uri
-                        _showInsecureWarning.value = request.uri
-                        resetSecurityState()
-                        _geckoSession.stop()
-                        return GeckoResult.fromValue(AllowOrDeny.DENY)
-                    }
-                }
-                
-                // Immediate UI update for user-triggered navigations
+                // Optimistic UI update
                 if (!request.isRedirect) {
                     lastAttemptedUrl = request.uri
                     _currentUrl.value = request.uri
@@ -349,21 +231,49 @@ class BrowserViewModel @Inject constructor(
                     _title.value = "" 
                     resetSecurityState()
                 }
-                
-                return GeckoResult.fromValue(AllowOrDeny.ALLOW)
+
+                val result = GeckoResult<AllowOrDeny>()
+                viewModelScope.launch {
+                    val isLocalMLEnabled = appPreferences.localPhishingModelEnabledFlow.first()
+                    
+                    // 1. Check Offline ML first (highest priority, most private)
+                    if (isLocalMLEnabled && !allowedPhishingHosts.contains(host)) {
+                        val isPhishing = phishingDetector.predict(request.uri)
+                        if (isPhishing) {
+                            _currentUrl.value = request.uri
+                            _showPhishingWarning.value = request.uri
+                            resetSecurityState()
+                            _geckoSession.stop()
+                            result.complete(AllowOrDeny.DENY)
+                            return@launch
+                        }
+                    }
+
+                    // 2. Check for Insecure Connection Warning
+                    if (request.uri.startsWith("http://") && !request.isRedirect) {
+                        if (!allowedInsecureHosts.contains(host)) {
+                            _currentUrl.value = request.uri
+                            _showInsecureWarning.value = request.uri
+                            resetSecurityState()
+                            _geckoSession.stop()
+                            result.complete(AllowOrDeny.DENY)
+                            return@launch
+                        }
+                    }
+
+                    // 3. Fall through to standard GeckoView load (which will do Google Safe Browsing if enabled)
+                    result.complete(AllowOrDeny.ALLOW)
+                }
+                return result
             }
 
             override fun onLoadError(session: GeckoSession, uri: String?, error: WebRequestError): GeckoResult<String>? {
-                Log.e("BrowserViewModel", "Load error: ${error.code} URI: $uri")
-                
-                // Automatic fallback to HTTP if an upgraded HTTPS request failed
                 if (wasHttpsForced && uri?.startsWith("https://") == true) {
                     val httpFallback = uri.replaceFirst("https://", "http://")
                     wasHttpsForced = false
                     _geckoSession.load(GeckoSession.Loader().uri(httpFallback).flags(GeckoSession.LOAD_FLAGS_REPLACE_HISTORY))
                     return null
                 }
-
                 _lastError.value = error
                 resetSecurityState()
                 if (uri != null) {
@@ -383,8 +293,6 @@ class BrowserViewModel @Inject constructor(
         _geckoSession.contentDelegate = object : GeckoSession.ContentDelegate {
             override fun onTitleChange(session: GeckoSession, title: String?) {
                 _title.value = title ?: ""
-                
-                // Fallback detection for HTTP 404 errors (not protocol errors)
                 if (title?.contains("404", ignoreCase = true) == true && title.contains("Not Found", ignoreCase = true)) {
                     if (_lastError.value == null) {
                         _lastError.value = WebRequestError(WebRequestError.ERROR_FILE_NOT_FOUND, WebRequestError.ERROR_CATEGORY_URI)
@@ -401,9 +309,6 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Configures the [GeckoSession] based on the site-specific [LuminaInfo].
-     */
     @androidx.annotation.OptIn(ExperimentalGeckoViewApi::class)
     @OptIn(ExperimentalGeckoViewApi::class)
     private fun applySettings(info: LuminaInfo) {
@@ -411,18 +316,17 @@ class BrowserViewModel @Inject constructor(
         val iphoneUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
 
         _geckoSession.settings.apply {
-            // User-Agent and Platform Spoofing
-            if (info.randomizeUserAgent && info.afpEnabled) { // Only apply if AFP is enabled
+            if (info.randomizeUserAgent && info.afpEnabled) {
                 userAgentOverride = desktopUA
                 GeckoPreferenceController.setGeckoPref("general.platform.override", "Win32", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.appversion.override", "5.0 (Windows)", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.oscpu.override", "Windows NT 10.0; Win64; x64", GeckoPreferenceController.PREF_BRANCH_USER)
-            } else if (!info.randomizeUserAgent && info.afpEnabled) { // Only apply if AFP is enabled
+            } else if (!info.randomizeUserAgent && info.afpEnabled) {
                 userAgentOverride = iphoneUA
                 GeckoPreferenceController.setGeckoPref("general.platform.override", "iPhone", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.appversion.override", "5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.oscpu.override", "iPhone OS 17.0", GeckoPreferenceController.PREF_BRANCH_USER)
-            } else { // Reset to default if AFP is off
+            } else {
                 userAgentOverride = null
                 GeckoPreferenceController.setGeckoPref("general.platform.override", "", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.appversion.override", "", GeckoPreferenceController.PREF_BRANCH_USER)
@@ -430,74 +334,36 @@ class BrowserViewModel @Inject constructor(
             }
             
             useTrackingProtection = info.afpEnabled
-            // JavaScript is allowed only if AFP is enabled AND not explicitly disabled
-            // If AFP is disabled, JavaScript is always allowed by default.
-            allowJavascript = if (info.afpEnabled) {
-                !info.disableJavascript
-            } else {
-                true
-            }
+            allowJavascript = if (info.afpEnabled) !info.disableJavascript else true
         }
 
-        // Global Anti-Fingerprinting (Resist Fingerprinting)
-        // This also handles Timezone and Screen randomization when enabled.
-        GeckoPreferenceController.setGeckoPref(
-            "privacy.resistFingerprinting",
-            info.afpEnabled, // Directly link to afpEnabled
-            GeckoPreferenceController.PREF_BRANCH_USER
-        )
+        GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting", info.afpEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("webgl.disabled", info.disableWebGl || !info.afpEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("dom.audioContext.enabled", !info.disableAudioContext && info.afpEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
 
-        // WebGL Protection
-        GeckoPreferenceController.setGeckoPref(
-            "webgl.disabled",
-            info.disableWebGl || !info.afpEnabled, // WebGL is disabled if explicitly disabled OR if AFP is off
-            GeckoPreferenceController.PREF_BRANCH_USER
-        )
-
-        // AudioContext Protection
-        GeckoPreferenceController.setGeckoPref(
-            "dom.audioContext.enabled",
-            !info.disableAudioContext && info.afpEnabled, // AudioContext is enabled only if AFP is enabled and not explicitly disabled
-            GeckoPreferenceController.PREF_BRANCH_USER
-        )
-
-        if (info.afpEnabled) { // Only apply if AFP is enabled
-            // Force reported platform to match User-Agent in RFP mode
+        if (info.afpEnabled) {
             if (info.randomizeUserAgent) {
                 GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting.target_video_card", "Intel(R) HD Graphics 620", GeckoPreferenceController.PREF_BRANCH_USER)
             } else {
                 GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting.target_video_card", "", GeckoPreferenceController.PREF_BRANCH_USER)
             }
-
-            // Canvas Protection
-            GeckoPreferenceController.setGeckoPref(
-                "privacy.resistFingerprinting.canvasSerialization",
-                info.randomizeCanvas,
-                GeckoPreferenceController.PREF_BRANCH_USER
-            )
-
-            // Hardware Spoofing
+            GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting.canvasSerialization", info.randomizeCanvas, GeckoPreferenceController.PREF_BRANCH_USER)
             if (info.spoofHardware) {
                 GeckoPreferenceController.setGeckoPref("dom.maxHardwareConcurrency", 2, GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("dom.enable_performance", false, GeckoPreferenceController.PREF_BRANCH_USER)
             } else {
                 GeckoPreferenceController.setGeckoPref("dom.enable_performance", true, GeckoPreferenceController.PREF_BRANCH_USER)
             }
-
-            // Locale Spoofing
             if (info.spoofLocale) {
                 GeckoPreferenceController.setGeckoPref("intl.accept_languages", "en-US, en", GeckoPreferenceController.PREF_BRANCH_USER)
             } else {
                 GeckoPreferenceController.setGeckoPref("intl.accept_languages", "", GeckoPreferenceController.PREF_BRANCH_USER)
             }
-
-            // Payment API Protection
             val paymentEnabled = !info.disablePayment
             GeckoPreferenceController.setGeckoPref("dom.payments.enabled", paymentEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
             GeckoPreferenceController.setGeckoPref("dom.payment.request.enabled", paymentEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
             GeckoPreferenceController.setGeckoPref("dom.payments.canMakePayment.enabled", paymentEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
         } else {
-            // Reset to default if AFP is off
             GeckoPreferenceController.setGeckoPref("dom.payments.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
             GeckoPreferenceController.setGeckoPref("dom.payment.request.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
             GeckoPreferenceController.setGeckoPref("dom.payments.canMakePayment.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
@@ -505,22 +371,11 @@ class BrowserViewModel @Inject constructor(
             GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting.canvasSerialization", false, GeckoPreferenceController.PREF_BRANCH_USER)
             GeckoPreferenceController.setGeckoPref("dom.enable_performance", true, GeckoPreferenceController.PREF_BRANCH_USER)
             GeckoPreferenceController.setGeckoPref("intl.accept_languages", "", GeckoPreferenceController.PREF_BRANCH_USER)
-
         }
 
-        // WebRTC protection
-        val webRtcEnabled = !info.isWebRtcDisabled
-        GeckoPreferenceController.setGeckoPref(
-            "media.peerconnection.enabled",
-            webRtcEnabled,
-            GeckoPreferenceController.PREF_BRANCH_USER
-        )
+        GeckoPreferenceController.setGeckoPref("media.peerconnection.enabled", !info.isWebRtcDisabled, GeckoPreferenceController.PREF_BRANCH_USER)
     }
 
-    /**
-     * Loads a URL with optional protocol upgrading.
-     * @param allowUpgrade If true, automatically attempts to upgrade http:// to https://.
-     */
     private fun loadUrl(url: String, allowUpgrade: Boolean = true) {
         var targetUrl = url
         wasHttpsForced = false
@@ -546,50 +401,30 @@ class BrowserViewModel @Inject constructor(
         _geckoSession.loadUri(targetUrl)
     }
 
-    /**
-     * Processes a search query or URL entered by the user.
-     */
     fun onSearchQuery(query: String) {
         if (query.isBlank()) return
         isGoingBack = false
-        val url = if (query.equals("about:config", ignoreCase = true)) {
-            "about:config"
-        } else if (query.equals("about:support", ignoreCase = true)) {
-            "about:support"
-        } else if (query.contains(".") && !query.contains(" ")) {
-            query 
-        } else {
-            searchEngine.value.url + query
-        }
-        
+        val url = if (query.equals("about:config", ignoreCase = true)) "about:config"
+        else if (query.equals("about:support", ignoreCase = true)) "about:support"
+        else if (query.contains(".") && !query.contains(" ")) query 
+        else searchEngine.value.url + query
         loadUrl(url)
     }
 
-    /**
-     * Dismisses the Insecure Warning and allows the [http://] load to proceed.
-     */
     fun proceedToInsecureSite() {
         val url = _showInsecureWarning.value ?: return
-        val host = try { android.net.Uri.parse(url).host ?: "" } catch (e: Exception) { "" }
-        allowedInsecureHosts.add(host)
+        allowedInsecureHosts.add(try { android.net.Uri.parse(url).host ?: "" } catch (e: Exception) { "" })
         _showInsecureWarning.value = null
         _geckoSession.loadUri(url)
     }
 
-    /**
-     * Dismisses the Phishing Warning and allows the load to proceed.
-     */
     fun proceedToPhishingSite() {
         val url = _showPhishingWarning.value ?: return
-        val host = try { android.net.Uri.parse(url).host ?: "" } catch (e: Exception) { "" }
-        allowedPhishingHosts.add(host)
+        allowedPhishingHosts.add(try { android.net.Uri.parse(url).host ?: "" } catch (e: Exception) { "" })
         _showPhishingWarning.value = null
         _geckoSession.loadUri(url)
     }
 
-    /**
-     * Cancels an insecure or phishing load and reverts the UI to the last safe page.
-     */
     fun cancelUnsafeSite() {
         _showInsecureWarning.value = null
         _showPhishingWarning.value = null
@@ -601,33 +436,15 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Navigates back.
-     * Priority:
-     * 1. Dismiss Insecure Warning.
-     * 2. Dismiss Phishing Warning.
-     * 3. Dismiss Error Screen.
-     * 4. Navigate Gecko history.
-     */
     fun goBack(): Boolean {
         if (_showInsecureWarning.value != null || _showPhishingWarning.value != null) {
-            _showInsecureWarning.value = null
-            _showPhishingWarning.value = null
-            if (lastCommittedUrl.isNotEmpty()) {
-                _currentUrl.value = lastCommittedUrl
-                _title.value = lastCommittedTitle
-                _geckoSession.stop()
-                _geckoSession.reload()
-            }
+            cancelUnsafeSite()
             return true
         }
-
         if (_lastError.value != null) {
             _lastError.value = null
             resetSecurityState()
-            
             if (lastAttemptedUrl != lastCommittedUrl && lastCommittedUrl.isNotEmpty()) {
-                // Navigation to new page failed. Return to last good page.
                 _currentUrl.value = lastCommittedUrl
                 _title.value = lastCommittedTitle
                 _geckoSession.stop()
@@ -636,8 +453,6 @@ class BrowserViewModel @Inject constructor(
             }
             return false
         }
-        
-        // Standard browser back
         if (_geckoSession.isOpen && _canGoBack.value) {
             isGoingBack = true
             _lastError.value = null
@@ -648,43 +463,26 @@ class BrowserViewModel @Inject constructor(
         return false
     }
 
-    /**
-     * Reloads the current page. Specifically handles re-triggering loads from error screens.
-     */
     fun reload() {
         if (_geckoSession.isOpen) {
             isGoingBack = false
             val hadError = _lastError.value != null
             _lastError.value = null
             resetSecurityState()
-            
-            if (hadError && lastAttemptedUrl != null) {
-                loadUrl(lastAttemptedUrl!!, allowUpgrade = false)
-            } else {
-                _geckoSession.reload()
-            }
+            if (hadError && lastAttemptedUrl != null) loadUrl(lastAttemptedUrl!!, allowUpgrade = false)
+            else _geckoSession.reload()
         }
     }
 
-    /**
-     * Forces an exit from media fullscreen mode.
-     */
     fun exitFullScreen() {
-        if (_geckoSession.isOpen) {
-            _geckoSession.exitFullScreen()
-        }
+        if (_geckoSession.isOpen) _geckoSession.exitFullScreen()
         _isAppLevelFullscreen.value = false
     }
 
-    /**
-     * Lifecycle cleanup. Performs a final forensic wipe of session data.
-     */
     override fun onCleared() {
         super.onCleared()
         autoCloseJob?.cancel()
-        if (_geckoSession.isOpen) {
-            _geckoSession.close()
-        }
+        if (_geckoSession.isOpen) _geckoSession.close()
         globalGeckoRuntime.storageController.clearDataForSessionContext(sessionContextId)
         System.gc()
     }
