@@ -44,17 +44,13 @@ object GeckoRuntimeModule {
     ): GeckoRuntime {
         val dnsProvider = runBlocking { appPreferences.dnsProviderFlow.first() }
         val isolationStrategy = runBlocking { appPreferences.isolationStrategyFlow.first() }
-        val safeBrowsingEnabled = runBlocking { appPreferences.safeBrowsingEnabledFlow.first() }
 
-        // Configure Safe Browsing and Tracking Protection
-        val contentBlockingBuilder = ContentBlocking.Settings.Builder()
+        // Initialize with default Safe Browsing enabled at the Runtime level.
+        // Whether it's actually used per-session is now controlled in BrowserViewModel.
+        val contentBlocking = ContentBlocking.Settings.Builder()
+            .safeBrowsing(ContentBlocking.SafeBrowsing.DEFAULT)
             .enhancedTrackingProtectionLevel(ContentBlocking.EtpLevel.STRICT)
-        
-        if (safeBrowsingEnabled) {
-            contentBlockingBuilder.safeBrowsing(ContentBlocking.SafeBrowsing.DEFAULT)
-        } else {
-            contentBlockingBuilder.safeBrowsing(ContentBlocking.SafeBrowsing.NONE)
-        }
+            .build()
 
         val runtimeSettings = GeckoRuntimeSettings.Builder()
             .aboutConfigEnabled(true)
@@ -62,7 +58,7 @@ object GeckoRuntimeModule {
             .trustedRecursiveResolverUri(dnsProvider.uri)
             .trustedRecursiveResolverMode(dnsProvider.mode)
             .allowInsecureConnections(GeckoRuntimeSettings.ALLOW_ALL)
-            .contentBlocking(contentBlockingBuilder.build())
+            .contentBlocking(contentBlocking)
             .build()
             .setWebContentIsolationStrategy(isolationStrategy)
 
