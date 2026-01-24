@@ -30,6 +30,9 @@ class AppPreferences @Inject constructor(
         .map { minutes ->
             AutoCloseTimeout.fromMinutes(minutes)
         }
+
+    val safeBrowsingEnabledFlow: Flow<Boolean> = settingsDataStore.safeBrowsingEnabledFlow
+    val localPhishingModelEnabledFlow: Flow<Boolean> = settingsDataStore.localPhishingModelEnabledFlow
 }
 
 sealed class DnsProvider(val name: String, val uri: String, val mode: Int) {

@@ -44,14 +44,17 @@ object GeckoRuntimeModule {
     ): GeckoRuntime {
         val dnsProvider = runBlocking { appPreferences.dnsProviderFlow.first() }
         val isolationStrategy = runBlocking { appPreferences.isolationStrategyFlow.first() }
+        val safeBrowsingEnabled = runBlocking { appPreferences.safeBrowsingEnabledFlow.first() }
 
         // Configure Safe Browsing and Tracking Protection
-        // safeBrowsing(ContentBlocking.SafeBrowsing.DEFAULT) enables protection against 
-        // Malware, Phishing, Unwanted Software, and Harmful sites.
-        val contentBlocking = ContentBlocking.Settings.Builder()
-            .safeBrowsing(ContentBlocking.SafeBrowsing.DEFAULT)
+        val contentBlockingBuilder = ContentBlocking.Settings.Builder()
             .enhancedTrackingProtectionLevel(ContentBlocking.EtpLevel.STRICT)
-            .build()
+        
+        if (safeBrowsingEnabled) {
+            contentBlockingBuilder.safeBrowsing(ContentBlocking.SafeBrowsing.DEFAULT)
+        } else {
+            contentBlockingBuilder.safeBrowsing(ContentBlocking.SafeBrowsing.NONE)
+        }
 
         val runtimeSettings = GeckoRuntimeSettings.Builder()
             .aboutConfigEnabled(true)
@@ -59,14 +62,13 @@ object GeckoRuntimeModule {
             .trustedRecursiveResolverUri(dnsProvider.uri)
             .trustedRecursiveResolverMode(dnsProvider.mode)
             .allowInsecureConnections(GeckoRuntimeSettings.ALLOW_ALL)
-            .contentBlocking(contentBlocking)
+            .contentBlocking(contentBlockingBuilder.build())
             .build()
             .setWebContentIsolationStrategy(isolationStrategy)
 
         val runtime = GeckoRuntime.create(context, runtimeSettings)
 
         // Set the Google Safe Browsing API Key from BuildConfig
-        // The key is stored in local.properties for security.
         GeckoPreferenceController.setGeckoPref(
             "browser.safebrowsing.key.google",
             BuildConfig.SAFE_BROWSING_KEY,

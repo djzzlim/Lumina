@@ -3,6 +3,7 @@ package com.example.lumina.core
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -23,6 +24,9 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     val searchEngineKey = stringPreferencesKey("search_engine")
     val webContentIsolationStrategyKey = intPreferencesKey("web_content_isolation_strategy")
     val autoCloseTimeoutKey = longPreferencesKey("auto_close_timeout") // Timeout in minutes, 0 for Never
+    
+    val safeBrowsingEnabledKey = booleanPreferencesKey("safe_browsing_enabled")
+    val localPhishingModelEnabledKey = booleanPreferencesKey("local_phishing_model_enabled")
 
     val dnsProviderFlow: Flow<String> = context.dataStore.data
         .map { preferences ->
@@ -47,6 +51,16 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     val autoCloseTimeoutFlow: Flow<Long> = context.dataStore.data
         .map { preferences ->
             preferences[autoCloseTimeoutKey] ?: 0L // Default to Never
+        }
+
+    val safeBrowsingEnabledFlow: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[safeBrowsingEnabledKey] ?: true
+        }
+
+    val localPhishingModelEnabledFlow: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[localPhishingModelEnabledKey] ?: true
         }
 
     val data: Flow<Preferences> = context.dataStore.data
@@ -78,6 +92,18 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     suspend fun saveAutoCloseTimeout(timeoutMinutes: Long) {
         context.dataStore.edit { settings ->
             settings[autoCloseTimeoutKey] = timeoutMinutes
+        }
+    }
+
+    suspend fun saveSafeBrowsingEnabled(enabled: Boolean) {
+        context.dataStore.edit { settings ->
+            settings[safeBrowsingEnabledKey] = enabled
+        }
+    }
+
+    suspend fun saveLocalPhishingModelEnabled(enabled: Boolean) {
+        context.dataStore.edit { settings ->
+            settings[localPhishingModelEnabledKey] = enabled
         }
     }
 }

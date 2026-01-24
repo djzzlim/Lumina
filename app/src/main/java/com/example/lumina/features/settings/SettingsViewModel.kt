@@ -46,6 +46,20 @@ class SettingsViewModel @Inject constructor(
             initialValue = 0L
         )
 
+    val safeBrowsingEnabled: StateFlow<Boolean> = settingsDataStore.safeBrowsingEnabledFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
+        )
+
+    val localPhishingModelEnabled: StateFlow<Boolean> = settingsDataStore.localPhishingModelEnabledFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
+        )
+
     val dnsOptions = DnsProvider.allOptions
     val searchEngineOptions = SearchEngine.allOptions
     val autoCloseOptions = AutoCloseTimeout.allOptions.map { it.name }
@@ -72,6 +86,18 @@ class SettingsViewModel @Inject constructor(
         val minutes = AutoCloseTimeout.allOptions.find { it.name == name }?.minutes ?: 0L
         viewModelScope.launch {
             settingsDataStore.saveAutoCloseTimeout(minutes)
+        }
+    }
+
+    fun setSafeBrowsingEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsDataStore.saveSafeBrowsingEnabled(enabled)
+        }
+    }
+
+    fun setLocalPhishingModelEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsDataStore.saveLocalPhishingModelEnabled(enabled)
         }
     }
 }

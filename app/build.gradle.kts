@@ -82,6 +82,8 @@ configurations.all {
 dependencies {
     implementation(libs.androidx.datastore.preferences)
 
+    implementation(libs.onnxruntime.android)
+
     // SQLCipher for database encryption
     implementation(libs.sqlcipher)
     implementation(libs.androidx.ui.graphics)

@@ -9,6 +9,7 @@ import com.example.lumina.core.AppPreferences
 import com.example.lumina.core.LuminaRepository
 import com.example.lumina.core.ProfileManager
 import com.example.lumina.core.database.LuminaInfo
+import com.example.lumina.core.ml.PhishingDetector
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -42,6 +43,7 @@ import javax.inject.Inject
  * - Robust back-navigation handling to prevent history skipping.
  * - HTTPS-First logic with automatic HTTP fallback and insecure warnings.
  * - Real-time security UI state management.
+ * - Local AI-powered phishing detection integrated with Safe Browsing.
  */
 @HiltViewModel
 class BrowserViewModel @Inject constructor(
@@ -49,6 +51,7 @@ class BrowserViewModel @Inject constructor(
     @Suppress("UNUSED_PARAMETER") private val profileManager: ProfileManager,
     private val globalGeckoRuntime: GeckoRuntime,
     private val appPreferences: AppPreferences,
+    private val phishingDetector: PhishingDetector,
     @param:ApplicationContext private val applicationContext: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -121,6 +124,12 @@ class BrowserViewModel @Inject constructor(
      */
     val showInsecureWarning: StateFlow<String?> = _showInsecureWarning.asStateFlow()
 
+    private val _showPhishingWarning = MutableStateFlow<String?>(null)
+    /**
+     * Stores the URL that triggered a local AI phishing warning.
+     */
+    val showPhishingWarning: StateFlow<String?> = _showPhishingWarning.asStateFlow()
+
     private val _shouldClose = MutableStateFlow(false)
     /**
      * Signal sent to the UI to navigate back to the home screen (e.g. after background timeout).
@@ -137,6 +146,7 @@ class BrowserViewModel @Inject constructor(
     private var lastCommittedTitle: String = ""
     private var wasHttpsForced = false
     private val allowedInsecureHosts = mutableSetOf<String>()
+    private val allowedPhishingHosts = mutableSetOf<String>()
     
     private var autoCloseJob: Job? = null
 
@@ -272,6 +282,52 @@ class BrowserViewModel @Inject constructor(
 
                 val host = try { android.net.Uri.parse(request.uri).host ?: "" } catch (e: Exception) { "" }
 
+                // Check for Phishing using Local AI model
+                if (!allowedPhishingHosts.contains(host)) {
+                    val result = GeckoResult<AllowOrDeny>()
+                    viewModelScope.launch {
+                        // Check if Local ML protection is enabled in settings
+                        val isLocalMLEnabled = appPreferences.localPhishingModelEnabledFlow.first()
+                        if (isLocalMLEnabled) {
+                            val isPhishing = phishingDetector.predict(request.uri)
+                            if (isPhishing) {
+                                _currentUrl.value = request.uri
+                                _showPhishingWarning.value = request.uri
+                                resetSecurityState()
+                                _geckoSession.stop()
+                                result.complete(AllowOrDeny.DENY)
+                                return@launch
+                            }
+                        }
+                        
+                        // Check for Insecure Connection Warning for HTTP sites
+                        if (request.uri.startsWith("http://") && !request.isRedirect) {
+                            if (!allowedInsecureHosts.contains(host)) {
+                                _currentUrl.value = request.uri
+                                _showInsecureWarning.value = request.uri
+                                resetSecurityState()
+                                _geckoSession.stop()
+                                result.complete(AllowOrDeny.DENY)
+                                return@launch
+                            }
+                        }
+                        result.complete(AllowOrDeny.ALLOW)
+                    }
+                    
+                    // Immediate UI update for user-triggered navigations (optimistic)
+                    if (!request.isRedirect) {
+                        lastAttemptedUrl = request.uri
+                        _currentUrl.value = request.uri
+                        _lastError.value = null
+                        _showInsecureWarning.value = null
+                        _showPhishingWarning.value = null
+                        _title.value = "" 
+                        resetSecurityState()
+                    }
+                    
+                    return result
+                }
+
                 // Trigger the Insecure Connection Warning for HTTP sites not yet whitelisted
                 if (request.uri.startsWith("http://") && !request.isRedirect) {
                     if (!allowedInsecureHosts.contains(host)) {
@@ -289,6 +345,7 @@ class BrowserViewModel @Inject constructor(
                     _currentUrl.value = request.uri
                     _lastError.value = null
                     _showInsecureWarning.value = null
+                    _showPhishingWarning.value = null
                     _title.value = "" 
                     resetSecurityState()
                 }
@@ -482,6 +539,7 @@ class BrowserViewModel @Inject constructor(
         lastAttemptedUrl = targetUrl
         _lastError.value = null
         _showInsecureWarning.value = null
+        _showPhishingWarning.value = null
         _currentUrl.value = targetUrl
         _title.value = "" 
         resetSecurityState()
@@ -519,10 +577,22 @@ class BrowserViewModel @Inject constructor(
     }
 
     /**
-     * Cancels an insecure load and reverts the UI to the last safe page.
+     * Dismisses the Phishing Warning and allows the load to proceed.
      */
-    fun cancelInsecureSite() {
+    fun proceedToPhishingSite() {
+        val url = _showPhishingWarning.value ?: return
+        val host = try { android.net.Uri.parse(url).host ?: "" } catch (e: Exception) { "" }
+        allowedPhishingHosts.add(host)
+        _showPhishingWarning.value = null
+        _geckoSession.loadUri(url)
+    }
+
+    /**
+     * Cancels an insecure or phishing load and reverts the UI to the last safe page.
+     */
+    fun cancelUnsafeSite() {
         _showInsecureWarning.value = null
+        _showPhishingWarning.value = null
         if (lastCommittedUrl.isNotEmpty()) {
             _currentUrl.value = lastCommittedUrl
             _title.value = lastCommittedTitle
@@ -535,12 +605,14 @@ class BrowserViewModel @Inject constructor(
      * Navigates back.
      * Priority:
      * 1. Dismiss Insecure Warning.
-     * 2. Dismiss Error Screen.
-     * 3. Navigate Gecko history.
+     * 2. Dismiss Phishing Warning.
+     * 3. Dismiss Error Screen.
+     * 4. Navigate Gecko history.
      */
     fun goBack(): Boolean {
-        if (_showInsecureWarning.value != null) {
+        if (_showInsecureWarning.value != null || _showPhishingWarning.value != null) {
             _showInsecureWarning.value = null
+            _showPhishingWarning.value = null
             if (lastCommittedUrl.isNotEmpty()) {
                 _currentUrl.value = lastCommittedUrl
                 _title.value = lastCommittedTitle
