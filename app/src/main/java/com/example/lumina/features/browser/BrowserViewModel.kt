@@ -355,48 +355,61 @@ class BrowserViewModel @Inject constructor(
 
         _geckoSession.settings.apply {
             // User-Agent and Platform Spoofing
-            if (info.randomizeUserAgent) {
+            if (info.randomizeUserAgent && info.afpEnabled) { // Only apply if AFP is enabled
                 userAgentOverride = desktopUA
                 GeckoPreferenceController.setGeckoPref("general.platform.override", "Win32", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.appversion.override", "5.0 (Windows)", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.oscpu.override", "Windows NT 10.0; Win64; x64", GeckoPreferenceController.PREF_BRANCH_USER)
-            } else {
+            } else if (!info.randomizeUserAgent && info.afpEnabled) { // Only apply if AFP is enabled
                 userAgentOverride = iphoneUA
                 GeckoPreferenceController.setGeckoPref("general.platform.override", "iPhone", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.appversion.override", "5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.oscpu.override", "iPhone OS 17.0", GeckoPreferenceController.PREF_BRANCH_USER)
+            } else { // Reset to default if AFP is off
+                userAgentOverride = null
+                GeckoPreferenceController.setGeckoPref("general.platform.override", "", GeckoPreferenceController.PREF_BRANCH_USER)
+                GeckoPreferenceController.setGeckoPref("general.appversion.override", "", GeckoPreferenceController.PREF_BRANCH_USER)
+                GeckoPreferenceController.setGeckoPref("general.oscpu.override", "", GeckoPreferenceController.PREF_BRANCH_USER)
             }
             
             useTrackingProtection = info.afpEnabled
-            allowJavascript = !info.disableJavascript
+            // JavaScript is allowed only if AFP is enabled AND not explicitly disabled
+            // If AFP is disabled, JavaScript is always allowed by default.
+            allowJavascript = if (info.afpEnabled) {
+                !info.disableJavascript
+            } else {
+                true
+            }
         }
 
         // Global Anti-Fingerprinting (Resist Fingerprinting)
         // This also handles Timezone and Screen randomization when enabled.
         GeckoPreferenceController.setGeckoPref(
             "privacy.resistFingerprinting",
-            info.afpEnabled || info.spoofTimezone || info.randomizeScreen,
+            info.afpEnabled, // Directly link to afpEnabled
             GeckoPreferenceController.PREF_BRANCH_USER
         )
 
         // WebGL Protection
         GeckoPreferenceController.setGeckoPref(
             "webgl.disabled",
-            info.disableWebGl,
+            info.disableWebGl || !info.afpEnabled, // WebGL is disabled if explicitly disabled OR if AFP is off
             GeckoPreferenceController.PREF_BRANCH_USER
         )
 
         // AudioContext Protection
         GeckoPreferenceController.setGeckoPref(
             "dom.audioContext.enabled",
-            !info.disableAudioContext,
+            !info.disableAudioContext && info.afpEnabled, // AudioContext is enabled only if AFP is enabled and not explicitly disabled
             GeckoPreferenceController.PREF_BRANCH_USER
         )
 
-        if (info.afpEnabled || info.randomizeCanvas) {
+        if (info.afpEnabled) { // Only apply if AFP is enabled
             // Force reported platform to match User-Agent in RFP mode
             if (info.randomizeUserAgent) {
                 GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting.target_video_card", "Intel(R) HD Graphics 620", GeckoPreferenceController.PREF_BRANCH_USER)
+            } else {
+                GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting.target_video_card", "", GeckoPreferenceController.PREF_BRANCH_USER)
             }
 
             // Canvas Protection
@@ -417,6 +430,8 @@ class BrowserViewModel @Inject constructor(
             // Locale Spoofing
             if (info.spoofLocale) {
                 GeckoPreferenceController.setGeckoPref("intl.accept_languages", "en-US, en", GeckoPreferenceController.PREF_BRANCH_USER)
+            } else {
+                GeckoPreferenceController.setGeckoPref("intl.accept_languages", "", GeckoPreferenceController.PREF_BRANCH_USER)
             }
 
             // Payment API Protection
@@ -429,6 +444,11 @@ class BrowserViewModel @Inject constructor(
             GeckoPreferenceController.setGeckoPref("dom.payments.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
             GeckoPreferenceController.setGeckoPref("dom.payment.request.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
             GeckoPreferenceController.setGeckoPref("dom.payments.canMakePayment.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting.target_video_card", "", GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting.canvasSerialization", false, GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("dom.enable_performance", true, GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("intl.accept_languages", "", GeckoPreferenceController.PREF_BRANCH_USER)
+
         }
 
         // WebRTC protection
@@ -541,15 +561,8 @@ class BrowserViewModel @Inject constructor(
                 _geckoSession.stop()
                 _geckoSession.reload() 
                 return true
-            } else {
-                // Error is on an already committed page. History back is required.
-                if (_geckoSession.isOpen && _canGoBack.value) {
-                    isGoingBack = true
-                    _geckoSession.goBack()
-                    return true
-                }
-                return false
             }
+            return false
         }
         
         // Standard browser back
