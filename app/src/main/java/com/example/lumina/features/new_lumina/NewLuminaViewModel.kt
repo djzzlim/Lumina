@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.lumina.core.LuminaRepository
 import com.example.lumina.core.ProfileManager
 import com.example.lumina.core.database.LuminaInfo
+import com.example.lumina.core.utils.IconUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -100,8 +101,8 @@ class NewLuminaViewModel @Inject constructor(
                     profileId = profileId,
                     name = state.name.trim(),
                     url = state.url.trim(),
-                    icon = getIconName(state.selectedIcon),
-                    color = state.selectedColor.toArgb().toLong(),
+                    icon = IconUtils.getIconName(state.selectedIcon),
+                    color = state.selectedColor.toArgb().toLong() and 0xFFFFFFFFL,
                     isWebRtcDisabled = state.isWebRtcDisabled,
                     afpEnabled = state.afpEnabled,
                     randomizeUserAgent = state.randomizeUserAgent,
@@ -121,10 +122,6 @@ class NewLuminaViewModel @Inject constructor(
                 _uiState.update { it.copy(error = "Error saving: ${e.message}") }
             }
         }
-    }
-
-    private fun getIconName(icon: ImageVector): String {
-        return icon.name.substringAfterLast('.')
     }
 
     // --- Events from Advanced Options ---

@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  *
  * It contains [LuminaInfo] and [Profile] entities.
  */
-@Database(entities = [LuminaInfo::class, Profile::class], version = 3, exportSchema = false)
+@Database(entities = [LuminaInfo::class, Profile::class], version = 4, exportSchema = false)
 abstract class LuminaDatabase : RoomDatabase() {
     /**
      * Gets the DAO for lumina-related operations.
@@ -41,6 +41,16 @@ abstract class LuminaDatabase : RoomDatabase() {
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("CREATE TABLE IF NOT EXISTS `profiles` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY(`id`))")
+            }
+        }
+
+        /**
+         * Migration from version 3 to 4.
+         * Adds the `disableJavascript` column to the `luminas` table.
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE luminas ADD COLUMN disableJavascript INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

@@ -36,7 +36,11 @@ object DatabaseModule {
                 "lumina-database-v2" // Changed name to avoid "file is not a database" error with existing unencrypted DB
             )
             .openHelperFactory(factory) // Use SQLCipher for encryption
-            .addMigrations(LuminaDatabase.MIGRATION_1_2, LuminaDatabase.MIGRATION_2_3)
+            .addMigrations(
+                LuminaDatabase.MIGRATION_1_2, 
+                LuminaDatabase.MIGRATION_2_3,
+                LuminaDatabase.MIGRATION_3_4
+            )
             .fallbackToDestructiveMigration(false)
             .build()
     }

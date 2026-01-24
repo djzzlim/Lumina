@@ -238,6 +238,7 @@ fun AppNavigation(
                     onRandomizeScreenChange = vm::setRandomizeScreen,
                     onSpoofHardwareChange = vm::setSpoofHardware,
                     onDisablePaymentChange = vm::setDisablePayment,
+                    onDisableJavascriptChange = vm::setDisableJavascript,
                     onNavigateBack = {
                         navController.navigateUp()
                     }
@@ -296,6 +297,7 @@ fun AppNavigation(
                     onRandomizeScreenChange = vm::setRandomizeScreen,
                     onSpoofHardwareChange = vm::setSpoofHardware,
                     onDisablePaymentChange = vm::setDisablePayment,
+                    onDisableJavascriptChange = vm::setDisableJavascript,
                     onNavigateBack = {
                         navController.navigateUp()
                     }
@@ -309,25 +311,7 @@ fun AppNavigation(
                 navArgument(ScreenRoutes.BROWSER_ID_ARG) {
                     type = NavType.LongType
                 }
-            ),
-            enterTransition = {
-                slideIntoContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                    animationSpec = tween(slideDuration)
-                )
-            },
-            exitTransition = {
-                fadeOut(animationSpec = tween(slideDuration))
-            },
-            popEnterTransition = {
-                fadeIn(animationSpec = tween(slideDuration))
-            },
-            popExitTransition = {
-                slideOutOfContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Down,
-                    animationSpec = tween(slideDuration)
-                )
-            }
+            )
         ) {
             BrowserScreen(
                 onClose = {

@@ -1,4 +1,4 @@
-package com.example.lumina.features.edit_lumina
+package com.example.lumina.core.utils
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Adb
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Cloud
@@ -41,6 +42,8 @@ import androidx.compose.material.icons.filled.LocalFlorist
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MedicalServices
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Nightlight
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
@@ -48,7 +51,9 @@ import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Sailing
 import androidx.compose.material.icons.filled.Science
@@ -72,108 +77,14 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.lifecycle.SavedStateHandle
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.example.lumina.core.LuminaRepository
-import com.example.lumina.core.database.LuminaInfo
-import com.example.lumina.features.new_lumina.NewLuminaUiState
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class EditLuminaViewModel @Inject constructor(
-    private val repository: LuminaRepository,
-    savedStateHandle: SavedStateHandle
-) : ViewModel() {
-
-    private val luminaId: Long = savedStateHandle.get<Long>("luminaId")!!
-
-    private val _uiState = MutableStateFlow(NewLuminaUiState())
-    val uiState = _uiState.asStateFlow()
-
-    private var originalLumina: LuminaInfo? = null
-
-    init {
-        viewModelScope.launch {
-            repository.getLuminaById(luminaId).first().let { info ->
-                originalLumina = info
-                _uiState.update {
-                    it.copy(
-                        name = info.name,
-                        url = info.url,
-                        selectedIcon = getIconVector(info.icon),
-                        selectedColor = Color(info.color.toInt()),
-                        isWebRtcDisabled = info.isWebRtcDisabled,
-                        afpEnabled = info.afpEnabled,
-                        randomizeUserAgent = info.randomizeUserAgent,
-                        spoofLocale = info.spoofLocale,
-                        spoofTimezone = info.spoofTimezone,
-                        randomizeCanvas = info.randomizeCanvas,
-                        disableAudioContext = info.disableAudioContext,
-                        disableWebGl = info.disableWebGl,
-                        randomizeScreen = info.randomizeScreen,
-                        spoofHardware = info.spoofHardware,
-                        disablePayment = info.disablePayment,
-                        disableJavascript = info.disableJavascript
-                    )
-                }
-            }
-        }
+object IconUtils {
+    fun getIconName(icon: ImageVector): String {
+        return icon.name.substringAfterLast('.')
     }
 
-    fun onNameChange(newName: String) = _uiState.update { it.copy(name = newName, error = null) }
-    fun onUrlChange(newUrl: String) = _uiState.update { it.copy(url = newUrl, error = null) }
-    fun onIconSelected(newIcon: ImageVector) = _uiState.update { it.copy(selectedIcon = newIcon) }
-    fun onColorSelected(newColor: Color) = _uiState.update { it.copy(selectedColor = newColor) }
-
-    fun onSave(onSuccess: () -> Unit) {
-        val state = _uiState.value
-        if (state.name.isBlank()) {
-            _uiState.update { it.copy(error = "You have to put a name") }
-            return
-        }
-        if (state.url.isBlank() || state.url == "https://") {
-            _uiState.update { it.copy(error = "You have to put a website URL") }
-            return
-        }
-
-        viewModelScope.launch {
-            val original = originalLumina ?: return@launch
-            val updatedInfo = original.copy(
-                name = state.name.trim(),
-                url = state.url.trim(),
-                icon = getIconName(state.selectedIcon),
-                color = state.selectedColor.toArgb().toLong() and 0xFFFFFFFFL,
-                isWebRtcDisabled = state.isWebRtcDisabled,
-                afpEnabled = state.afpEnabled,
-                randomizeUserAgent = state.randomizeUserAgent,
-                spoofLocale = state.spoofLocale,
-                spoofTimezone = state.spoofTimezone,
-                randomizeCanvas = state.randomizeCanvas,
-                disableAudioContext = state.disableAudioContext,
-                disableWebGl = state.disableWebGl,
-                randomizeScreen = state.randomizeScreen,
-                spoofHardware = state.spoofHardware,
-                disablePayment = state.disablePayment,
-                disableJavascript = state.disableJavascript
-            )
-            repository.updateLumina(updatedInfo)
-            onSuccess()
-        }
-    }
-
-    private fun getIconName(icon: ImageVector): String = icon.name.substringAfterLast('.')
-
-    private fun getIconVector(iconName: String): ImageVector {
+    fun getIconVector(iconName: String): ImageVector {
         return when (iconName) {
             "Language" -> Icons.Default.Language
             "Star" -> Icons.Default.Star
@@ -246,21 +157,12 @@ class EditLuminaViewModel @Inject constructor(
             "Smartphone" -> Icons.Default.Smartphone
             "MenuBook" -> Icons.AutoMirrored.Filled.MenuBook
             "Edit" -> Icons.Default.Edit
+            "PlayCircle" -> Icons.Default.PlayCircle
+            "Movie" -> Icons.Default.Movie
+            "MusicNote" -> Icons.Default.MusicNote
+            "Radio" -> Icons.Default.Radio
+            "Build" -> Icons.Default.Build
             else -> Icons.Default.Language
         }
     }
-
-    // Advanced Options Toggles
-    fun setWebRtcDisabled(disabled: Boolean) = _uiState.update { it.copy(isWebRtcDisabled = disabled) }
-    fun setAfpEnabled(enabled: Boolean) = _uiState.update { it.copy(afpEnabled = enabled) }
-    fun setRandomizeUserAgent(enabled: Boolean) = _uiState.update { it.copy(randomizeUserAgent = enabled) }
-    fun setSpoofLocale(enabled: Boolean) = _uiState.update { it.copy(spoofLocale = enabled) }
-    fun setSpoofTimezone(enabled: Boolean) = _uiState.update { it.copy(spoofTimezone = enabled) }
-    fun setRandomizeCanvas(enabled: Boolean) = _uiState.update { it.copy(randomizeCanvas = enabled) }
-    fun setDisableAudioContext(enabled: Boolean) = _uiState.update { it.copy(disableAudioContext = enabled) }
-    fun setDisableWebGl(enabled: Boolean) = _uiState.update { it.copy(disableWebGl = enabled) }
-    fun setRandomizeScreen(enabled: Boolean) = _uiState.update { it.copy(randomizeScreen = enabled) }
-    fun setSpoofHardware(enabled: Boolean) = _uiState.update { it.copy(spoofHardware = enabled) }
-    fun setDisablePayment(enabled: Boolean) = _uiState.update { it.copy(disablePayment = enabled) }
-    fun setDisableJavascript(enabled: Boolean) = _uiState.update { it.copy(disableJavascript = enabled) }
 }

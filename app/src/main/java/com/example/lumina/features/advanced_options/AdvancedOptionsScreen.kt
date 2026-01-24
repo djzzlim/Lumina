@@ -59,6 +59,7 @@ import com.example.lumina.ui.theme.LuminaTheme
  * @param onRandomizeScreenChange Callback for toggling screen dimensions randomization.
  * @param onSpoofHardwareChange Callback for toggling hardware info spoofing.
  * @param onDisablePaymentChange Callback for toggling Payment API disabling.
+ * @param onDisableJavascriptChange Callback for toggling JavaScript disabling.
  * @param onNavigateBack Callback function to navigate back to the previous screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,6 +77,7 @@ fun AdvancedOptionsScreen(
     onRandomizeScreenChange: (Boolean) -> Unit,
     onSpoofHardwareChange: (Boolean) -> Unit,
     onDisablePaymentChange: (Boolean) -> Unit,
+    onDisableJavascriptChange: (Boolean) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     Scaffold(
@@ -110,7 +112,8 @@ fun AdvancedOptionsScreen(
                 onDisableWebGlChange = onDisableWebGlChange,
                 onRandomizeScreenChange = onRandomizeScreenChange,
                 onSpoofHardwareChange = onSpoofHardwareChange,
-                onDisablePaymentChange = onDisablePaymentChange
+                onDisablePaymentChange = onDisablePaymentChange,
+                onDisableJavascriptChange = onDisableJavascriptChange
             )
             HelpText("Lumina has many antifingerprinting measures. Some websites may not be compatible with some of these measures enabled.")
             Spacer(modifier = Modifier.height(8.dp))
@@ -146,6 +149,7 @@ fun AntifingerprintingToggles(
     onRandomizeScreenChange: (Boolean) -> Unit,
     onSpoofHardwareChange: (Boolean) -> Unit,
     onDisablePaymentChange: (Boolean) -> Unit,
+    onDisableJavascriptChange: (Boolean) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -211,6 +215,12 @@ fun AntifingerprintingToggles(
             text = "Disable Payment APIs",
             checked = afpState.disablePayment,
             onCheckedChange = onDisablePaymentChange,
+            enabled = afpState.afpEnabled
+        )
+        ToggleRowInternal(
+            text = "Disable JavaScript",
+            checked = afpState.disableJavascript,
+            onCheckedChange = onDisableJavascriptChange,
             showHorizontalDivider = false,
             enabled = afpState.afpEnabled
         )
@@ -358,6 +368,7 @@ fun AdvancedOptionsScreenPreview() {
             onRandomizeScreenChange = {},
             onSpoofHardwareChange = {},
             onDisablePaymentChange = {},
+            onDisableJavascriptChange = {},
             onNavigateBack = {}
         )
     }

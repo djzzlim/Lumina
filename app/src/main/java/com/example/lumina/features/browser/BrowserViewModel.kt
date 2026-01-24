@@ -368,17 +368,32 @@ class BrowserViewModel @Inject constructor(
             }
             
             useTrackingProtection = info.afpEnabled
-            allowJavascript = true
+            allowJavascript = !info.disableJavascript
         }
 
         // Global Anti-Fingerprinting (Resist Fingerprinting)
+        // This also handles Timezone and Screen randomization when enabled.
         GeckoPreferenceController.setGeckoPref(
             "privacy.resistFingerprinting",
-            info.afpEnabled,
+            info.afpEnabled || info.spoofTimezone || info.randomizeScreen,
             GeckoPreferenceController.PREF_BRANCH_USER
         )
 
-        if (info.afpEnabled) {
+        // WebGL Protection
+        GeckoPreferenceController.setGeckoPref(
+            "webgl.disabled",
+            info.disableWebGl,
+            GeckoPreferenceController.PREF_BRANCH_USER
+        )
+
+        // AudioContext Protection
+        GeckoPreferenceController.setGeckoPref(
+            "dom.audioContext.enabled",
+            !info.disableAudioContext,
+            GeckoPreferenceController.PREF_BRANCH_USER
+        )
+
+        if (info.afpEnabled || info.randomizeCanvas) {
             // Force reported platform to match User-Agent in RFP mode
             if (info.randomizeUserAgent) {
                 GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting.target_video_card", "Intel(R) HD Graphics 620", GeckoPreferenceController.PREF_BRANCH_USER)
@@ -391,17 +406,12 @@ class BrowserViewModel @Inject constructor(
                 GeckoPreferenceController.PREF_BRANCH_USER
             )
 
-            // WebGL Protection
-            GeckoPreferenceController.setGeckoPref(
-                "webgl.disabled",
-                info.disableWebGl,
-                GeckoPreferenceController.PREF_BRANCH_USER
-            )
-
             // Hardware Spoofing
             if (info.spoofHardware) {
                 GeckoPreferenceController.setGeckoPref("dom.maxHardwareConcurrency", 2, GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("dom.enable_performance", false, GeckoPreferenceController.PREF_BRANCH_USER)
+            } else {
+                GeckoPreferenceController.setGeckoPref("dom.enable_performance", true, GeckoPreferenceController.PREF_BRANCH_USER)
             }
 
             // Locale Spoofing
@@ -409,7 +419,7 @@ class BrowserViewModel @Inject constructor(
                 GeckoPreferenceController.setGeckoPref("intl.accept_languages", "en-US, en", GeckoPreferenceController.PREF_BRANCH_USER)
             }
 
-            // Payment API Protection (Disabling all related hooks)
+            // Payment API Protection
             val paymentEnabled = !info.disablePayment
             GeckoPreferenceController.setGeckoPref("dom.payments.enabled", paymentEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
             GeckoPreferenceController.setGeckoPref("dom.payment.request.enabled", paymentEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
