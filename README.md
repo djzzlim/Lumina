@@ -3,9 +3,10 @@
 Lumina is a privacy-first, multi-profile Android browser built on **GeckoView**. It is designed for users who require high-level forensic protection and granular control over their digital fingerprint.
 
 ## 🛡️ Core Security Philosophy
-Lumina distinguishes itself by treating every browsing session as a forensic-sensitive event. It focuses on two main pillars:
+Lumina distinguishes itself by treating every browsing session as a forensic-sensitive event. It focuses on three main pillars:
 1. **Data Isolation:** Separating browser identities through an encrypted multi-profile system.
 2. **Persistence Prevention:** Ensuring no trace of activity remains in RAM or storage after session closure.
+3. **Intelligent Threat Protection:** Using local, privacy-preserving AI to detect threats without leaking data.
 
 ---
 
@@ -15,72 +16,55 @@ Lumina distinguishes itself by treating every browsing session as a forensic-sen
 * **Isolated Identities:** Create multiple profiles (e.g., Work, Personal, Research), each with its own set of "Lumina" bookmarks.
 * **Database Encryption:** All profile metadata and site configurations are stored using **SQLCipher (v4)** with AES-256 encryption.
 
+### 🤖 Local AI Phishing Detection
+* **On-Device Inference:** Uses a local **URLBERT** model (ONNX) to classify URLs in real-time.
+* **Privacy-First Safety:** Unlike traditional browsers that send your URLs to a cloud API (like Safe Browsing), Lumina performs phishing detection locally on your device.
+* **Custom Tokenization:** Implements a punctuation-aware WordPiece tokenizer optimized for URL structure analysis.
+
 ### 🕵️ Advanced Fingerprint Protection (Per-Site)
 Configure unique security headers and browser behavior for every saved site:
-* **Anti-Fingerprinting (AFP):** Toggle GeckoView's advanced tracking protection.
+* **Anti-Fingerprinting (AFP):** Toggle GeckoView's advanced tracking protection (Resist Fingerprinting).
 * **Identity Randomization:** User-Agent randomization and Locale/Timezone spoofing.
+* **Hardware Spoofing:** Mask WebGL, AudioContext, and Screen dimensions.
 
 ### 🔒 Forensic Hardening
-* **RAM Purging:** Explicitly clears the GeckoView runtime and shuts down the browser process on exit to zero out volatile memory.
-* **Screen Privacy:** Uses `FLAG_SECURE` to block screenshots and hide content from the Android Recents (Multitasking) screen.
-* **Clean Cold-Start:** Automatically clears session history and temporary storage upon every fresh application launch.
+* **RAM Purging:** Explicitly clears the GeckoView runtime and shuts down the browser process on exit.
+* **Screen Privacy:** Uses `FLAG_SECURE` to block screenshots and hide content from the Android Recents screen.
+* **Auto-Close Timer:** Configurable inactivity timeout that performs a forensic wipe of session data.
 
 ### 🌐 Secure Networking
-* **Custom DNS/DoH:** Integrated support for DNS-over-HTTPS providers to bypass ISP-level tracking.
-* **Private-Mode by Default:** Every tab runs in an isolated private session.
+* **Custom DNS/DoH:** Support for Cloudflare, Google, AdGuard, Quad9, or any custom DoH endpoint.
+* **Hybrid Safe Browsing:** Choice between Google Safe Browsing API or Lumina's offline ML model.
 
 ---
 
 ## 🛠️ Tech Stack
 * **Language:** Kotlin
-* **UI Framework:** Jetpack Compose (Modern, declarative UI)
-* **Browser Engine:** Mozilla GeckoView (Standard-compliant, private engine)
+* **UI Framework:** Jetpack Compose
+* **Browser Engine:** Mozilla GeckoView
+* **AI/ML:** ONNX Runtime (Mobile)
 * **Dependency Injection:** Hilt (Dagger)
-* **Local Database:** Room + SQLCipher (Encrypted persistence)
-* **Navigation:** Compose Navigation
+* **Local Database:** Room + SQLCipher
 * **Camera:** CameraX + ML Kit (For secure QR code scanning)
 
 ---
 
 ## 🏗️ Detailed Project Structure
 
-The project follows a feature-based modular architecture designed for high cohesion and security isolation.
-
 ```
 app/src/main/java/com/example/lumina/
 ├── core/                        # Singleton Managers & Data Layer
+│   ├── ml/                      # Local AI Phishing Protection
+│   │   ├── PhishingDetector.kt  # ONNX Inference Engine
+│   │   └── WordPieceTokenizer.kt # URL-aware tokenizer
 │   ├── database/                # Encrypted Persistence (Room + SQLCipher)
-│   │   ├── LuminaDatabase.kt    # Main DB with migration logic
-│   │   ├── LuminaInfo.kt        # Tab/Site Entity
-│   │   ├── Profile.kt           # User Profile Entity
-│   │   ├── DatabaseModule.kt    # Hilt DB providers
-│   │   └── SecurityUtils.kt     # Keystore-backed key generation
-│   ├── LuminaRepository.kt      # Site data orchestration
-│   ├── ProfileRepository.kt     # Profile data orchestration
-│   ├── ProfileManager.kt        # Active profile state & session init
+│   ├── di/                      # Hilt Modules (Gecko, ML, Database)
 │   └── AppPreferences.kt        # Secure DataStore for app settings
 ├── features/                    # UI & Feature Logic
-│   ├── home/                    # Main Dashboard (Grid view of sites)
-│   ├── browser/                 # GeckoView Integration (Session & UI)
-│   ├── profiles/                # Profile Creation & Management
-│   ├── edit_lumina/             # Advanced Security/Fingerprint settings
-│   ├── new_lumina/              # Site creation & Scanner integration
-│   ├── qr_scanner/              # ML Kit based QR Scanner
-│   ├── advanced_options/        # Fine-grained browser configuration
-│   └── settings/                # DNS and Search Engine preferences
-├── navigation/                  # App Graph & Screen Routes
-├── ui/theme/                    # Design System & Theming
-├── LuminaApplication.kt         # Hilt App & Profile Initialization
-└── MainActivity.kt              # Entry Point (FLAG_SECURE, Lifecycle Cleanup)
+│   ├── browser/                 # GeckoView Integration & Safety Interceptors
+│   ├── settings/                # Security & Privacy configuration
+│   └── ...                      # Feature modules
 ```
-
----
-
-## 🚀 Roadmap: Intelligent Threat Protection
-
-Currently in development:
-* **Offline Phishing Detection:** Integration of a local **MLP (Multi-Layer Perceptron) Model**.
-* **On-Device Inference:** Classification of URLs using an offline model to ensure that even "phishing checks" don't leak your browsing data to a third-party API.
 
 ---
 
@@ -89,7 +73,7 @@ Currently in development:
 ### Prerequisites
 * Android Studio Ladybug or newer.
 * Android SDK 34+.
-* A device/emulator with ARM64 architecture (preferred for GeckoView).
+* **urlbert_phishing.onnx** and **vocab.txt** must be placed in `app/src/main/assets/`.
 
 ### Setup
 1. Clone the repository.
