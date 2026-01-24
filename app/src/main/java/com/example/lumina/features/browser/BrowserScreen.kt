@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -102,6 +103,7 @@ fun BrowserScreen(
     val isAppLevelFullscreen by browserViewModel.isAppLevelFullscreen.collectAsState()
     val lastError by browserViewModel.lastError.collectAsState()
     val showInsecureWarning by browserViewModel.showInsecureWarning.collectAsState()
+    val showPhishingWarning by browserViewModel.showPhishingWarning.collectAsState()
     val shouldClose by browserViewModel.shouldClose.collectAsState()
 
     val geckoView = remember { mutableStateOf<GeckoView?>(null) }
@@ -408,11 +410,18 @@ fun BrowserScreen(
                         )
                     }
 
-                    if (showInsecureWarning != null) {
+                    if (showPhishingWarning != null) {
+                        PhishingWarning(
+                            url = showPhishingWarning!!,
+                            onProceed = { browserViewModel.proceedToPhishingSite() },
+                            onCancel = { browserViewModel.cancelUnsafeSite() },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else if (showInsecureWarning != null) {
                         InsecureConnectionWarning(
                             url = showInsecureWarning!!,
                             onProceed = { browserViewModel.proceedToInsecureSite() },
-                            onCancel = { browserViewModel.cancelInsecureSite() },
+                            onCancel = { browserViewModel.cancelUnsafeSite() },
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -422,6 +431,87 @@ fun BrowserScreen(
         
         if (!isAppLevelFullscreen) {
             Box(modifier = Modifier.fillMaxWidth().navigationBarsPadding())
+        }
+    }
+}
+
+/**
+ * A full-screen warning page shown when a site is flagged by the local AI phishing model.
+ */
+@Composable
+fun PhishingWarning(
+    url: String,
+    onProceed: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .background(Color(0xFF1B0000))
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Security,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = Color.Red
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text(
+            text = "Deceptive Site Detected",
+            style = MaterialTheme.typography.headlineSmall,
+            color = Color.Red,
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Bold
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Lumina's local AI has flagged this URL as a potential phishing threat:\n$url",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.White.copy(alpha = 0.9f),
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        Text(
+            text = "This site may be designed to trick you into revealing personal or financial information by mimicking a trusted service.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.LightGray,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(40.dp))
+        
+        Button(
+            onClick = onCancel,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Red,
+                contentColor = Color.White
+            ),
+            shape = RoundedCornerShape(24.dp),
+            modifier = Modifier.fillMaxWidth().height(48.dp)
+        ) {
+            Text("Get Me Out of Here", fontWeight = FontWeight.Bold)
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        TextButton(
+            onClick = onProceed
+        ) {
+            Text(
+                "I trust this site, proceed anyway",
+                color = Color.White.copy(alpha = 0.5f),
+                style = MaterialTheme.typography.labelLarge
+            )
         }
     }
 }

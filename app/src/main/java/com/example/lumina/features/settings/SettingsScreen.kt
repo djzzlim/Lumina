@@ -27,7 +27,10 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -62,6 +65,8 @@ fun SettingsScreen(
     val savedCustomDnsUri by viewModel.customDnsUri.collectAsStateWithLifecycle()
     val selectedSearchEngine by viewModel.searchEngine.collectAsStateWithLifecycle()
     val selectedAutoCloseTimeoutMinutes by viewModel.autoCloseTimeout.collectAsStateWithLifecycle()
+    val safeBrowsingEnabled by viewModel.safeBrowsingEnabled.collectAsStateWithLifecycle()
+    val localPhishingModelEnabled by viewModel.localPhishingModelEnabled.collectAsStateWithLifecycle()
     
     val selectedAutoCloseName = remember(selectedAutoCloseTimeoutMinutes) {
         AutoCloseTimeout.fromMinutes(selectedAutoCloseTimeoutMinutes).name
@@ -162,6 +167,30 @@ fun SettingsScreen(
             }
 
             item {
+                SettingsSection(title = "SECURITY") {
+                    SettingsToggleItem(
+                        label = "Safe Browsing (Google API)",
+                        checked = safeBrowsingEnabled,
+                        onCheckedChange = viewModel::setSafeBrowsingEnabled
+                    )
+                    HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
+                    SettingsToggleItem(
+                        label = "Offline AI Phishing Protection",
+                        checked = localPhishingModelEnabled,
+                        onCheckedChange = viewModel::setLocalPhishingModelEnabled
+                    )
+                }
+                Text(
+                    "Safe Browsing requires an internet connection to verify URLs. Offline AI protection runs locally on your device for maximum privacy.",
+                    color = Color.Gray,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            item {
                 SettingsSection(title = "PRIVACY") {
                     SettingsDropdownItem(
                         label = "Auto-Close Inactive Tabs",
@@ -197,6 +226,33 @@ fun SettingsSection(
         ) {
             content()
         }
+    }
+}
+
+@Composable
+fun SettingsToggleItem(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, color = Color.White, fontSize = 16.sp)
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                uncheckedThumbColor = Color(0xFFE5E5E5),
+                uncheckedTrackColor = Color(0xFF3E3E3E)
+            )
+        )
     }
 }
 
