@@ -56,17 +56,28 @@ Configure unique security headers and browser behavior for every saved site:
 
 ```
 app/src/main/java/com/example/lumina/
-├── core/                        # Singleton Managers & Data Layer
-│   ├── ml/                      # Local AI Phishing Protection
-│   │   ├── PhishingDetector.kt  # ONNX Inference Engine
-│   │   └── WordPieceTokenizer.kt # URL-aware tokenizer
+├── core/                        # Core Logic & Data Layer
+│   ├── browser/                 # GeckoView Management
 │   ├── database/                # Encrypted Persistence (Room + SQLCipher)
-│   ├── di/                      # Hilt Modules (Gecko, ML, Database)
-│   └── AppPreferences.kt        # Secure DataStore for app settings
-├── features/                    # UI & Feature Logic
-│   ├── browser/                 # GeckoView Integration & Safety Interceptors
-│   ├── settings/                # Security & Privacy configuration
-│   └── ...                      # Feature modules
+│   ├── di/                      # Dependency Injection (Hilt)
+│   ├── ml/                      # Local AI Phishing Protection (ONNX)
+│   ├── utils/                   # UI & Data Utilities
+│   ├── AppPreferences.kt        # Secure DataStore settings
+│   ├── LuminaRepository.kt      # Main Data Orchestrator
+│   ├── ProfileManager.kt        # Profile Lifecycle Logic
+│   └── ProfileRepository.kt     # Profile Persistence logic
+├── features/                    # UI & Feature Logic (MVI/MVVM)
+│   ├── advanced_options/        # Site-specific forensic settings
+│   ├── browser/                 # Browser Engine & Safety Interceptors
+│   ├── edit_lumina/             # Bookmark/Site editing
+│   ├── home/                    # Main Lumina Dashboard
+│   ├── new_lumina/              # Secure site creation
+│   ├── profiles/                # Identity management
+│   ├── qr_scanner/              # Secure QR code integration
+│   └── settings/                # Global privacy configuration
+├── navigation/                  # Compose Navigation & Routes
+├── ui/theme/                    # Design System (Material 3)
+└── LuminaApplication.kt         # App Entry & Hilt Setup
 ```
 
 ---
