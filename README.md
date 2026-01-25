@@ -16,10 +16,13 @@ Lumina distinguishes itself by treating every browsing session as a forensic-sen
 * **Isolated Identities:** Create multiple profiles (e.g., Work, Personal, Research), each with its own set of "Lumina" bookmarks.
 * **Database Encryption:** All profile metadata and site configurations are stored using **SQLCipher (v4)** with AES-256 encryption.
 
-### 🤖 Local AI Phishing Detection
-* **On-Device Inference:** Uses a local **URLBERT** model (ONNX) to classify URLs in real-time.
-* **Privacy-First Safety:** Unlike traditional browsers that send your URLs to a cloud API (like Safe Browsing), Lumina performs phishing detection locally on your device.
-* **Custom Tokenization:** Implements a punctuation-aware WordPiece tokenizer optimized for URL structure analysis.
+### 🤖 AI Engine (Phishing Detection)
+Lumina's phishing detection is powered by a specialized Transformer model optimized for mobile efficiency.
+- **Model:** [URLBERT Tiny v4 Phishing Classifier](https://huggingface.co/CrabInHoney/urlbert-tiny-v4-phishing-classifier)
+- **Architecture:** BERT-Tiny (4.4M parameters)
+- **Implementation:** Quantized and exported to **ONNX Runtime** for sub-20ms local inference on Android.
+- **Privacy:** All inference runs offline; no URLs are sent to the cloud.
+- **Custom Tokenization:** Implements a punctuation-aware WordPiece tokenizer optimized for URL structure analysis.
 
 ### 🕵️ Advanced Fingerprint Protection (Per-Site)
 Configure unique security headers and browser behavior for every saved site:
@@ -42,7 +45,7 @@ Configure unique security headers and browser behavior for every saved site:
 * **Language:** Kotlin
 * **UI Framework:** Jetpack Compose
 * **Browser Engine:** Mozilla GeckoView
-* **AI/ML:** ONNX Runtime (Mobile)
+* **AI/ML:** ONNX Runtime + URLBERT Tiny v4
 * **Dependency Injection:** Hilt (Dagger)
 * **Local Database:** Room + SQLCipher
 * **Camera:** CameraX + ML Kit (For secure QR code scanning)
