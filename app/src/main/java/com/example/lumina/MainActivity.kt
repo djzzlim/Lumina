@@ -2,6 +2,7 @@ package com.example.lumina
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -49,6 +50,7 @@ class MainActivity : ComponentActivity() {
         // Only clear runtime storage on a fresh cold-start, not on activity recreation (e.g. rotation)
         if (savedInstanceState == null) {
             // Cold start: clear any leftover runtime data for a clean slate
+            Log.d("Lumina-Debug", "Clearing runtime storage on cold start")
             geckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
         }
         
@@ -111,6 +113,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         if (isFinishing) {
             // Clear history, cookies, and cache upon exit
+            Log.d("Lumina-Debug", "Clearing runtime storage on exit")
             geckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
             
             // Shut down the runtime
