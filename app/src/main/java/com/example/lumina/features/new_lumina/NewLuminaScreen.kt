@@ -129,7 +129,8 @@ fun NewLuminaScreen(
         topBar = {
             NewLuminaTopAppBar(
                 onClose = onNavigateBack,
-                onSave = { viewModel.onSave(onSuccess = onSaveLumina) }
+                onSave = { viewModel.onSave(onSuccess = onSaveLumina) },
+                saveEnabled = !uiState.isSaving
             )
         },
         containerColor = Color.Black
@@ -191,10 +192,11 @@ fun NewLuminaScreen(
  *
  * @param onClose Callback for the close button.
  * @param onSave Callback for the save button.
+ * @param saveEnabled Whether the save button is enabled.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewLuminaTopAppBar(onClose: () -> Unit, onSave: () -> Unit) {
+fun NewLuminaTopAppBar(onClose: () -> Unit, onSave: () -> Unit, saveEnabled: Boolean = true) {
     TopAppBar(
         title = {},
         navigationIcon = {
@@ -203,8 +205,12 @@ fun NewLuminaTopAppBar(onClose: () -> Unit, onSave: () -> Unit) {
             }
         },
         actions = {
-            IconButton(onClick = onSave) {
-                Icon(Icons.Default.Check, "Save", tint = Color(0xFFBB86FC))
+            IconButton(onClick = onSave, enabled = saveEnabled) {
+                Icon(
+                    Icons.Default.Check,
+                    "Save",
+                    tint = if (saveEnabled) Color(0xFFBB86FC) else Color.Gray
+                )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black)

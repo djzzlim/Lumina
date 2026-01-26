@@ -38,7 +38,8 @@ import javax.inject.Inject
  * ViewModel for the [BrowserScreen].
  */
 @HiltViewModel
-class BrowserViewModel @Inject constructor(
+class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::class)
+@Inject constructor(
     private val luminaRepository: LuminaRepository,
     @Suppress("UNUSED_PARAMETER") private val profileManager: ProfileManager,
     private val globalGeckoRuntime: GeckoRuntime,
