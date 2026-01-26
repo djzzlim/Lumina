@@ -1,11 +1,14 @@
 package com.example.lumina.features.home
 
+import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,13 +31,19 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -48,11 +57,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.example.lumina.core.database.LuminaInfo
@@ -61,17 +72,6 @@ import com.example.lumina.core.utils.IconUtils
 
 /**
  * The primary home screen of the Lumina app.
- *
- * This screen displays a grid of "Lumina" items (bookmarked sites) associated with the current profile.
- * It allows for adding new items, scanning QR codes, editing existing items, and managing profiles.
- * It also supports a selection mode for batch deletion of items.
- *
- * @param viewModel The ViewModel providing the home screen's state and logic.
- * @param onNavigateToScanner Callback to navigate to the QR scanner screen.
- * @param onNavigateToAddLumina Callback to navigate to the screen for adding a new Lumina item.
- * @param onNavigateToBrowser Callback to navigate to the browser screen for a specific item.
- * @param onNavigateToEditLumina Callback to navigate to the screen for editing a specific item.
- * @param onNavigateToProfiles Callback to navigate to the profile management screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,8 +86,17 @@ fun LuminaHomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var isNavigating by remember { mutableStateOf(false) }
+    var showExitDialog by remember { mutableStateOf(false) }
+    
+    val context = LocalContext.current
+    val activity = context as? Activity
 
-    // Reset isNavigating when the screen is resumed (e.g., navigating back to it)
+    // Handle back button to show exit dialog
+    BackHandler(enabled = !uiState.selectionMode) {
+        showExitDialog = true
+    }
+
+    // Reset isNavigating when the screen is resumed
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -150,12 +159,94 @@ fun LuminaHomeScreen(
                 }
             )
         }
+        
+        if (showExitDialog) {
+            ForensicExitDialog(
+                onConfirm = {
+                    showExitDialog = false
+                    activity?.finish()
+                },
+                onDismiss = { showExitDialog = false }
+            )
+        }
     }
 }
 
 /**
- * The top app bar for the home screen in its default state.
+ * A custom forensic-themed dialog to confirm app exit and data wipe.
  */
+@Composable
+fun ForensicExitDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = Color(0xFF1A1A2E),
+            tonalElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = Color(0xFFFF4C4C),
+                    modifier = Modifier.size(48.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "Close Session?",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text(
+                    text = "Exiting will trigger an immediate purge of all session data, including history, cookies, and temporary site configurations.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Justify
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Stay", color = Color.White)
+                    }
+                    
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFFF4C4C)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Exit", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeTopAppBar(
@@ -217,9 +308,6 @@ fun HomeTopAppBar(
     )
 }
 
-/**
- * The top app bar displayed when the home screen is in selection mode.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectionTopAppBar(
@@ -260,9 +348,6 @@ fun SelectionTopAppBar(
     )
 }
 
-/**
- * A grid that displays the list of Lumina items.
- */
 @Composable
 fun LuminaItemsGrid(
     items: List<LuminaInfo>,
@@ -279,7 +364,7 @@ fun LuminaItemsGrid(
     ) {
         items(
             items = items,
-            key = { it.id } // Adding keys improves performance
+            key = { it.id }
         ) { item ->
             LuminaItemCard(
                 item = item,
@@ -291,9 +376,6 @@ fun LuminaItemsGrid(
     }
 }
 
-/**
- * A card representing a single Lumina item in the grid.
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LuminaItemCard(
@@ -303,7 +385,6 @@ fun LuminaItemCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Optimization: remember expensive operations
     val iconVector = remember(item.icon) { IconUtils.getIconVector(item.icon) }
     val maskedUrl = remember(item.url) { maskUrl(item.url) }
     val iconColor = remember(item.color) { Color(item.color.toInt()) }
@@ -389,9 +470,6 @@ fun LuminaItemCard(
     }
 }
 
-/**
- * Masks a URL string for display, typically showing only a portion of the host.
- */
 private fun maskUrl(url: String): String {
     if (url.isEmpty()) return ""
     return try {
