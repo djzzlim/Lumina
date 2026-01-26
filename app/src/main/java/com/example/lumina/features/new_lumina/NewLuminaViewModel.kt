@@ -41,6 +41,7 @@ data class NewLuminaUiState(
     val spoofHardware: Boolean = true,
     val disablePayment: Boolean = true,
     val disableJavascript: Boolean = false,
+    val isSaving: Boolean = false,
     val error: String? = null
 )
 
@@ -83,6 +84,8 @@ class NewLuminaViewModel @Inject constructor(
 
     fun onSave(onSuccess: () -> Unit) {
         val state = _uiState.value
+        if (state.isSaving) return
+
         if (state.name.isBlank()) {
             _uiState.update { it.copy(error = "You have to put a name") }
             return
@@ -91,6 +94,8 @@ class NewLuminaViewModel @Inject constructor(
             _uiState.update { it.copy(error = "You have to put a website URL") }
             return
         }
+
+        _uiState.update { it.copy(isSaving = true) }
 
         viewModelScope.launch {
             try {
@@ -119,7 +124,7 @@ class NewLuminaViewModel @Inject constructor(
                 repository.insertLumina(luminaInfo)
                 onSuccess()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Error saving: ${e.message}") }
+                _uiState.update { it.copy(error = "Error saving: ${e.message}", isSaving = false) }
             }
         }
     }
