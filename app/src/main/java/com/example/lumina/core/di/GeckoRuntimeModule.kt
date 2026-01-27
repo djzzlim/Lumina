@@ -33,6 +33,25 @@ object GeckoRuntimeModule {
         @ApplicationContext context: Context,
         appPreferences: AppPreferences
     ): GeckoRuntime {
+        // 1. Set Preferences BEFORE creating the runtime to ensure they take effect immediately
+        
+        // Silence "Native manifests not supported" and Managed Storage spam
+        GeckoPreferenceController.setGeckoPref("browser.storage.managed.enabled", false, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("extensions.managedStorage.enabled", false, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("extensions.webextensions.managedStorage", false, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("extensions.webextensions.nativeMessaging", false, GeckoPreferenceController.PREF_BRANCH_USER)
+
+        // Fix InstallException: -5 (ERROR_SIGNATURE_INVALID)
+        GeckoPreferenceController.setGeckoPref("xpinstall.signatures.required", false, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("extensions.webapi.testing", true, GeckoPreferenceController.PREF_BRANCH_USER)
+
+        // Set the Google Safe Browsing API Key
+        GeckoPreferenceController.setGeckoPref(
+            "browser.safebrowsing.key.google",
+            BuildConfig.SAFE_BROWSING_KEY,
+            GeckoPreferenceController.PREF_BRANCH_USER
+        )
+
         val dnsProvider = runBlocking { appPreferences.dnsProviderFlow.first() }
         val isolationStrategy = runBlocking { appPreferences.isolationStrategyFlow.first() }
 
@@ -53,17 +72,7 @@ object GeckoRuntimeModule {
 
         val runtime = GeckoRuntime.create(context, runtimeSettings)
 
-        // Set the Google Safe Browsing API Key
-        GeckoPreferenceController.setGeckoPref(
-            "browser.safebrowsing.key.google",
-            BuildConfig.SAFE_BROWSING_KEY,
-            GeckoPreferenceController.PREF_BRANCH_USER
-        )
-
-        // Silence "Native manifests not supported" spam
-        GeckoPreferenceController.setGeckoPref("browser.storage.managed.enabled", false, GeckoPreferenceController.PREF_BRANCH_USER)
-
-        // 1. Set PromptDelegate to auto-grant permissions
+        // 2. Set PromptDelegate to auto-grant permissions (including Private Browsing)
         runtime.webExtensionController.promptDelegate = object : WebExtensionController.PromptDelegate {
             override fun onInstallPromptRequest(
                 extension: WebExtension,
@@ -72,31 +81,33 @@ object GeckoRuntimeModule {
                 dataCollectionPermissions: Array<out String>
             ): GeckoResult<WebExtension.PermissionPromptResponse>? {
                 Log.d("Lumina-Gecko", "Auto-granting permissions for: ${extension.id}")
+                // The second parameter 'true' grants Private Browsing access immediately,
+                // preventing the need for a manual restart later.
                 return GeckoResult.fromValue(WebExtension.PermissionPromptResponse(
                     true, true, true
                 ))
             }
         }
 
-        // 2. Set AddonManagerDelegate to monitor extension lifecycle
+        // 3. Set AddonManagerDelegate to monitor extension lifecycle
         runtime.webExtensionController.setAddonManagerDelegate(object : WebExtensionController.AddonManagerDelegate {
             override fun onInstalled(extension: WebExtension) {
                 Log.d("Lumina-Gecko", "Extension installed: ${extension.id}")
-                // Allow in private browsing (triggers a restart, which is fine during install)
-                runtime.webExtensionController.setAllowedInPrivateBrowsing(extension, true)
                 
-                // Set dummy delegates
+                // DO NOT call setAllowedInPrivateBrowsing(true) here. 
+                // It is already granted by the PromptDelegate above.
+                // Calling it here triggers a Redundant Restart which causes errors.
+                
                 extension.setActionDelegate(object : WebExtension.ActionDelegate {})
                 extension.setMessageDelegate(object : WebExtension.MessageDelegate {}, "lumina")
             }
 
             override fun onInstallationFailed(extension: WebExtension?, error: WebExtension.InstallException) {
-                Log.e("Lumina-Gecko", "Installation failed for ${extension?.id}: ${error.message}", error)
+                Log.e("Lumina-Gecko", "Installation failed for ${extension?.id}: ${error.message} (code: ${error.code})", error)
             }
 
             override fun onReady(extension: WebExtension) {
                 Log.d("Lumina-Gecko", "Extension ready: ${extension.id}")
-                // DO NOT call setAllowedInPrivateBrowsing here, it causes an infinite restart loop
                 extension.setActionDelegate(object : WebExtension.ActionDelegate {})
             }
         })

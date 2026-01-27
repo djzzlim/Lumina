@@ -2,8 +2,10 @@ package com.example.lumina.features.home
 
 import android.app.Activity
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
@@ -35,7 +38,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,7 +52,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +60,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -63,8 +69,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import com.example.lumina.core.database.LuminaInfo
 import com.example.lumina.core.utils.IconUtils
 
@@ -90,23 +94,14 @@ fun LuminaHomeScreen(
     val context = LocalContext.current
     val activity = context as? Activity
 
-    // Handle back button to show exit dialog
-    BackHandler(enabled = !uiState.selectionMode) {
-        showExitDialog = true
+    // Handle back button to exit selection mode if active
+    BackHandler(enabled = uiState.selectionMode) {
+        viewModel.toggleSelectionMode()
     }
 
-    // Reset isNavigating when the screen is resumed
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                isNavigating = false
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+    // Handle back button to show exit dialog if NOT in selection mode
+    BackHandler(enabled = !uiState.selectionMode) {
+        showExitDialog = true
     }
 
     Scaffold(
@@ -120,43 +115,65 @@ fun LuminaHomeScreen(
             } else {
                 HomeTopAppBar(
                     onNavigateToScanner = { if (!isNavigating) { isNavigating = true; onNavigateToScanner() } },
-                    onNavigateToAddLumina = { if (!isNavigating) { isNavigating = true; onNavigateToAddLumina() } },
                     onToggleSelectionMode = viewModel::toggleSelectionMode,
                     onNavigateToProfiles = { if (!isNavigating) { isNavigating = true; onNavigateToProfiles() } },
                     onNavigateToSettings = { if (!isNavigating) { isNavigating = true; onNavigateToSettings() } }
                 )
             }
         },
+        floatingActionButton = {
+            if (!uiState.selectionMode) {
+                FloatingActionButton(
+                    onClick = { if (!isNavigating) { isNavigating = true; onNavigateToAddLumina() } },
+                    containerColor = Color(0xFFBB86FC),
+                    contentColor = Color.Black,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Lumina")
+                }
+            }
+        },
         containerColor = Color.Black
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp)
                 .fillMaxSize()
-                .background(Color.Black)
-                .navigationBarsPadding()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF000000),
+                            Color(0xFF050510)
+                        )
+                    )
+                )
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
-            LuminaItemsGrid(
-                items = uiState.luminaItems,
-                selectionMode = uiState.selectionMode,
-                selectedItems = uiState.selectedItems,
-                onItemClick = {
-                    if (uiState.selectionMode) {
-                        viewModel.toggleItemSelection(it.id)
-                    } else if (!isNavigating) {
-                        isNavigating = true
-                        onNavigateToBrowser(it.id)
+            Column(
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .fillMaxSize()
+                    .navigationBarsPadding()
+            ) {
+                LuminaItemsGrid(
+                    items = uiState.luminaItems,
+                    selectionMode = uiState.selectionMode,
+                    selectedItems = uiState.selectedItems,
+                    onItemClick = {
+                        if (uiState.selectionMode) {
+                            viewModel.toggleItemSelection(it.id)
+                        } else if (!isNavigating) {
+                            isNavigating = true
+                            onNavigateToBrowser(it.id)
+                        }
+                    },
+                    onItemLongClick = {
+                        if (!uiState.selectionMode && !isNavigating) {
+                            isNavigating = true
+                            onNavigateToEditLumina(it.id)
+                        }
                     }
-                },
-                onItemLongClick = {
-                    if (!uiState.selectionMode && !isNavigating) {
-                        isNavigating = true
-                        onNavigateToEditLumina(it.id)
-                    }
-                }
-            )
+                )
+            }
         }
         
         if (showExitDialog) {
@@ -250,59 +267,80 @@ fun ForensicExitDialog(
 @Composable
 fun HomeTopAppBar(
     onNavigateToScanner: () -> Unit,
-    onNavigateToAddLumina: () -> Unit,
     onToggleSelectionMode: () -> Unit,
     onNavigateToProfiles: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     TopAppBar(
         title = {
             Text(
                 "Lumina",
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.ExtraBold,
                 fontSize = 24.sp,
-                color = Color.White
+                color = Color.White,
+                modifier = Modifier.padding(start = 8.dp)
             )
         },
         actions = {
-            IconButton(onClick = onToggleSelectionMode) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Delete",
-                    tint = Color(0xFFBB86FC)
-                )
-            }
             IconButton(onClick = onNavigateToScanner) {
                 Icon(
                     Icons.Default.QrCodeScanner,
                     contentDescription = "Scan QR",
-                    tint = Color(0xFFBB86FC)
+                    tint = Color(0xFFBB86FC),
+                    modifier = Modifier.size(24.dp)
                 )
             }
-            IconButton(onClick = onNavigateToAddLumina) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Add Lumina",
-                    tint = Color(0xFFBB86FC)
-                )
-            }
-            IconButton(onClick = onNavigateToProfiles) {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = "Profiles",
-                    tint = Color(0xFFBB86FC)
-                )
-            }
-            IconButton(onClick = onNavigateToSettings) {
-                Icon(
-                    Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = Color(0xFFBB86FC)
-                )
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = "More",
+                        tint = Color(0xFFBB86FC),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    modifier = Modifier.background(Color(0xFF1A1A2E))
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Selection Mode", color = Color.White) },
+                        onClick = {
+                            showMenu = false
+                            onToggleSelectionMode()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Delete, null, tint = Color(0xFFBB86FC))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Profiles", color = Color.White) },
+                        onClick = {
+                            showMenu = false
+                            onNavigateToProfiles()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Person, null, tint = Color(0xFFBB86FC))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Settings", color = Color.White) },
+                        onClick = {
+                            showMenu = false
+                            onNavigateToSettings()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Settings, null, tint = Color(0xFFBB86FC))
+                        }
+                    )
+                }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Black
+            containerColor = Color.Transparent
         )
     )
 }
@@ -319,7 +357,7 @@ fun SelectionTopAppBar(
             Text(
                 "$selectedItemCount selected",
                 fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
+                fontSize = 20.sp,
                 color = Color.White
             )
         },
@@ -337,7 +375,7 @@ fun SelectionTopAppBar(
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "Delete",
-                    tint = Color(0xFFBB86FC)
+                    tint = Color(0xFFFF4C4C)
                 )
             }
         },
@@ -357,9 +395,12 @@ fun LuminaItemsGrid(
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxWidth()
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 80.dp, top = 12.dp)
     ) {
         items(
             items = items,
@@ -390,20 +431,22 @@ fun LuminaItemCard(
 
     Card(
         modifier = modifier
-            .aspectRatio(0.8f)
+            .aspectRatio(0.92f)
+            .clip(RoundedCornerShape(20.dp))
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1A1A2E)
-        )
+            containerColor = Color(0xFF151525)
+        ),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
     ) {
         Box {
             Column(
                 modifier = Modifier
-                    .padding(12.dp)
+                    .padding(10.dp)
                     .fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
@@ -414,12 +457,20 @@ fun LuminaItemCard(
                         .fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = iconVector,
-                        contentDescription = item.name,
-                        tint = iconColor,
-                        modifier = Modifier.size(44.dp)
-                    )
+                    Surface(
+                        modifier = Modifier.size(48.dp),
+                        color = iconColor.copy(alpha = 0.15f),
+                        shape = CircleShape
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = iconVector,
+                                contentDescription = item.name,
+                                tint = iconColor,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+                    }
                 }
 
                 Column(
@@ -430,24 +481,24 @@ fun LuminaItemCard(
                     Text(
                         text = item.name,
                         color = Color.White,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         fontSize = fontSize,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         textAlign = TextAlign.Center,
                         onTextLayout = { textLayoutResult ->
-                            if (textLayoutResult.hasVisualOverflow && fontSize > 8.sp) {
+                            if (textLayoutResult.hasVisualOverflow && fontSize > 9.sp) {
                                 fontSize = fontSize * 0.9f
                             }
                         }
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
 
                     Text(
                         text = maskedUrl,
-                        color = Color.White.copy(alpha = 0.6f),
-                        fontSize = 10.sp,
+                        color = Color.White.copy(alpha = 0.45f),
+                        fontSize = 8.5.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         textAlign = TextAlign.Center
@@ -458,17 +509,19 @@ fun LuminaItemCard(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.4f))
+                        .background(Color(0xFFBB86FC).copy(alpha = 0.15f))
+                        .border(2.dp, Color(0xFFBB86FC), RoundedCornerShape(20.dp))
                 )
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = "Selected",
-                    tint = Color.White,
+                    tint = Color(0xFFBB86FC),
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
-                        .size(24.dp)
+                        .size(18.dp)
                         .clip(CircleShape)
+                        .background(Color.Black)
                 )
             }
         }

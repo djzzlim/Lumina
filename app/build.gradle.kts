@@ -111,6 +111,7 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.datastore.core)
     implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.androidx.compose.foundation)
     ksp(libs.androidx.room.compiler)
 
     // Hilt

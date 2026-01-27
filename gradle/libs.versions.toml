@@ -34,6 +34,7 @@ datastore = "1.2.0"
 datastoreCore = "1.2.0"
 foundationLayout = "1.10.1"
 recyclerview = "1.4.0"
+foundation = "1.10.1"
 
 [libraries]
 androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
@@ -97,6 +98,7 @@ mozilla-lib-state = { group = "org.mozilla.components", name = "lib-state", vers
 mozilla-feature-prompts = { group = "org.mozilla.components", name = "feature-prompts", version.ref = "mozillaComponents" }
 mozilla-support-base = { group = "org.mozilla.components", name = "support-base", version.ref = "mozillaComponents" }
 mozilla-support-utils = { group = "org.mozilla.components", name = "support-utils", version.ref = "mozillaComponents" }
+androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 
 
 [plugins]
