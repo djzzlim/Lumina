@@ -2,6 +2,7 @@ package com.example.lumina.core
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.lumina.core.database.LuminaInfo
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,11 +20,13 @@ import javax.inject.Singleton
  *
  * @property context The application context.
  * @property profileRepository The repository for profile data operations.
+ * @property luminaRepository The repository for lumina data operations.
  */
 @Singleton
 class ProfileManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val profileRepository: ProfileRepository
+    private val profileRepository: ProfileRepository,
+    private val luminaRepository: LuminaRepository
 ) {
     private val prefs: SharedPreferences = context.getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
     private val currentProfileId = MutableStateFlow(prefs.getString("current_profile_id", null))
@@ -60,10 +63,32 @@ class ProfileManager @Inject constructor(
             if (profiles.isEmpty()) {
                 val newProfile = profileRepository.createProfile("Default")
                 setCurrentProfile(newProfile.id)
+                
+                // Add default apps for the first-ever profile
+                addDefaultLuminaApps(newProfile.id)
             } else if (currentProfileId.value == null) {
                 // If profiles exist but none is selected, select the first one
                 setCurrentProfile(profiles.first().id)
             }
+        }
+    }
+
+    /**
+     * Adds a set of default apps to the specified profile.
+     * Uses colors and icons that are strictly available in the Add/Edit Lumina screens.
+     */
+    private suspend fun addDefaultLuminaApps(profileId: String) {
+        val defaultApps = listOf(
+            LuminaInfo(profileId = profileId, name = "Google", url = "https://www.google.com", icon = "Search", color = 0xFF007AFF),
+            LuminaInfo(profileId = profileId, name = "YouTube", url = "https://www.youtube.com", icon = "Laptop", color = 0xFFFF3B30),
+            LuminaInfo(profileId = profileId, name = "Reddit", url = "https://www.reddit.com", icon = "Forum", color = 0xFFFF9500),
+            LuminaInfo(profileId = profileId, name = "Instagram", url = "https://www.instagram.com", icon = "CameraAlt", color = 0xFFFF2D55),
+            LuminaInfo(profileId = profileId, name = "DuckDuckGo", url = "https://duckduckgo.com", icon = "Shield", color = 0xFFFFCC00),
+            LuminaInfo(profileId = profileId, name = "Wikipedia", url = "https://www.wikipedia.org", icon = "MenuBook", color = 0xFF8E8E93)
+        )
+        
+        defaultApps.forEach { app ->
+            luminaRepository.insertLumina(app)
         }
     }
 }

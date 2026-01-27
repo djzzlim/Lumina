@@ -426,14 +426,20 @@ fun LuminaItemCard(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    var fontSize by remember(item.name) { mutableStateOf(12.sp) }
                     Text(
                         text = item.name,
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        maxLines = 2,
+                        fontSize = fontSize,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        onTextLayout = { textLayoutResult ->
+                            if (textLayoutResult.hasVisualOverflow && fontSize > 8.sp) {
+                                fontSize = fontSize * 0.9f
+                            }
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -441,7 +447,7 @@ fun LuminaItemCard(
                     Text(
                         text = maskedUrl,
                         color = Color.White.copy(alpha = 0.6f),
-                        fontSize = 11.sp,
+                        fontSize = 10.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         textAlign = TextAlign.Center
