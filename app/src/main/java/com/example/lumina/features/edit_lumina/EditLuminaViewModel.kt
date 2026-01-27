@@ -81,6 +81,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.lumina.core.LuminaRepository
 import com.example.lumina.core.database.LuminaInfo
 import com.example.lumina.features.new_lumina.NewLuminaUiState
+import com.example.lumina.navigation.ScreenRoutes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -95,7 +96,7 @@ class EditLuminaViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val luminaId: Long = savedStateHandle.get<Long>("luminaId")!!
+    private val luminaId: Long = savedStateHandle.get<Long>(ScreenRoutes.EDIT_LUMINA_ID_ARG)!!
 
     private val _uiState = MutableStateFlow(NewLuminaUiState())
     val uiState = _uiState.asStateFlow()
@@ -104,7 +105,7 @@ class EditLuminaViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            repository.getLuminaById(luminaId).first().let { info ->
+            repository.getLuminaById(luminaId).first()?.let { info ->
                 originalLumina = info
                 _uiState.update {
                     it.copy(

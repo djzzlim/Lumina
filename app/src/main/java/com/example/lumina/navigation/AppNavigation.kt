@@ -31,6 +31,7 @@ import com.example.lumina.features.new_lumina.NewLuminaViewModel
 import com.example.lumina.features.profiles.ProfilesScreen
 import com.example.lumina.features.qr_scanner.QRCodeScannerScreen
 import com.example.lumina.features.settings.SettingsScreen
+import com.example.lumina.ui.extensions.ExtensionsScreen
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
@@ -145,6 +146,17 @@ fun AppNavigation(
 
         composable(ScreenRoutes.SETTINGS_SCREEN) {
             SettingsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToExtensions = {
+                    safeNavigate(ScreenRoutes.EXTENSIONS_SCREEN)
+                }
+            )
+        }
+
+        composable(ScreenRoutes.EXTENSIONS_SCREEN) {
+            ExtensionsScreen(
                 onNavigateBack = {
                     navController.popBackStack()
                 }

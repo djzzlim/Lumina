@@ -1,6 +1,7 @@
 package com.example.lumina.core.di
 
 import android.content.Context
+import android.util.Log
 import androidx.annotation.OptIn
 import com.example.lumina.BuildConfig
 import com.example.lumina.core.AppPreferences
@@ -14,27 +15,17 @@ import kotlinx.coroutines.runBlocking
 import org.mozilla.geckoview.ContentBlocking
 import org.mozilla.geckoview.ExperimentalGeckoViewApi
 import org.mozilla.geckoview.GeckoPreferenceController
+import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoRuntimeSettings
+import org.mozilla.geckoview.WebExtension
+import org.mozilla.geckoview.WebExtensionController
 import javax.inject.Singleton
 
-/**
- * Hilt module for providing the singleton [GeckoRuntime] instance.
- *
- * This module configures the global Gecko runtime settings, including privacy
- * features like DNS-over-HTTPS (DoH) and Google Safe Browsing.
- */
 @Module
 @InstallIn(SingletonComponent::class)
 object GeckoRuntimeModule {
 
-    /**
-     * Provides a singleton instance of [GeckoRuntime].
-     *
-     * @param context The application context.
-     * @param appPreferences User preferences for DNS and isolation.
-     * @return A configured [GeckoRuntime] instance.
-     */
     @OptIn(ExperimentalGeckoViewApi::class)
     @Provides
     @Singleton
@@ -45,8 +36,6 @@ object GeckoRuntimeModule {
         val dnsProvider = runBlocking { appPreferences.dnsProviderFlow.first() }
         val isolationStrategy = runBlocking { appPreferences.isolationStrategyFlow.first() }
 
-        // Initialize with default Safe Browsing enabled at the Runtime level.
-        // Whether it's actually used per-session is now controlled in BrowserViewModel.
         val contentBlocking = ContentBlocking.Settings.Builder()
             .safeBrowsing(ContentBlocking.SafeBrowsing.DEFAULT)
             .enhancedTrackingProtectionLevel(ContentBlocking.EtpLevel.STRICT)
@@ -54,7 +43,7 @@ object GeckoRuntimeModule {
 
         val runtimeSettings = GeckoRuntimeSettings.Builder()
             .aboutConfigEnabled(true)
-            .fissionEnabled(true) // Required for site isolation
+            .fissionEnabled(true)
             .trustedRecursiveResolverUri(dnsProvider.uri)
             .trustedRecursiveResolverMode(dnsProvider.mode)
             .allowInsecureConnections(GeckoRuntimeSettings.ALLOW_ALL)
@@ -64,12 +53,44 @@ object GeckoRuntimeModule {
 
         val runtime = GeckoRuntime.create(context, runtimeSettings)
 
-        // Set the Google Safe Browsing API Key from BuildConfig
+        // Set the Google Safe Browsing API Key
         GeckoPreferenceController.setGeckoPref(
             "browser.safebrowsing.key.google",
             BuildConfig.SAFE_BROWSING_KEY,
             GeckoPreferenceController.PREF_BRANCH_USER
         )
+
+        // 1. Set PromptDelegate to auto-grant permissions
+        runtime.webExtensionController.promptDelegate = object : WebExtensionController.PromptDelegate {
+            override fun onInstallPromptRequest(
+                extension: WebExtension,
+                permissions: Array<out String>,
+                origins: Array<out String>,
+                dataCollectionPermissions: Array<out String>
+            ): GeckoResult<WebExtension.PermissionPromptResponse>? {
+                Log.d("Lumina-Gecko", "Auto-granting permissions for: ${extension.id}")
+                return GeckoResult.fromValue(WebExtension.PermissionPromptResponse(
+                    true, true, true
+                ))
+            }
+        }
+
+        // 2. Set AddonManagerDelegate to monitor extension lifecycle
+        runtime.webExtensionController.setAddonManagerDelegate(object : WebExtensionController.AddonManagerDelegate {
+            override fun onInstalled(extension: WebExtension) {
+                Log.d("Lumina-Gecko", "Extension installed: ${extension.id}")
+                // Ensure it works in Private Browsing immediately
+                runtime.webExtensionController.setAllowedInPrivateBrowsing(extension, true)
+            }
+
+            override fun onInstallationFailed(extension: WebExtension?, error: WebExtension.InstallException) {
+                Log.e("Lumina-Gecko", "Installation failed for ${extension?.id}: ${error.message}", error)
+            }
+
+            override fun onReady(extension: WebExtension) {
+                Log.d("Lumina-Gecko", "Extension ready: ${extension.id}")
+            }
+        })
 
         return runtime
     }

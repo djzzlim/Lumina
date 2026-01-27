@@ -72,6 +72,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        viewBinding = true
     }
 }
 
@@ -127,6 +128,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.material3)
+    implementation(libs.google.material)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.ui.text)
     implementation(libs.androidx.navigation.compose)
@@ -137,4 +139,20 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // Mozilla Components
+    implementation(libs.mozilla.concept.engine)
+    implementation(libs.mozilla.feature.addons)
+    implementation(libs.mozilla.support.webextensions)
+    implementation(libs.mozilla.browser.state)
+    implementation(libs.mozilla.lib.state)
+    implementation(libs.mozilla.feature.prompts)
+    implementation(libs.mozilla.support.base)
+    implementation(libs.mozilla.support.utils)
+    implementation(libs.androidx.recyclerview)
+
+    // Retrofit
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+    implementation(libs.logging.interceptor)
 }

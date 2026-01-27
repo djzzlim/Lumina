@@ -10,6 +10,7 @@ import com.example.lumina.core.LuminaRepository
 import com.example.lumina.core.ProfileManager
 import com.example.lumina.core.database.LuminaInfo
 import com.example.lumina.core.ml.PhishingDetector
+import com.example.lumina.navigation.ScreenRoutes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -49,7 +50,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val luminaId: Long = savedStateHandle.get<Long>("luminaId")!!
+    private val luminaId: Long = savedStateHandle.get<Long>(ScreenRoutes.BROWSER_ID_ARG)!!
     private val sessionContextId = "lumina_session_$luminaId"
 
     val luminaInfo: StateFlow<LuminaInfo?> = luminaRepository.getLuminaById(luminaId)
@@ -314,7 +315,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     @OptIn(ExperimentalGeckoViewApi::class)
     private fun applySettings(info: LuminaInfo) {
         val desktopUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0"
-        val iphoneUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+        val androidUA = "Mozilla/5.0 (Android 14; Mobile; rv:133.0) Gecko/133.0 Firefox/133.0"
 
         _geckoSession.settings.apply {
             if (info.randomizeUserAgent && info.afpEnabled) {
@@ -323,10 +324,10 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                 GeckoPreferenceController.setGeckoPref("general.appversion.override", "5.0 (Windows)", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.oscpu.override", "Windows NT 10.0; Win64; x64", GeckoPreferenceController.PREF_BRANCH_USER)
             } else if (!info.randomizeUserAgent && info.afpEnabled) {
-                userAgentOverride = iphoneUA
-                GeckoPreferenceController.setGeckoPref("general.platform.override", "iPhone", GeckoPreferenceController.PREF_BRANCH_USER)
-                GeckoPreferenceController.setGeckoPref("general.appversion.override", "5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", GeckoPreferenceController.PREF_BRANCH_USER)
-                GeckoPreferenceController.setGeckoPref("general.oscpu.override", "iPhone OS 17.0", GeckoPreferenceController.PREF_BRANCH_USER)
+                userAgentOverride = androidUA
+                GeckoPreferenceController.setGeckoPref("general.platform.override", "Android", GeckoPreferenceController.PREF_BRANCH_USER)
+                GeckoPreferenceController.setGeckoPref("general.appversion.override", "5.0 (Android 14)", GeckoPreferenceController.PREF_BRANCH_USER)
+                GeckoPreferenceController.setGeckoPref("general.oscpu.override", "Android 14", GeckoPreferenceController.PREF_BRANCH_USER)
             } else {
                 userAgentOverride = null
                 GeckoPreferenceController.setGeckoPref("general.platform.override", "", GeckoPreferenceController.PREF_BRANCH_USER)

@@ -59,7 +59,8 @@ import com.example.lumina.core.AutoCloseTimeout
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToExtensions: () -> Unit
 ) {
     val selectedDns by viewModel.dnsProvider.collectAsStateWithLifecycle()
     val savedCustomDnsUri by viewModel.customDnsUri.collectAsStateWithLifecycle()
@@ -201,9 +202,40 @@ fun SettingsScreen(
                 }
                 Spacer(modifier = Modifier.height(24.dp))
             }
+
+            item {
+                SettingsSection(title = "EXTENSIONS") {
+                    SettingsItem(label = "Manage Extensions") { onNavigateToExtensions() }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
         }
     }
 }
+
+@Composable
+fun SettingsItem(
+    label: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, color = Color.White, fontSize = 16.sp)
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowForwardIos,
+            contentDescription = null,
+            tint = Color.Gray,
+            modifier = Modifier.size(16.dp)
+        )
+    }
+}
+
 
 @Composable
 fun SettingsSection(
