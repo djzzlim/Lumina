@@ -208,7 +208,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
             }
 
             override fun onLocationChange(session: GeckoSession, url: String?, permissions: List<GeckoSession.PermissionDelegate.ContentPermission>, hasUserGesture: Boolean) {
-                if (!url.isNullOrEmpty()) {
+                if (!url.isNullOrEmpty() && url != "about:blank") {
                     lastCommittedUrl = url
                     _currentUrl.value = url
                     if (url.startsWith("https")) wasHttpsForced = false
@@ -427,14 +427,18 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
         _geckoSession.loadUri(url)
     }
 
-    fun cancelUnsafeSite() {
+    fun cancelUnsafeSite(): Boolean {
         _showInsecureWarning.value = null
         _showPhishingWarning.value = null
-        if (lastCommittedUrl.isNotEmpty()) {
+        return if (lastCommittedUrl.isNotEmpty() && lastCommittedUrl != "about:blank") {
             _currentUrl.value = lastCommittedUrl
             _title.value = lastCommittedTitle
             _geckoSession.stop()
             _geckoSession.reload()
+            true
+        } else {
+            _shouldClose.value = true
+            false
         }
     }
 
@@ -446,7 +450,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
         if (_lastError.value != null) {
             _lastError.value = null
             resetSecurityState()
-            if (lastAttemptedUrl != lastCommittedUrl && lastCommittedUrl.isNotEmpty()) {
+            if (lastAttemptedUrl != lastCommittedUrl && lastCommittedUrl.isNotEmpty() && lastCommittedUrl != "about:blank") {
                 _currentUrl.value = lastCommittedUrl
                 _title.value = lastCommittedTitle
                 _geckoSession.stop()
