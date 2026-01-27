@@ -7,6 +7,7 @@ import com.example.lumina.core.ProfileRepository
 import com.example.lumina.core.database.Profile
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -61,11 +62,16 @@ class ProfilesViewModel @Inject constructor(
     /**
      * Deletes the specified profile.
      *
+     * Does not allow deleting the last remaining profile.
+     *
      * @param profile The [Profile] entity to delete.
      */
     fun deleteProfile(profile: Profile) {
         viewModelScope.launch {
-            profileRepository.deleteProfile(profile)
+            val currentProfiles = profiles.first()
+            if (currentProfiles.size > 1) {
+                profileRepository.deleteProfile(profile)
+            }
         }
     }
 

@@ -29,7 +29,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -268,8 +267,8 @@ fun HomeTopAppBar(
         actions = {
             IconButton(onClick = onToggleSelectionMode) {
                 Icon(
-                    Icons.Default.SelectAll,
-                    contentDescription = "Select",
+                    Icons.Default.Delete,
+                    contentDescription = "Delete",
                     tint = Color(0xFFBB86FC)
                 )
             }

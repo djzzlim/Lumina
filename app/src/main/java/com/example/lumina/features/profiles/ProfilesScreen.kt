@@ -138,6 +138,7 @@ fun ProfilesScreen(
                     ProfileListItem(
                         profile = profile,
                         isCurrent = profile.id == currentProfileId,
+                        canDelete = profiles.size > 1,
                         onSwitch = { 
                             profilesViewModel.switchProfile(profile.id)
                             onNavigateBack() // Go back to main screen after switching
@@ -159,6 +160,7 @@ fun ProfilesScreen(
  *
  * @param profile The [Profile] entity to display.
  * @param isCurrent Whether this is the currently active profile.
+ * @param canDelete Whether this profile can be deleted.
  * @param onSwitch Callback to be invoked when the profile is clicked to be switched.
  * @param onDelete Callback to be invoked when the delete icon is clicked.
  * @param onEdit Callback to be invoked when the profile is long-clicked.
@@ -168,6 +170,7 @@ fun ProfilesScreen(
 fun ProfileListItem(
     profile: Profile,
     isCurrent: Boolean,
+    canDelete: Boolean,
     onSwitch: () -> Unit,
     onDelete: () -> Unit,
     onEdit: () -> Unit
@@ -182,15 +185,28 @@ fun ProfileListItem(
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = profile.name,
-            modifier = Modifier.weight(1f)
-        )
-        if (isCurrent) {
-            Text(" (Current)", style = MaterialTheme.typography.bodySmall)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = profile.name,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            if (isCurrent) {
+                Text(
+                    text = "Current Profile",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
-        IconButton(onClick = onDelete) {
-            Icon(Icons.Default.Delete, contentDescription = "Delete Profile")
+        
+        if (canDelete) {
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete Profile",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }
