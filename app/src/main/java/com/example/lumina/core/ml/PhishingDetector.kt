@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.LongBuffer
+import kotlin.math.exp
 
 class PhishingDetector(private val context: Context) {
     private val env: OrtEnvironment = OrtEnvironment.getEnvironment()
@@ -19,15 +20,12 @@ class PhishingDetector(private val context: Context) {
 
     init {
         try {
-            // Check for the .data file in assets. If it's there, we need to copy it too.
-            // Based on the error, the model was exported with weights in a separate file.
             val modelName = "urlbert_phishing.onnx"
             val dataName = "$modelName.data"
             
             val modelFile = File(context.filesDir, modelName)
             val dataFile = File(context.filesDir, dataName)
 
-            // Copy .onnx file
             if (!modelFile.exists()) {
                 context.assets.open(modelName).use { input ->
                     FileOutputStream(modelFile).use { output ->
@@ -36,7 +34,6 @@ class PhishingDetector(private val context: Context) {
                 }
             }
 
-            // Attempt to copy .data file if it exists in assets
             try {
                 if (!dataFile.exists()) {
                     context.assets.open(dataName).use { input ->
@@ -44,26 +41,31 @@ class PhishingDetector(private val context: Context) {
                             input.copyTo(output)
                         }
                     }
-                    Log.d("PhishingDetector", "Copied companion .data file")
                 }
             } catch (e: Exception) {
-                Log.w("PhishingDetector", "No companion .data file found in assets")
+                // Ignore if .data doesn't exist
             }
 
             session = env.createSession(modelFile.absolutePath)
-            
-            // Log model input info for debugging
-            session?.inputInfo?.forEach { (name, info) ->
-                Log.d("PhishingDetector", "Model Input: $name, Info: $info")
-            }
-
             tokenizer = WordPieceTokenizer.loadFromAssets(context, "vocab.txt")
             isInitialized = true
-            Log.d("PhishingDetector", "✅ Model loaded successfully from internal storage ($modelName)")
+            Log.d("PhishingDetector", "✅ Model loaded successfully")
         } catch (e: Exception) {
             Log.e("PhishingDetector", "❌ Failed to load phishing model: ${e.message}")
             isInitialized = false
         }
+    }
+
+    private fun sigmoid(x: Float): Float {
+        return (1.0f / (1.0f + exp(-x)))
+    }
+
+    private fun softmax(logits: FloatArray): FloatArray {
+        // Numerically stable softmax
+        val maxLogit = logits.maxOrNull() ?: 0f
+        val exps = logits.map { exp(it - maxLogit) }
+        val sumExps = exps.sum()
+        return exps.map { it / sumExps }.toFloatArray()
     }
 
     suspend fun predict(url: String): Boolean = withContext(Dispatchers.Default) {
@@ -71,15 +73,19 @@ class PhishingDetector(private val context: Context) {
         val currentTokenizer = tokenizer
         
         if (!isInitialized || currentSession == null || currentTokenizer == null) {
-            Log.w("PhishingDetector", "Prediction skipped: Model not initialized")
             return@withContext false
         }
 
         try {
-            Log.d("PhishingDetector", "🔍 Analyzing URL: $url")
+            // 1. Normalization (Match Python logic: no forced trailing slash)
+            val normalizedUrl = url.lowercase().trim()
+            
+            Log.d("PhishingDetector", "🔍 Analyzing URL: $normalizedUrl")
+            
+            // 2. Tokenization matching BERT special tokens
             val tokens = mutableListOf<String>()
             tokens.add("[CLS]")
-            tokens.addAll(currentTokenizer.tokenize(url))
+            tokens.addAll(currentTokenizer.tokenize(normalizedUrl))
             tokens.add("[SEP]")
 
             val maxLen = 64 
@@ -102,25 +108,34 @@ class PhishingDetector(private val context: Context) {
             val maskTensor = OnnxTensor.createTensor(env, attentionMaskBuffer, shape)
             val typeTensor = OnnxTensor.createTensor(env, tokenTypeIdsBuffer, shape)
 
-            // Dynamic input mapping based on what the model expects
             val inputs = mutableMapOf<String, OnnxTensor>()
             val expectedInputs = currentSession.inputNames
             
+            // Match input names exactly as model expects
             if (expectedInputs.contains("input_ids")) inputs["input_ids"] = inputTensor
             if (expectedInputs.contains("attention_mask")) inputs["attention_mask"] = maskTensor
             if (expectedInputs.contains("token_type_ids")) inputs["token_type_ids"] = typeTensor
             
-            // Handle some variants if necessary
+            // Handle common ONNX export variants
             if (expectedInputs.contains("input.1") && !inputs.containsKey("input_ids")) inputs["input.1"] = inputTensor
 
-            Log.d("PhishingDetector", "Passing inputs: ${inputs.keys}")
-
             currentSession.run(inputs).use { results ->
+                @Suppress("UNCHECKED_CAST")
                 val output = results[0].value as Array<FloatArray>
                 val logits = output[0]
-                val isPhishing = if (logits.size >= 2) logits[1] > logits[0] else false
                 
-                Log.d("PhishingDetector", "📊 Result for $url -> Is Phishing: $isPhishing (Score: ${if (logits.size >= 2) logits[1] else "N/A"})")
+                // 3. Convert Logits to Probabilities (Softmax logic from sanity check)
+                val phishingProbability: Float = if (logits.size == 1) {
+                    sigmoid(logits[0])
+                } else {
+                    val probs = softmax(logits)
+                    probs[1] // Index 1 is the 'Phish' label in sanity check
+                }
+
+                val threshold = 0.9f
+                val isPhishing = phishingProbability >= threshold
+
+                Log.d("PhishingDetector", "📊 URL: $normalizedUrl | Prob: ${String.format("%.4f", phishingProbability)} | Block: $isPhishing")
                 isPhishing
             }
         } catch (e: Exception) {
