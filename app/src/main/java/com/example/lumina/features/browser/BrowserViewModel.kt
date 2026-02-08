@@ -47,7 +47,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     private val appPreferences: AppPreferences,
     private val phishingDetector: PhishingDetector,
     @param:ApplicationContext private val applicationContext: Context,
-    savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val luminaId: Long = savedStateHandle.get<Long>(ScreenRoutes.BROWSER_ID_ARG)!!
@@ -71,7 +71,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _currentUrl = MutableStateFlow("")
+    private val _currentUrl = MutableStateFlow(savedStateHandle.get<String>("persisted_url") ?: "")
     val currentUrl: StateFlow<String> = _currentUrl.asStateFlow()
 
     private val _title = MutableStateFlow("")
@@ -109,7 +109,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     private var isGoingBack = false
     
     private var lastAttemptedUrl: String? = null
-    private var lastCommittedUrl: String = ""
+    private var lastCommittedUrl: String = savedStateHandle.get<String>("persisted_url") ?: ""
     private var lastCommittedTitle: String = ""
     private var wasHttpsForced = false
     private val allowedInsecureHosts = mutableSetOf<String>()
@@ -151,7 +151,10 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                         _geckoSession.setActive(true)
                     }
                     applySettings(info)
-                    loadUrl(info.url)
+                    
+                    // Recover the last URL if available, otherwise use the profile's default URL
+                    val initialUrl = if (lastCommittedUrl.isNotEmpty()) lastCommittedUrl else info.url
+                    loadUrl(initialUrl)
                     isInitialized = true
                 } else {
                     applySettings(info)
@@ -186,9 +189,23 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     fun onAppForegrounded() {
         autoCloseJob?.cancel()
         autoCloseJob = null
+
+        if (!_geckoSession.isOpen) {
+            _geckoSession.open(globalGeckoRuntime)
+        }
+        _geckoSession.setActive(true)
+
+        // Recovery: If the current UI state shows no URL but we had one, the renderer or process likely died.
+        if (_currentUrl.value.isEmpty() && lastCommittedUrl.isNotEmpty()) {
+            Log.d("BrowserViewModel", "Foreground recovery: reloading $lastCommittedUrl")
+            loadUrl(lastCommittedUrl)
+        }
     }
 
     private fun setupDelegates() {
+        // CrashDelegate is part of ContentDelegate, not a separate property.
+        // The original ContentDelegate should be modified to include onCrash and onKill.
+
         _geckoSession.progressDelegate = object : GeckoSession.ProgressDelegate {
             override fun onProgressChange(session: GeckoSession, progress: Int) {
                 _progress.value = progress
@@ -211,6 +228,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                 if (!url.isNullOrEmpty() && url != "about:blank") {
                     lastCommittedUrl = url
                     _currentUrl.value = url
+                    savedStateHandle["persisted_url"] = url // Persist for process death recovery
                     if (url.startsWith("https")) wasHttpsForced = false
                 }
             }
@@ -307,6 +325,18 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
 
             override fun onFullScreen(session: GeckoSession, fullScreen: Boolean) {
                 _isAppLevelFullscreen.value = fullScreen
+            }
+
+            override fun onCrash(session: GeckoSession) {
+                Log.w("BrowserViewModel", "Renderer process crashed/killed. Reloading...")
+                // Optionally, show a toast or a specific UI for crash recovery
+                session.reload()
+            }
+
+            override fun onKill(session: GeckoSession) {
+                Log.w("BrowserViewModel", "Renderer process killed by OS. Reloading...")
+                // Optionally, show a toast or a specific UI for kill recovery
+                session.reload()
             }
         }
     }
