@@ -152,9 +152,15 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                     }
                     applySettings(info)
                     
-                    // Recover the last URL if available, otherwise use the profile's default URL
-                    val initialUrl = if (lastCommittedUrl.isNotEmpty()) lastCommittedUrl else info.url
-                    loadUrl(initialUrl)
+                    // Recover the full history state if available, otherwise fallback to profile URL
+                    val sessionState = savedStateHandle.get<GeckoSession.SessionState>("persisted_session_state")
+                    if (sessionState != null) {
+                        Log.d("BrowserViewModel", "Initializing session from restored history state")
+                        _geckoSession.restoreState(sessionState)
+                    } else {
+                        val initialUrl = if (lastCommittedUrl.isNotEmpty()) lastCommittedUrl else info.url
+                        loadUrl(initialUrl)
+                    }
                     isInitialized = true
                 } else {
                     applySettings(info)
@@ -173,6 +179,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     }
 
     fun onAppBackgrounded() {
+        
         autoCloseJob?.cancel()
         autoCloseJob = viewModelScope.launch {
             val timeout = appPreferences.autoCloseTimeoutFlow.first()
@@ -187,25 +194,38 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     }
 
     fun onAppForegrounded() {
+        if (!isInitialized) return
         autoCloseJob?.cancel()
         autoCloseJob = null
 
-        if (!_geckoSession.isOpen) {
+        val needsReOpen = !geckoSession.isOpen
+        val needsReload = _currentUrl.value.isEmpty()
+
+        if (needsReOpen) {
+            Log.d("BrowserViewModel", "GeckoSession not open on foreground. Re-initializing.")
             _geckoSession.open(globalGeckoRuntime)
         }
         _geckoSession.setActive(true)
 
-        // Recovery: If the current UI state shows no URL but we had one, the renderer or process likely died.
-        if (_currentUrl.value.isEmpty() && lastCommittedUrl.isNotEmpty()) {
-            Log.d("BrowserViewModel", "Foreground recovery: reloading $lastCommittedUrl")
-            loadUrl(lastCommittedUrl)
+        if (needsReOpen || needsReload) {
+            viewModelScope.launch {
+                val sessionState = savedStateHandle.get<GeckoSession.SessionState>("persisted_session_state")
+                if (sessionState != null) {
+                    Log.d("BrowserViewModel", "Foreground recovery: restoring history state")
+                    _geckoSession.restoreState(sessionState)
+                } else {
+                    val persistedUrl = savedStateHandle.get<String>("persisted_url")
+                    val urlToLoad = if (!persistedUrl.isNullOrEmpty()) persistedUrl 
+                                   else luminaInfo.filterNotNull().first().url
+                    
+                    Log.d("BrowserViewModel", "Foreground recovery: reloading $urlToLoad (no state found)")
+                    loadUrl(urlToLoad)
+                }
+            }
         }
     }
 
     private fun setupDelegates() {
-        // CrashDelegate is part of ContentDelegate, not a separate property.
-        // The original ContentDelegate should be modified to include onCrash and onKill.
-
         _geckoSession.progressDelegate = object : GeckoSession.ProgressDelegate {
             override fun onProgressChange(session: GeckoSession, progress: Int) {
                 _progress.value = progress
@@ -216,6 +236,10 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
             override fun onSecurityChange(session: GeckoSession, securityInfo: GeckoSession.ProgressDelegate.SecurityInformation) {
                 _isSecure.value = securityInfo.isSecure
                 _securityInfo.value = securityInfo
+            }
+
+            override fun onSessionStateChange(session: GeckoSession, sessionState: GeckoSession.SessionState) {
+                savedStateHandle["persisted_session_state"] = sessionState
             }
         }
 
@@ -228,7 +252,8 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                 if (!url.isNullOrEmpty() && url != "about:blank") {
                     lastCommittedUrl = url
                     _currentUrl.value = url
-                    savedStateHandle["persisted_url"] = url // Persist for process death recovery
+                    savedStateHandle["persisted_url"] = url 
+                    
                     if (url.startsWith("https")) wasHttpsForced = false
                 }
             }
@@ -241,7 +266,6 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
 
                 val host = try { android.net.Uri.parse(request.uri).host ?: "" } catch (e: Exception) { "" }
 
-                // Optimistic UI update
                 if (!request.isRedirect) {
                     lastAttemptedUrl = request.uri
                     _currentUrl.value = request.uri
@@ -256,7 +280,6 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                 viewModelScope.launch {
                     val isLocalMLEnabled = appPreferences.localPhishingModelEnabledFlow.first()
                     
-                    // 1. Check Offline ML first (highest priority, most private)
                     if (isLocalMLEnabled && !allowedPhishingHosts.contains(host)) {
                         val isPhishing = phishingDetector.predict(request.uri)
                         if (isPhishing) {
@@ -269,7 +292,6 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                         }
                     }
 
-                    // 2. Check for Insecure Connection Warning
                     if (request.uri.startsWith("http://") && !request.isRedirect) {
                         if (!allowedInsecureHosts.contains(host)) {
                             _currentUrl.value = request.uri
@@ -281,7 +303,6 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                         }
                     }
 
-                    // 3. Fall through to standard GeckoView load (which will do Google Safe Browsing if enabled)
                     result.complete(AllowOrDeny.ALLOW)
                 }
                 return result
@@ -328,15 +349,13 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
             }
 
             override fun onCrash(session: GeckoSession) {
-                Log.w("BrowserViewModel", "Renderer process crashed/killed. Reloading...")
-                // Optionally, show a toast or a specific UI for crash recovery
-                session.reload()
+                Log.w("BrowserViewModel", "Renderer process crashed. Attempting state restoration.")
+                onAppForegrounded() // Reuse foreground restoration logic
             }
 
             override fun onKill(session: GeckoSession) {
-                Log.w("BrowserViewModel", "Renderer process killed by OS. Reloading...")
-                // Optionally, show a toast or a specific UI for kill recovery
-                session.reload()
+                Log.w("BrowserViewModel", "Renderer process killed. Attempting state restoration.")
+                onAppForegrounded()
             }
         }
     }
@@ -344,8 +363,8 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     @androidx.annotation.OptIn(ExperimentalGeckoViewApi::class)
     @OptIn(ExperimentalGeckoViewApi::class)
     private fun applySettings(info: LuminaInfo) {
-        val desktopUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0"
-        val androidUA = "Mozilla/5.0 (Android 14; Mobile; rv:133.0) Gecko/133.0 Firefox/133.0"
+        val desktopUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:148.0) Gecko/20100101 Firefox/148.0"
+        val androidUA = "Mozilla/5.0 (Android 15; Mobile; rv:148.0) Gecko/148.0 Firefox/148.0"
 
         _geckoSession.settings.apply {
             if (info.randomizeUserAgent && info.afpEnabled) {
@@ -356,8 +375,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
             } else if (!info.randomizeUserAgent && info.afpEnabled) {
                 userAgentOverride = androidUA
                 GeckoPreferenceController.setGeckoPref("general.platform.override", "Android", GeckoPreferenceController.PREF_BRANCH_USER)
-                GeckoPreferenceController.setGeckoPref("general.appversion.override", "5.0 (Android 14)", GeckoPreferenceController.PREF_BRANCH_USER)
-                GeckoPreferenceController.setGeckoPref("general.oscpu.override", "Android 14", GeckoPreferenceController.PREF_BRANCH_USER)
+                GeckoPreferenceController.setGeckoPref("general.appversion.override", "5.0 (Android 15)", GeckoPreferenceController.PREF_BRANCH_USER)
             } else {
                 userAgentOverride = null
                 GeckoPreferenceController.setGeckoPref("general.platform.override", "", GeckoPreferenceController.PREF_BRANCH_USER)
@@ -369,6 +387,8 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
             allowJavascript = if (info.afpEnabled) !info.disableJavascript else true
         }
 
+        // NOTE: "Confirm you are not a bot" on YouTube is usually caused by privacy.resistFingerprinting = true.
+        // If users experience this, they should disable Anti-Fingerprinting in profile settings.
         GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting", info.afpEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
         GeckoPreferenceController.setGeckoPref("webgl.disabled", info.disableWebGl || !info.afpEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
         GeckoPreferenceController.setGeckoPref("dom.audioContext.enabled", !info.disableAudioContext && info.afpEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
@@ -520,6 +540,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
         autoCloseJob?.cancel()
         if (_geckoSession.isOpen) _geckoSession.close()
         globalGeckoRuntime.storageController.clearDataForSessionContext(sessionContextId)
+        globalGeckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
         System.gc()
     }
 }

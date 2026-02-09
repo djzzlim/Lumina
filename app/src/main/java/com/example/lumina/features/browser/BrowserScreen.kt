@@ -1,7 +1,12 @@
 package com.example.lumina.features.browser
 
 import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.net.Uri
+import android.os.PowerManager
+import android.provider.Settings
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -118,13 +123,49 @@ fun BrowserScreen(
     val insetsController = remember { WindowCompat.getInsetsController(window, window.decorView) }
 
     var showWebView by rememberSaveable { mutableStateOf(false) }
+    var isFirstResume by remember { mutableStateOf(true) }
+    var showBatteryOptimizationDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        val packageName = context.packageName
+        val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+            showBatteryOptimizationDialog = true
+        }
+        
         if (!showWebView) {
             delay(350)
             showWebView = true
         }
         browserViewModel.onAnimationFinished()
+    }
+
+    if (showBatteryOptimizationDialog) {
+        AlertDialog(
+            onDismissRequest = { showBatteryOptimizationDialog = false },
+            title = { Text("Allow Background Activity") },
+            text = { Text("Lumina needs to run in the background to prevent the browser from closing when you switch apps. Please allow unrestricted battery usage.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showBatteryOptimizationDialog = false
+                        val packageName = context.packageName
+                        val intent = Intent().apply {
+                            action = Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+                            data = Uri.parse("package:$packageName")
+                        }
+                        context.startActivity(intent)
+                    }
+                ) {
+                    Text("Allow")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBatteryOptimizationDialog = false }) {
+                    Text("Not Now")
+                }
+            }
+        )
     }
 
     LaunchedEffect(shouldClose) {
@@ -171,6 +212,13 @@ fun BrowserScreen(
                 Lifecycle.Event.ON_RESUME -> {
                     browserViewModel.geckoSession.setActive(true)
                     browserViewModel.onAppForegrounded()
+                    if (!isFirstResume) {
+                        geckoView.value?.let { view ->
+                            view.releaseSession()
+                            view.setSession(browserViewModel.geckoSession)
+                        }
+                    }
+                    isFirstResume = false
                 }
                 Lifecycle.Event.ON_PAUSE -> {
                     browserViewModel.geckoSession.setActive(false)
