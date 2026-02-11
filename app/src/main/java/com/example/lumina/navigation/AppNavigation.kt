@@ -17,6 +17,7 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
@@ -42,6 +43,17 @@ fun AppNavigation(
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
+
+    val homeViewModel: HomeViewModel = hiltViewModel()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    LaunchedEffect(currentRoute) {
+        // Auto-shutdown on background should be TRUE for all screens EXCEPT the browser.
+        // So, if it's the browser route, set to false; otherwise, set to true.
+        val shouldShutdown = currentRoute?.startsWith(ScreenRoutes.BROWSER_BASE) != true
+        homeViewModel.setShouldAutoShutdownOnBackground(shouldShutdown)
+    }
 
     LaunchedEffect(startUrl) {
         if (startUrl != null) {
@@ -120,9 +132,9 @@ fun AppNavigation(
                 }
             }
         ) {
-            val vm: HomeViewModel = hiltViewModel()
+            // Use the homeViewModel instance obtained at the NavHost level
             LuminaHomeScreen(
-                viewModel = vm,
+                viewModel = homeViewModel,
                 onNavigateToScanner = {
                     safeNavigate(ScreenRoutes.QR_SCANNER)
                 },

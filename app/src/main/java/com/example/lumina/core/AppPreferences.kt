@@ -84,14 +84,14 @@ sealed class AutoCloseTimeout(val name: String, val minutes: Long) {
     object OneMinute : AutoCloseTimeout("1 Minute", 1L)
     object TwoMinutes : AutoCloseTimeout("2 Minutes", 2L)
     object FiveMinutes : AutoCloseTimeout("5 Minutes", 5L)
-    object ThirtyMinutes : AutoCloseTimeout("30 Minutes", 30L)
-    object OneHour : AutoCloseTimeout("1 Hour", 60L)
+    object TenMinutes : AutoCloseTimeout("10 Minutes", 10L)
 
     companion object {
-        val allOptions = listOf(Never, OneMinute, TwoMinutes, FiveMinutes, ThirtyMinutes, OneHour)
+        val allOptions = listOf(Never, OneMinute, TwoMinutes, FiveMinutes, TenMinutes)
         
         fun fromMinutes(minutes: Long): AutoCloseTimeout {
-            return allOptions.find { it.minutes == minutes } ?: Never
+            return allOptions.find { it.minutes == minutes } ?: 
+                   if (minutes > 0 && minutes <= 10) TenMinutes else Never
         }
     }
 }
