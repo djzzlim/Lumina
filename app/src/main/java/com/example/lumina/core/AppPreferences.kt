@@ -82,12 +82,13 @@ sealed class SearchEngine(val name: String, val url: String) {
 sealed class AutoCloseTimeout(val name: String, val minutes: Long) {
     object Never : AutoCloseTimeout("Never", 0L)
     object OneMinute : AutoCloseTimeout("1 Minute", 1L)
+    object TwoMinutes : AutoCloseTimeout("2 Minutes", 2L)
     object FiveMinutes : AutoCloseTimeout("5 Minutes", 5L)
     object ThirtyMinutes : AutoCloseTimeout("30 Minutes", 30L)
     object OneHour : AutoCloseTimeout("1 Hour", 60L)
 
     companion object {
-        val allOptions = listOf(Never, OneMinute, FiveMinutes, ThirtyMinutes, OneHour)
+        val allOptions = listOf(Never, OneMinute, TwoMinutes, FiveMinutes, ThirtyMinutes, OneHour)
         
         fun fromMinutes(minutes: Long): AutoCloseTimeout {
             return allOptions.find { it.minutes == minutes } ?: Never

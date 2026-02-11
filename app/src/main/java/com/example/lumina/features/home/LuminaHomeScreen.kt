@@ -52,6 +52,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +71,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.lumina.core.database.LuminaInfo
 import com.example.lumina.core.utils.IconUtils
 
@@ -93,6 +98,33 @@ fun LuminaHomeScreen(
     
     val context = LocalContext.current
     val activity = context as? Activity
+
+    // Lifecycle observer to handle auto-shutdown when backgrounded
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    viewModel.onAppForegrounded()
+                }
+                Lifecycle.Event.ON_PAUSE -> {
+                    viewModel.onAppBackgrounded()
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Auto-shutdown effect
+    LaunchedEffect(uiState.shouldExit) {
+        if (uiState.shouldExit) {
+            activity?.finishAndRemoveTask()
+        }
+    }
 
     // Handle back button to exit selection mode if active
     BackHandler(enabled = uiState.selectionMode) {

@@ -1,8 +1,11 @@
 package com.example.lumina
 
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
@@ -24,6 +27,7 @@ import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.StorageController
 import java.util.regex.Pattern
 import javax.inject.Inject
+import kotlin.system.exitProcess
 
 /**
  * Main activity for the Lumina application.
@@ -44,7 +48,7 @@ class MainActivity : ComponentActivity() {
         
         // Prevents screenshots, screen recordings, and hides content in the Recents (Multitasking) screen.
         // This is a key forensic protection measure.
-//        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         
         // Only clear runtime storage on a fresh cold-start, not on activity recreation (e.g. rotation)
         if (savedInstanceState == null) {
@@ -56,6 +60,7 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        requestNotificationPermission()
         
         setContent {
             val startUrl by urlState.collectAsState()
@@ -66,6 +71,14 @@ class MainActivity : ComponentActivity() {
                         onUrlHandled = { urlState.value = null }
                     )
                 }
+            }
+        }
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
             }
         }
     }
@@ -111,12 +124,20 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         if (isFinishing) {
-            // Clear history, cookies, and cache upon exit
-            Log.d("Lumina-Debug", "Clearing runtime storage on exit")
+            // Clear history, cookies, and cache upon exit (Forensic Wipe)
+            Log.d("Lumina-Debug", "Performing Forensic Wipe on exit")
             geckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
             
             // Shut down the runtime
             geckoRuntime.shutdown()
+
+            // Aggressive memory purging
+            System.gc()
+            Runtime.getRuntime().gc()
+            System.runFinalization()
+
+            // Complete process termination to ensure total memory reclaim
+            exitProcess(0)
         }
     }
 }

@@ -6,6 +6,8 @@ import com.example.lumina.core.LuminaRepository
 import com.example.lumina.core.ProfileManager
 import com.example.lumina.core.database.LuminaInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
@@ -21,11 +23,13 @@ import javax.inject.Inject
  * @property luminaItems List of items to display on the home screen.
  * @property selectionMode Whether the UI is currently in item selection mode.
  * @property selectedItems Set of IDs for the items currently selected.
+ * @property shouldExit Whether the app should shut down.
  */
 data class HomeUiState(
     val luminaItems: List<LuminaInfo> = emptyList(),
     val selectionMode: Boolean = false,
-    val selectedItems: Set<Long> = emptySet()
+    val selectedItems: Set<Long> = emptySet(),
+    val shouldExit: Boolean = false
 )
 
 /**
@@ -50,9 +54,36 @@ class HomeViewModel @Inject constructor(
      */
     val uiState = _uiState.asStateFlow()
 
+    private var autoShutdownJob: Job? = null
+
     init {
         // Load the initial data when the ViewModel is created.
         loadLuminaItems()
+    }
+
+    /**
+     * Called when the app goes to the background.
+     * Starts a 2-minute timer to shut down the app if it remains in the background.
+     */
+    fun onAppBackgrounded() {
+        android.util.Log.d("Lumina-Shutdown", "App backgrounded. Starting 2-minute auto-shutdown timer...")
+        autoShutdownJob?.cancel()
+        autoShutdownJob = viewModelScope.launch {
+            // Wait for 2 minutes
+            delay(2 * 60 * 1000)
+            android.util.Log.d("Lumina-Shutdown", "2 minutes reached. Triggering shutdown.")
+            _uiState.update { it.copy(shouldExit = true) }
+        }
+    }
+
+    /**
+     * Called when the app returns to the foreground.
+     * Cancels the auto-shutdown timer.
+     */
+    fun onAppForegrounded() {
+        android.util.Log.d("Lumina-Shutdown", "App foregrounded. Cancelling auto-shutdown timer.")
+        autoShutdownJob?.cancel()
+        autoShutdownJob = null
     }
 
     /**
