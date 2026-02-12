@@ -1,5 +1,6 @@
 package com.example.lumina.navigation
 
+import android.app.Activity
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -7,12 +8,16 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -43,10 +48,39 @@ fun AppNavigation(
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
+    val activity = context as? Activity
 
     val homeViewModel: HomeViewModel = hiltViewModel()
+    val uiState by homeViewModel.uiState.collectAsState()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    // Lifecycle observer to handle auto-shutdown when backgrounded
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    homeViewModel.onAppForegrounded()
+                }
+                Lifecycle.Event.ON_PAUSE -> {
+                    homeViewModel.onAppBackgrounded()
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Auto-shutdown effect
+    LaunchedEffect(uiState.shouldExit) {
+        if (uiState.shouldExit) {
+            activity?.finishAndRemoveTask()
+        }
+    }
 
     LaunchedEffect(currentRoute) {
         // Auto-shutdown on background should be TRUE for all screens EXCEPT the browser.
