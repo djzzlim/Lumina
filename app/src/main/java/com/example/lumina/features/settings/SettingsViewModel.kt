@@ -60,9 +60,24 @@ class SettingsViewModel @Inject constructor(
             initialValue = true
         )
 
+    val torEnabled: StateFlow<Boolean> = settingsDataStore.torEnabledFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
+    val torProfile: StateFlow<String> = settingsDataStore.torProfileFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = "Standard"
+        )
+
     val dnsOptions = DnsProvider.allOptions
     val searchEngineOptions = SearchEngine.allOptions
     val autoCloseOptions = AutoCloseTimeout.allOptions.map { it.name }
+    val torProfileOptions = listOf("Standard", "Safer", "Safest")
 
     fun setDnsProvider(dnsProvider: String) {
         viewModelScope.launch {
@@ -98,6 +113,18 @@ class SettingsViewModel @Inject constructor(
     fun setLocalPhishingModelEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsDataStore.saveLocalPhishingModelEnabled(enabled)
+        }
+    }
+
+    fun setTorEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsDataStore.saveTorEnabled(enabled)
+        }
+    }
+
+    fun setTorProfile(profile: String) {
+        viewModelScope.launch {
+            settingsDataStore.saveTorProfile(profile)
         }
     }
 }

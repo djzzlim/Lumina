@@ -2,6 +2,7 @@ package com.example.lumina
 
 import android.app.Application
 import com.example.lumina.core.ProfileManager
+import com.example.lumina.core.tor.TorManager
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +21,9 @@ class LuminaApplication : Application() {
 
     @Inject
     lateinit var profileManager: ProfileManager
+
+    @Inject
+    lateinit var torManager: TorManager
 
     override fun onCreate() {
         super.onCreate()

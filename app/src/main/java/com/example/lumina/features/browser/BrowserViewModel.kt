@@ -10,6 +10,7 @@ import com.example.lumina.core.LuminaRepository
 import com.example.lumina.core.ProfileManager
 import com.example.lumina.core.database.LuminaInfo
 import com.example.lumina.core.ml.PhishingDetector
+import com.example.lumina.core.tor.TorManager
 import com.example.lumina.navigation.ScreenRoutes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -46,6 +47,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     private val globalGeckoRuntime: GeckoRuntime,
     private val appPreferences: AppPreferences,
     private val phishingDetector: PhishingDetector,
+    private val torManager: TorManager,
     @param:ApplicationContext private val applicationContext: Context,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -104,6 +106,18 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     private val _shouldClose = MutableStateFlow(false)
     val shouldClose: StateFlow<Boolean> = _shouldClose.asStateFlow()
 
+    val torEnabled: StateFlow<Boolean> = appPreferences.torEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val isTorRunning: StateFlow<Boolean> = torManager.isTorRunning
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val torBootstrappingProgress: StateFlow<Int> = torManager.bootstrappingProgress
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val torLogs: StateFlow<String> = torManager.torLogs
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
     private val _isAnimationFinished = MutableStateFlow(false)
     private var isInitialized = false
     private var isGoingBack = false
@@ -138,6 +152,43 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                 GeckoPreferenceController.setGeckoPref("browser.safebrowsing.malware.enabled", enabled, GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("browser.safebrowsing.phishing.enabled", enabled, GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("browser.safebrowsing.downloads.enabled", enabled, GeckoPreferenceController.PREF_BRANCH_USER)
+            }
+        }
+
+        // Dynamically toggle Tor Proxy based on preference
+        viewModelScope.launch {
+            appPreferences.torEnabledFlow.collect { enabled ->
+                Log.d("BrowserViewModel", "Setting Tor Proxy to: $enabled")
+                if (enabled) {
+                    GeckoPreferenceController.setGeckoPref("network.proxy.type", 1, GeckoPreferenceController.PREF_BRANCH_USER)
+                    GeckoPreferenceController.setGeckoPref("network.proxy.socks", "127.0.0.1", GeckoPreferenceController.PREF_BRANCH_USER)
+                    GeckoPreferenceController.setGeckoPref("network.proxy.socks_port", 9050, GeckoPreferenceController.PREF_BRANCH_USER)
+                    GeckoPreferenceController.setGeckoPref("network.proxy.socks_remote_dns", true, GeckoPreferenceController.PREF_BRANCH_USER)
+                    GeckoPreferenceController.setGeckoPref("network.proxy.socks_version", 5, GeckoPreferenceController.PREF_BRANCH_USER)
+                } else {
+                    GeckoPreferenceController.setGeckoPref("network.proxy.type", 0, GeckoPreferenceController.PREF_BRANCH_USER)
+                }
+            }
+        }
+
+        // Dynamically toggle Tor Profile settings
+        viewModelScope.launch {
+            appPreferences.torProfileFlow.collect { profile ->
+                Log.d("BrowserViewModel", "Applying Tor Profile: $profile")
+                when (profile) {
+                    "Safer" -> {
+                        GeckoPreferenceController.setGeckoPref("javascript.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
+                        GeckoPreferenceController.setGeckoPref("svg.disabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
+                    }
+                    "Safest" -> {
+                        GeckoPreferenceController.setGeckoPref("javascript.enabled", false, GeckoPreferenceController.PREF_BRANCH_USER)
+                        GeckoPreferenceController.setGeckoPref("svg.disabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
+                    }
+                    else -> { // Standard
+                        GeckoPreferenceController.setGeckoPref("javascript.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
+                        GeckoPreferenceController.setGeckoPref("svg.disabled", false, GeckoPreferenceController.PREF_BRANCH_USER)
+                    }
+                }
             }
         }
 

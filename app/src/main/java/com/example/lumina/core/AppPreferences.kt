@@ -33,6 +33,8 @@ class AppPreferences @Inject constructor(
 
     val safeBrowsingEnabledFlow: Flow<Boolean> = settingsDataStore.safeBrowsingEnabledFlow
     val localPhishingModelEnabledFlow: Flow<Boolean> = settingsDataStore.localPhishingModelEnabledFlow
+    val torEnabledFlow: Flow<Boolean> = settingsDataStore.torEnabledFlow
+    val torProfileFlow: Flow<String> = settingsDataStore.torProfileFlow
 }
 
 sealed class DnsProvider(val name: String, val uri: String, val mode: Int) {

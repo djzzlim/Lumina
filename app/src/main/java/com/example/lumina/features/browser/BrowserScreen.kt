@@ -34,6 +34,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.VpnLock
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -67,6 +69,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -110,12 +113,17 @@ fun BrowserScreen(
     val showInsecureWarning by browserViewModel.showInsecureWarning.collectAsState()
     val showPhishingWarning by browserViewModel.showPhishingWarning.collectAsState()
     val shouldClose by browserViewModel.shouldClose.collectAsState()
+    val torEnabled by browserViewModel.torEnabled.collectAsState()
+    val isTorRunning by browserViewModel.isTorRunning.collectAsState()
+    val torProgress by browserViewModel.torBootstrappingProgress.collectAsState()
+    val torLogs by browserViewModel.torLogs.collectAsState()
 
     val geckoView = remember { mutableStateOf<GeckoView?>(null) }
 
     var searchQuery by remember { mutableStateOf("") }
     var isTextFieldFocused by remember { mutableStateOf(false) }
     var showSecurityDialog by remember { mutableStateOf(false) }
+    var showTorLogsDialog by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
     val activity = context as Activity
@@ -330,6 +338,21 @@ fun BrowserScreen(
                                     Spacer(modifier = Modifier.width(6.dp))
                                 }
 
+                                if (torEnabled) {
+                                    IconButton(
+                                        onClick = { showTorLogsDialog = true },
+                                        modifier = Modifier.size(18.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.VpnLock,
+                                            contentDescription = "Tor Status (Click for logs)",
+                                            modifier = Modifier.size(14.dp),
+                                            tint = if (isTorRunning && torProgress == 100) Color(0xFFBB86FC) else Color.Gray
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
+
                                 BasicTextField(
                                     value = searchQuery,
                                     onValueChange = { searchQuery = it },
@@ -404,9 +427,24 @@ fun BrowserScreen(
                             color = Color(0xFFBB86FC),
                             trackColor = Color.Transparent
                         )
+                    } else if (torEnabled && torProgress < 100) {
+                        LinearProgressIndicator(
+                            progress = { torProgress.toFloat() / 100f },
+                            modifier = Modifier.fillMaxSize(),
+                            color = Color(0xFFBB86FC).copy(alpha = 0.5f),
+                            trackColor = Color.Transparent
+                        )
                     }
                 }
             }
+        }
+
+        if (showTorLogsDialog) {
+            TorLogsDialog(
+                logs = torLogs,
+                progress = torProgress,
+                onDismiss = { showTorLogsDialog = false }
+            )
         }
 
         Box(
@@ -884,6 +922,74 @@ fun ConnectionInfoDialog(
                     InfoItem("Algorithm", certificate.sigAlgName)
                 } else if (isSecure) {
                     Text("No detailed certificate information available", color = Color.Gray, fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close", color = Color(0xFFBB86FC))
+            }
+        },
+        containerColor = Color(0xFF121212),
+        textContentColor = Color.White,
+        titleContentColor = Color.White
+    )
+}
+
+/**
+ * A dialog that displays Tor logs and connection progress.
+ */
+@Composable
+fun TorLogsDialog(
+    logs: String,
+    progress: Int,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Tor Status", color = Color.White)
+                if (progress < 100) {
+                    Text("$progress%", color = Color(0xFFBB86FC), fontSize = 14.sp)
+                } else {
+                    Icon(Icons.Default.Check, null, tint = Color.Green, modifier = Modifier.size(18.dp))
+                }
+            }
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (progress < 100) {
+                    LinearProgressIndicator(
+                        progress = { progress.toFloat() / 100f },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        color = Color(0xFFBB86FC)
+                    )
+                }
+                
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.Black)
+                        .padding(8.dp)
+                ) {
+                    val scrollState = rememberScrollState()
+                    LaunchedEffect(logs) {
+                        scrollState.animateScrollTo(scrollState.maxValue)
+                    }
+                    Text(
+                        text = logs,
+                        color = Color.Green,
+                        fontSize = 10.sp,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        modifier = Modifier.verticalScroll(scrollState)
+                    )
                 }
             }
         },

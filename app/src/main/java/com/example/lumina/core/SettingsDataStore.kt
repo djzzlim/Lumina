@@ -28,6 +28,9 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     val safeBrowsingEnabledKey = booleanPreferencesKey("safe_browsing_enabled")
     val localPhishingModelEnabledKey = booleanPreferencesKey("local_phishing_model_enabled")
 
+    val torEnabledKey = booleanPreferencesKey("tor_enabled")
+    val torProfileKey = stringPreferencesKey("tor_profile")
+
     val dnsProviderFlow: Flow<String> = context.dataStore.data
         .map { preferences ->
             preferences[dnsProviderKey] ?: "Cloudflare"
@@ -61,6 +64,16 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     val localPhishingModelEnabledFlow: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
             preferences[localPhishingModelEnabledKey] ?: true
+        }
+
+    val torEnabledFlow: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[torEnabledKey] ?: false
+        }
+
+    val torProfileFlow: Flow<String> = context.dataStore.data
+        .map { preferences ->
+            preferences[torProfileKey] ?: "Standard"
         }
 
     val data: Flow<Preferences> = context.dataStore.data
@@ -104,6 +117,18 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     suspend fun saveLocalPhishingModelEnabled(enabled: Boolean) {
         context.dataStore.edit { settings ->
             settings[localPhishingModelEnabledKey] = enabled
+        }
+    }
+
+    suspend fun saveTorEnabled(enabled: Boolean) {
+        context.dataStore.edit { settings ->
+            settings[torEnabledKey] = enabled
+        }
+    }
+
+    suspend fun saveTorProfile(profile: String) {
+        context.dataStore.edit { settings ->
+            settings[torProfileKey] = profile
         }
     }
 }

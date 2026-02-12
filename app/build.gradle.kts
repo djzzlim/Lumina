@@ -156,4 +156,8 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
     implementation(libs.logging.interceptor)
+
+    // Tor
+    implementation(libs.tor.android)
+    implementation(libs.jtorctl)
 }

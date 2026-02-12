@@ -68,6 +68,8 @@ fun SettingsScreen(
     val selectedAutoCloseTimeoutMinutes by viewModel.autoCloseTimeout.collectAsStateWithLifecycle()
     val safeBrowsingEnabled by viewModel.safeBrowsingEnabled.collectAsStateWithLifecycle()
     val localPhishingModelEnabled by viewModel.localPhishingModelEnabled.collectAsStateWithLifecycle()
+    val torEnabled by viewModel.torEnabled.collectAsStateWithLifecycle()
+    val torProfile by viewModel.torProfile.collectAsStateWithLifecycle()
     
     val selectedAutoCloseName = remember(selectedAutoCloseTimeoutMinutes) {
         AutoCloseTimeout.fromMinutes(selectedAutoCloseTimeoutMinutes).name
@@ -153,6 +155,33 @@ fun SettingsScreen(
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            item {
+                SettingsSection(title = "TOR") {
+                    SettingsToggleItem(
+                        label = "Enable Tor",
+                        checked = torEnabled,
+                        onCheckedChange = viewModel::setTorEnabled
+                    )
+                    if (torEnabled) {
+                        HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
+                        SettingsDropdownItem(
+                            label = "Tor Profile",
+                            currentValue = torProfile,
+                            options = viewModel.torProfileOptions,
+                            onOptionSelected = viewModel::setTorProfile
+                        )
+                    }
+                }
+                Text(
+                    "Routing your traffic through Tor provides maximum anonymity but may slow down your browsing speed.",
+                    color = Color.Gray,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             item {

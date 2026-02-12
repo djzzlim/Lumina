@@ -5,6 +5,8 @@ import android.util.Log
 import androidx.annotation.OptIn
 import com.example.lumina.BuildConfig
 import com.example.lumina.core.AppPreferences
+import com.example.lumina.core.SettingsDataStore
+import com.example.lumina.core.tor.TorManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -31,10 +33,40 @@ object GeckoRuntimeModule {
     @Singleton
     fun provideGeckoRuntime(
         @ApplicationContext context: Context,
-        appPreferences: AppPreferences
+        appPreferences: AppPreferences,
+        settingsDataStore: SettingsDataStore,
+        torManager: TorManager
     ): GeckoRuntime {
         // 1. Set Preferences BEFORE creating the runtime to ensure they take effect immediately
         
+        // Tor Proxy Settings
+        val torEnabled = runBlocking { settingsDataStore.torEnabledFlow.first() }
+        if (torEnabled) {
+            GeckoPreferenceController.setGeckoPref("network.proxy.type", 1, GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("network.proxy.socks", "127.0.0.1", GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("network.proxy.socks_port", 9050, GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("network.proxy.socks_remote_dns", true, GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("network.proxy.socks_version", 5, GeckoPreferenceController.PREF_BRANCH_USER)
+        } else {
+            GeckoPreferenceController.setGeckoPref("network.proxy.type", 0, GeckoPreferenceController.PREF_BRANCH_USER)
+        }
+
+        val torProfile = runBlocking { settingsDataStore.torProfileFlow.first() }
+        when (torProfile) {
+            "Safer" -> {
+                GeckoPreferenceController.setGeckoPref("javascript.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
+                GeckoPreferenceController.setGeckoPref("svg.disabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
+            }
+            "Safest" -> {
+                GeckoPreferenceController.setGeckoPref("javascript.enabled", false, GeckoPreferenceController.PREF_BRANCH_USER)
+                GeckoPreferenceController.setGeckoPref("svg.disabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
+            }
+            else -> { // Standard
+                GeckoPreferenceController.setGeckoPref("javascript.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
+                GeckoPreferenceController.setGeckoPref("svg.disabled", false, GeckoPreferenceController.PREF_BRANCH_USER)
+            }
+        }
+
         // Silence "Native manifests not supported" and Managed Storage spam
         GeckoPreferenceController.setGeckoPref("browser.storage.managed.enabled", false, GeckoPreferenceController.PREF_BRANCH_USER)
         GeckoPreferenceController.setGeckoPref("extensions.managedStorage.enabled", false, GeckoPreferenceController.PREF_BRANCH_USER)

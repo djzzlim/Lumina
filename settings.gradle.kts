@@ -17,7 +17,8 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url = uri("https://maven.mozilla.org/maven2/") }
-        maven { url = uri("https://guardianproject.info/maven") }
+        maven { url = uri("https://raw.githubusercontent.com/guardianproject/gpmaven/master") }
+        maven { url = uri("https://jitpack.io") }
     }
 }
 
