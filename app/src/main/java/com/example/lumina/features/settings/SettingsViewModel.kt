@@ -6,6 +6,7 @@ import com.example.lumina.core.AutoCloseTimeout
 import com.example.lumina.core.DnsProvider
 import com.example.lumina.core.SearchEngine
 import com.example.lumina.core.SettingsDataStore
+import com.example.lumina.core.tor.TorManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +16,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val settingsDataStore: SettingsDataStore
+    private val settingsDataStore: SettingsDataStore,
+    private val torManager: TorManager
 ) : ViewModel() {
 
     val dnsProvider: StateFlow<String> = settingsDataStore.dnsProviderFlow
@@ -74,6 +76,27 @@ class SettingsViewModel @Inject constructor(
             initialValue = "Standard"
         )
 
+    val useNetworkTimezone: StateFlow<Boolean> = settingsDataStore.useNetworkTimezoneFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
+        )
+
+    val torLogs: StateFlow<String> = torManager.torLogs
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = ""
+        )
+
+    val torBootstrappingProgress: StateFlow<Int> = torManager.bootstrappingProgress
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0
+        )
+
     val dnsOptions = DnsProvider.allOptions
     val searchEngineOptions = SearchEngine.allOptions
     val autoCloseOptions = AutoCloseTimeout.allOptions.map { it.name }
@@ -126,5 +149,15 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsDataStore.saveTorProfile(profile)
         }
+    }
+
+    fun setUseNetworkTimezone(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsDataStore.saveUseNetworkTimezone(enabled)
+        }
+    }
+
+    fun requestNewTorCircuit() {
+        torManager.requestNewNym()
     }
 }

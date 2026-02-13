@@ -75,6 +75,18 @@ import com.example.lumina.core.utils.IconUtils
 
 /**
  * The primary home screen of the Lumina app.
+ *
+ * This screen displays a grid of [LuminaInfo] items, representing saved browser instances.
+ * It provides navigation to the scanner, settings, profiles, and browser screens.
+ * It also supports a selection mode for batch deletion of items.
+ *
+ * @param viewModel The ViewModel managing the home screen state.
+ * @param onNavigateToScanner Callback to navigate to the QR scanner.
+ * @param onNavigateToAddLumina Callback to navigate to the screen for adding a new Lumina.
+ * @param onNavigateToBrowser Callback to navigate to the browser for a specific Lumina ID.
+ * @param onNavigateToEditLumina Callback to navigate to the edit screen for a specific Lumina ID.
+ * @param onNavigateToProfiles Callback to navigate to the profile management screen.
+ * @param onNavigateToSettings Callback to navigate to the global settings screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

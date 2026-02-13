@@ -12,6 +12,15 @@ import java.io.FileOutputStream
 import java.nio.LongBuffer
 import kotlin.math.exp
 
+/**
+ * PhishingDetector is responsible for analyzing URLs using a local ONNX machine learning model
+ * to determine if they are potential phishing attempts.
+ *
+ * It uses a URL-BERT model exported to ONNX format and performs inference on-device
+ * for maximum privacy.
+ *
+ * @property context The application context used for asset management and file operations.
+ */
 class PhishingDetector(private val context: Context) {
     private val env: OrtEnvironment = OrtEnvironment.getEnvironment()
     private var session: OrtSession? = null
@@ -68,6 +77,15 @@ class PhishingDetector(private val context: Context) {
         return exps.map { it / sumExps }.toFloatArray()
     }
 
+    /**
+     * Predicts whether a given URL is a phishing URL.
+     *
+     * This method performs tokenization, prepares the input tensors, runs the ONNX inference,
+     * and converts the output logits to a probability score.
+     *
+     * @param url The URL to analyze.
+     * @return True if the URL is classified as phishing based on the model's threshold, false otherwise.
+     */
     suspend fun predict(url: String): Boolean = withContext(Dispatchers.Default) {
         val currentSession = session
         val currentTokenizer = tokenizer
@@ -144,6 +162,9 @@ class PhishingDetector(private val context: Context) {
         }
     }
 
+    /**
+     * Closes the ONNX session and environment to release resources.
+     */
     fun close() {
         try {
             session?.close()

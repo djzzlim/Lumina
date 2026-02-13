@@ -27,6 +27,18 @@ import com.example.lumina.features.new_lumina.AdvancedOptionsRow
 import com.example.lumina.features.new_lumina.IconAndThemeSection
 import com.example.lumina.features.new_lumina.WebsiteInputSection
 
+/**
+ * Screen for editing an existing Lumina instance.
+ *
+ * It provides the same configuration options as the [NewLuminaScreen], including
+ * name, URL, icon, theme color, and advanced settings, but pre-filled with the
+ * existing data of the Lumina being edited.
+ *
+ * @param viewModel The [EditLuminaViewModel] managing the state and persistence of the edits.
+ * @param onNavigateBack Callback for the "Close" navigation action.
+ * @param onSaveLumina Callback to trigger the saving of the modified Lumina instance.
+ * @param onNavigateToAdvancedOptions Callback to navigate to the advanced options screen.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditLuminaScreen(

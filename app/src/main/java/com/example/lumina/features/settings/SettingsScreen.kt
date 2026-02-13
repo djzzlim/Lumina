@@ -60,7 +60,8 @@ import com.example.lumina.core.AutoCloseTimeout
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
-    onNavigateToExtensions: () -> Unit
+    onNavigateToExtensions: () -> Unit,
+    onNavigateToTorSettings: () -> Unit
 ) {
     val selectedDns by viewModel.dnsProvider.collectAsStateWithLifecycle()
     val savedCustomDnsUri by viewModel.customDnsUri.collectAsStateWithLifecycle()
@@ -70,6 +71,7 @@ fun SettingsScreen(
     val localPhishingModelEnabled by viewModel.localPhishingModelEnabled.collectAsStateWithLifecycle()
     val torEnabled by viewModel.torEnabled.collectAsStateWithLifecycle()
     val torProfile by viewModel.torProfile.collectAsStateWithLifecycle()
+    val useNetworkTimezone by viewModel.useNetworkTimezone.collectAsStateWithLifecycle()
     
     val selectedAutoCloseName = remember(selectedAutoCloseTimeoutMinutes) {
         AutoCloseTimeout.fromMinutes(selectedAutoCloseTimeoutMinutes).name
@@ -158,24 +160,13 @@ fun SettingsScreen(
             }
 
             item {
-                SettingsSection(title = "TOR") {
-                    SettingsToggleItem(
-                        label = "Enable Tor",
-                        checked = torEnabled,
-                        onCheckedChange = viewModel::setTorEnabled
-                    )
-                    if (torEnabled) {
-                        HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
-                        SettingsDropdownItem(
-                            label = "Tor Profile",
-                            currentValue = torProfile,
-                            options = viewModel.torProfileOptions,
-                            onOptionSelected = viewModel::setTorProfile
-                        )
+                SettingsSection(title = "TOR NETWORK") {
+                    SettingsItem(label = "Tor Network Settings") {
+                        onNavigateToTorSettings()
                     }
                 }
                 Text(
-                    "Routing your traffic through Tor provides maximum anonymity but may slow down your browsing speed.",
+                    "Configure Tor anonymity, security levels, exit regions, and view live connection logs.",
                     color = Color.Gray,
                     fontSize = 12.sp,
                     lineHeight = 16.sp,

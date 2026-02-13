@@ -609,6 +609,13 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
         }
     }
 
+    /**
+     * Signals Tor to change the current circuit and exit node.
+     */
+    fun requestNewTorCircuit() {
+        torManager.requestNewNym()
+    }
+
     fun exitFullScreen() {
         if (_geckoSession.isOpen) _geckoSession.exitFullScreen()
         _isAppLevelFullscreen.value = false

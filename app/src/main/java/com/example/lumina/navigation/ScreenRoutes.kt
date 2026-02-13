@@ -5,6 +5,7 @@ object ScreenRoutes {
     const val SETTINGS_SCREEN = "settings"
     const val PROFILES_SCREEN = "profiles"
     const val QR_SCANNER = "qr_scanner"
+    const val TOR_SETTINGS = "tor_settings"
 
     const val NEW_LUMINA_GRAPH = "new_lumina_graph"
     const val NEW_LUMINA_BASE = "new_lumina"

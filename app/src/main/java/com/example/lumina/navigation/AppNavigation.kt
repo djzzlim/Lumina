@@ -197,6 +197,17 @@ fun AppNavigation(
                 },
                 onNavigateToExtensions = {
                     safeNavigate(ScreenRoutes.EXTENSIONS_SCREEN)
+                },
+                onNavigateToTorSettings = {
+                    safeNavigate(ScreenRoutes.TOR_SETTINGS)
+                }
+            )
+        }
+
+        composable(ScreenRoutes.TOR_SETTINGS) {
+            com.example.lumina.features.settings.TorSettingsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
@@ -289,7 +300,6 @@ fun AppNavigation(
                     onAfpEnabledChange = vm::setAfpEnabled,
                     onRandomizeUserAgentChange = vm::setRandomizeUserAgent,
                     onSpoofLocaleChange = vm::setSpoofLocale,
-                    onSpoofTimezoneChange = vm::setSpoofTimezone,
                     onRandomizeCanvasChange = vm::setRandomizeCanvas,
                     onDisableAudioContextChange = vm::setDisableAudioContext,
                     onDisableWebGlChange = vm::setDisableWebGl,
@@ -348,7 +358,6 @@ fun AppNavigation(
                     onAfpEnabledChange = vm::setAfpEnabled,
                     onRandomizeUserAgentChange = vm::setRandomizeUserAgent,
                     onSpoofLocaleChange = vm::setSpoofLocale,
-                    onSpoofTimezoneChange = vm::setSpoofTimezone,
                     onRandomizeCanvasChange = vm::setRandomizeCanvas,
                     onDisableAudioContextChange = vm::setDisableAudioContext,
                     onDisableWebGlChange = vm::setDisableWebGl,

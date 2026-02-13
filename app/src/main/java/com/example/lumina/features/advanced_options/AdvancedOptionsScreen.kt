@@ -52,7 +52,6 @@ import com.example.lumina.ui.theme.LuminaTheme
  * @param onAfpEnabledChange Callback for toggling global anti-fingerprinting.
  * @param onRandomizeUserAgentChange Callback for toggling user agent randomization.
  * @param onSpoofLocaleChange Callback for toggling locale spoofing.
- * @param onSpoofTimezoneChange Callback for toggling timezone spoofing.
  * @param onRandomizeCanvasChange Callback for toggling canvas randomization.
  * @param onDisableAudioContextChange Callback for toggling AudioContext disabling.
  * @param onDisableWebGlChange Callback for toggling WebGL disabling.
@@ -70,7 +69,6 @@ fun AdvancedOptionsScreen(
     onAfpEnabledChange: (Boolean) -> Unit,
     onRandomizeUserAgentChange: (Boolean) -> Unit,
     onSpoofLocaleChange: (Boolean) -> Unit,
-    onSpoofTimezoneChange: (Boolean) -> Unit,
     onRandomizeCanvasChange: (Boolean) -> Unit,
     onDisableAudioContextChange: (Boolean) -> Unit,
     onDisableWebGlChange: (Boolean) -> Unit,
@@ -106,7 +104,6 @@ fun AdvancedOptionsScreen(
                 onAfpEnabledChange = onAfpEnabledChange,
                 onRandomizeUserAgentChange = onRandomizeUserAgentChange,
                 onSpoofLocaleChange = onSpoofLocaleChange,
-                onSpoofTimezoneChange = onSpoofTimezoneChange,
                 onRandomizeCanvasChange = onRandomizeCanvasChange,
                 onDisableAudioContextChange = onDisableAudioContextChange,
                 onDisableWebGlChange = onDisableWebGlChange,
@@ -142,7 +139,6 @@ fun AntifingerprintingToggles(
     onAfpEnabledChange: (Boolean) -> Unit,
     onRandomizeUserAgentChange: (Boolean) -> Unit,
     onSpoofLocaleChange: (Boolean) -> Unit,
-    onSpoofTimezoneChange: (Boolean) -> Unit,
     onRandomizeCanvasChange: (Boolean) -> Unit,
     onDisableAudioContextChange: (Boolean) -> Unit,
     onDisableWebGlChange: (Boolean) -> Unit,
@@ -173,12 +169,6 @@ fun AntifingerprintingToggles(
             text = "Spoof system locale",
             checked = afpState.spoofLocale,
             onCheckedChange = onSpoofLocaleChange,
-            enabled = afpState.afpEnabled
-        )
-        ToggleRowInternal(
-            text = "Spoof system timezone",
-            checked = afpState.spoofTimezone,
-            onCheckedChange = onSpoofTimezoneChange,
             enabled = afpState.afpEnabled
         )
         ToggleRowInternal(
@@ -361,7 +351,6 @@ fun AdvancedOptionsScreenPreview() {
             onAfpEnabledChange = {},
             onRandomizeUserAgentChange = {},
             onSpoofLocaleChange = {},
-            onSpoofTimezoneChange = {},
             onRandomizeCanvasChange = {},
             onDisableAudioContextChange = {},
             onDisableWebGlChange = {},

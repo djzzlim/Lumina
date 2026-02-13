@@ -4,10 +4,23 @@ import android.content.Context
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
+/**
+ * A WordPiece tokenizer implementation for Android, compatible with BERT-style models.
+ * This tokenizer splits text into sub-word units based on a provided vocabulary.
+ *
+ * @property vocab A map of tokens to their corresponding IDs.
+ */
 class WordPieceTokenizer(private val vocab: Map<String, Int>) {
     private val unkToken = "[UNK]"
     private val maxInputCharsPerWord = 100
 
+    /**
+     * Tokenizes a string into a list of WordPiece tokens.
+     * It handles whitespace splitting, punctuation splitting, and the WordPiece algorithm.
+     *
+     * @param text The input text to tokenize.
+     * @return A list of tokens.
+     */
     fun tokenize(text: String): List<String> {
         val outputTokens = mutableListOf<String>()
         // 1. Split by whitespace
@@ -98,11 +111,24 @@ class WordPieceTokenizer(private val vocab: Map<String, Int>) {
                 type == Character.START_PUNCTUATION
     }
 
+    /**
+     * Converts a list of string tokens into their corresponding integer IDs from the vocabulary.
+     *
+     * @param tokens The list of tokens to convert.
+     * @return A list of integer IDs.
+     */
     fun convertTokensToIds(tokens: List<String>): List<Int> {
         return tokens.map { vocab[it] ?: vocab[unkToken] ?: 0 }
     }
 
     companion object {
+        /**
+         * Loads a vocabulary from an asset file and creates a [WordPieceTokenizer].
+         *
+         * @param context The application context.
+         * @param fileName The name of the vocabulary file in the assets folder.
+         * @return An initialized [WordPieceTokenizer].
+         */
         fun loadFromAssets(context: Context, fileName: String): WordPieceTokenizer {
             val vocab = mutableMapOf<String, Int>()
             context.assets.open(fileName).use { inputStream ->

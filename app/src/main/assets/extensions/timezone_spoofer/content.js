@@ -19,8 +19,8 @@
         const script = document.createElement('script');
         script.textContent = `
             (() => {
-                const tz = "${targetTz}";
-                const offset = ${targetOffset};
+                const tz = "${targetTz || 'UTC'}";
+                const offset = ${targetOffset || 0};
                 
                 const OriginalDate = window.Date;
                 const OriginalIntl = window.Intl;

@@ -12,7 +12,10 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.mozilla.geckoview.ContentBlocking
@@ -36,7 +39,8 @@ object GeckoRuntimeModule {
         @ApplicationContext context: Context,
         appPreferences: AppPreferences,
         settingsDataStore: SettingsDataStore,
-        torManager: TorManager
+        torManager: TorManager,
+        luminaRepository: com.example.lumina.core.LuminaRepository
     ): GeckoRuntime {
         // 1. Set Preferences BEFORE creating the runtime to ensure they take effect immediately
         
@@ -149,23 +153,52 @@ object GeckoRuntimeModule {
                         ): GeckoResult<Any>? {
                             Log.d("Lumina-Gecko", "Received extension message: $message")
                             if (message is JSONObject && message.optString("type") == "getTimezone") {
+                                val result = GeckoResult<Any>()
+                                
+                                // Parse lumina ID from contextId (e.g., "lumina_session_123")
+                                val contextId = sender.session?.settings?.contextId
+                                val luminaId = contextId?.substringAfterLast("_")?.toLongOrNull()
+                                
+                                val systemTz = java.util.TimeZone.getDefault().id
+                                val useNetworkTz = runBlocking { settingsDataStore.useNetworkTimezoneFlow.first() }
+                                val torOn = torManager.isTorRunning.value 
                                 val detectedTimezone = torManager.exitNodeTimezone.value
                                 val detectedOffset = torManager.exitNodeOffsetMinutes.value
-                                val torOn = torManager.isTorRunning.value 
-                                
-                                val response = JSONObject()
-                                if (torOn && detectedTimezone != null) {
-                                    response.put("timezone", detectedTimezone)
-                                    response.put("offset", detectedOffset)
-                                } else if (!torOn) {
-                                    response.put("timezone", "system")
-                                } else {
-                                    // Tor is on but timezone not yet detected
-                                    response.put("timezone", null)
+
+                                // Fetch session-specific spoofing preference
+                                CoroutineScope(Dispatchers.Main).launch {
+                                    // Always enable spoofing now that the toggle is removed from UI
+                                    val spoofEnabled = true
+                                    
+                                    Log.d("Lumina-Gecko", "Processing getTimezone: ID=$luminaId, spoofEnabled=$spoofEnabled")
+
+                                    val response = JSONObject()
+                                    response.put("systemTimezone", systemTz)
+
+                                    if (!spoofEnabled) {
+                                        response.put("timezone", "disabled")
+                                    } else if (useNetworkTz) {
+                                        if (torOn) {
+                                            Log.d("Lumina-Gecko", "Tor is ON. Detected Exit TZ: $detectedTimezone")
+                                            if (detectedTimezone != null) {
+                                                response.put("timezone", detectedTimezone)
+                                                response.put("offset", detectedOffset)
+                                            } else {
+                                                response.put("timezone", null)
+                                            }
+                                        } else {
+                                            Log.d("Lumina-Gecko", "Tor is OFF. Telling extension to check network vs system: $systemTz")
+                                            response.put("timezone", "system")
+                                        }
+                                    } else {
+                                        Log.d("Lumina-Gecko", "Spoof enabled but useNetworkTz is FALSE. Requesting fallback.")
+                                        response.put("timezone", "fallback")
+                                    }
+                                    
+                                    Log.d("Lumina-Gecko", "Sending response to extension: $response")
+                                    result.complete(response)
                                 }
-                                
-                                Log.d("Lumina-Gecko", "Timezone request: TorOn=$torOn, Detected=$detectedTimezone -> Returning=${response.optString("timezone")}")
-                                return GeckoResult.fromValue(response)
+                                return result
                             }
                             return null
                         }

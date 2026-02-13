@@ -34,7 +34,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -95,6 +94,12 @@ import org.mozilla.geckoview.WebRequestError
 
 /**
  * The main browser screen of the Lumina app.
+ *
+ * This screen manages the [GeckoView] lifecycle, the address bar, security indicators,
+ * Tor status, and various overlay warnings (phishing, insecure connections, errors).
+ *
+ * @param onClose Callback to be executed when the browser should be closed.
+ * @param browserViewModel The ViewModel managing the state of the browser session.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -443,6 +448,7 @@ fun BrowserScreen(
             TorLogsDialog(
                 logs = torLogs,
                 progress = torProgress,
+                onNewCircuit = { browserViewModel.requestNewTorCircuit() },
                 onDismiss = { showTorLogsDialog = false }
             )
         }
@@ -943,6 +949,7 @@ fun ConnectionInfoDialog(
 fun TorLogsDialog(
     logs: String,
     progress: Int,
+    onNewCircuit: () -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -957,7 +964,9 @@ fun TorLogsDialog(
                 if (progress < 100) {
                     Text("$progress%", color = Color(0xFFBB86FC), fontSize = 14.sp)
                 } else {
-                    Icon(Icons.Default.Check, null, tint = Color.Green, modifier = Modifier.size(18.dp))
+                    IconButton(onClick = onNewCircuit) {
+                        Icon(Icons.Default.Refresh, "New Circuit", tint = Color(0xFFBB86FC))
+                    }
                 }
             }
         },
