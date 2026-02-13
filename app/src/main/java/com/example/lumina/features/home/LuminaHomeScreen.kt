@@ -453,6 +453,8 @@ fun LuminaItemCard(
     val iconColor = remember(item.color) { Color(item.color.toInt()) }
     
     val alpha = if (isEnabled) 1.0f else 0.45f
+    val containerColor = remember(isEnabled) { Color(0xFF151525).copy(alpha = alpha) }
+    val borderColor = remember(isEnabled) { Color.White.copy(alpha = 0.08f * alpha) }
 
     Card(
         modifier = modifier
@@ -465,9 +467,9 @@ fun LuminaItemCard(
             ),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF151525).copy(alpha = alpha)
+            containerColor = containerColor
         ),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f * alpha))
+        border = BorderStroke(1.dp, borderColor)
     ) {
         Box {
             Column(

@@ -39,7 +39,10 @@ object DatabaseModule {
             .addMigrations(
                 LuminaDatabase.MIGRATION_1_2, 
                 LuminaDatabase.MIGRATION_2_3,
-                LuminaDatabase.MIGRATION_3_4
+                LuminaDatabase.MIGRATION_3_4,
+                LuminaDatabase.MIGRATION_4_5,
+                LuminaDatabase.MIGRATION_5_6,
+                LuminaDatabase.MIGRATION_6_7
             )
             .fallbackToDestructiveMigration(false)
             .build()
