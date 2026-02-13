@@ -14,6 +14,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
 import org.mozilla.geckoview.ContentBlocking
 import org.mozilla.geckoview.ExperimentalGeckoViewApi
 import org.mozilla.geckoview.GeckoPreferenceController
@@ -89,8 +90,17 @@ object GeckoRuntimeModule {
 
         val contentBlocking = ContentBlocking.Settings.Builder()
             .safeBrowsing(ContentBlocking.SafeBrowsing.DEFAULT)
-            .enhancedTrackingProtectionLevel(ContentBlocking.EtpLevel.STRICT)
+            .enhancedTrackingProtectionLevel(ContentBlocking.EtpLevel.DEFAULT)
             .build()
+
+        // Compatibility Prefs for modern websites (Cloudflare, CAPTCHAs)
+        GeckoPreferenceController.setGeckoPref("dom.storage.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("dom.indexedDB.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("javascript.options.wasm", true, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("network.cookie.cookieBehavior", 4, GeckoPreferenceController.PREF_BRANCH_USER) // Partitioned cookies
+        GeckoPreferenceController.setGeckoPref("dom.w3c_touch_events.enabled", 2, GeckoPreferenceController.PREF_BRANCH_USER) // Enable touch events
+        GeckoPreferenceController.setGeckoPref("network.http.sendRefererHeader", 2, GeckoPreferenceController.PREF_BRANCH_USER) // Send referrers
+        GeckoPreferenceController.setGeckoPref("privacy.partition.network_state", true, GeckoPreferenceController.PREF_BRANCH_USER)
 
         val runtimeSettings = GeckoRuntimeSettings.Builder()
             .aboutConfigEnabled(true)
@@ -113,25 +123,56 @@ object GeckoRuntimeModule {
                 dataCollectionPermissions: Array<out String>
             ): GeckoResult<WebExtension.PermissionPromptResponse>? {
                 Log.d("Lumina-Gecko", "Auto-granting permissions for: ${extension.id}")
-                // The second parameter 'true' grants Private Browsing access immediately,
-                // preventing the need for a manual restart later.
                 return GeckoResult.fromValue(WebExtension.PermissionPromptResponse(
                     true, true, true
                 ))
             }
         }
 
+        // Install the built-in Timezone Spoofer extension
+        runtime.webExtensionController.installBuiltIn("resource://android/assets/extensions/timezone_spoofer/")
+
         // 3. Set AddonManagerDelegate to monitor extension lifecycle
         runtime.webExtensionController.setAddonManagerDelegate(object : WebExtensionController.AddonManagerDelegate {
             override fun onInstalled(extension: WebExtension) {
                 Log.d("Lumina-Gecko", "Extension installed: ${extension.id}")
                 
-                // DO NOT call setAllowedInPrivateBrowsing(true) here. 
-                // It is already granted by the PromptDelegate above.
-                // Calling it here triggers a Redundant Restart which causes errors.
-                
                 extension.setActionDelegate(object : WebExtension.ActionDelegate {})
-                extension.setMessageDelegate(object : WebExtension.MessageDelegate {}, "lumina")
+                
+                // Handle messages from the Timezone Spoofer extension
+                if (extension.id == "timezone-spoofer@lumina.example.com") {
+                    extension.setMessageDelegate(object : WebExtension.MessageDelegate {
+                        override fun onMessage(
+                            nativeApp: String,
+                            message: Any,
+                            sender: WebExtension.MessageSender
+                        ): GeckoResult<Any>? {
+                            Log.d("Lumina-Gecko", "Received extension message: $message")
+                            if (message is JSONObject && message.optString("type") == "getTimezone") {
+                                val detectedTimezone = torManager.exitNodeTimezone.value
+                                val detectedOffset = torManager.exitNodeOffsetMinutes.value
+                                val torOn = torManager.isTorRunning.value 
+                                
+                                val response = JSONObject()
+                                if (torOn && detectedTimezone != null) {
+                                    response.put("timezone", detectedTimezone)
+                                    response.put("offset", detectedOffset)
+                                } else if (!torOn) {
+                                    response.put("timezone", "system")
+                                } else {
+                                    // Tor is on but timezone not yet detected
+                                    response.put("timezone", null)
+                                }
+                                
+                                Log.d("Lumina-Gecko", "Timezone request: TorOn=$torOn, Detected=$detectedTimezone -> Returning=${response.optString("timezone")}")
+                                return GeckoResult.fromValue(response)
+                            }
+                            return null
+                        }
+                    }, "lumina")
+                } else {
+                    extension.setMessageDelegate(object : WebExtension.MessageDelegate {}, "lumina")
+                }
             }
 
             override fun onInstallationFailed(extension: WebExtension?, error: WebExtension.InstallException) {

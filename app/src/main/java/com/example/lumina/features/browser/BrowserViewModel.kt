@@ -145,13 +145,21 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
             }
         }
 
-        // Dynamically toggle Google Safe Browsing based on preference
         viewModelScope.launch {
             appPreferences.safeBrowsingEnabledFlow.collect { enabled ->
                 Log.d("BrowserViewModel", "Setting Google Safe Browsing to: $enabled")
                 GeckoPreferenceController.setGeckoPref("browser.safebrowsing.malware.enabled", enabled, GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("browser.safebrowsing.phishing.enabled", enabled, GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("browser.safebrowsing.downloads.enabled", enabled, GeckoPreferenceController.PREF_BRANCH_USER)
+            }
+        }
+
+        // Synchronize Tor timezone with the browser
+        viewModelScope.launch {
+            combine(torManager.exitNodeTimezone, torManager.exitNodeIp) { tz, ip ->
+                if (tz != null && ip != null) {
+                    Log.d("BrowserViewModel", "Tor exit node detected: $ip in $tz")
+                }
             }
         }
 
@@ -450,7 +458,17 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
         }
 
         // NOTE: RFP (Resist Fingerprinting) can trigger bot checks on sites like YouTube.
-        GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting", info.afpEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
+        val shouldResistFingerprinting = info.afpEnabled || torEnabled.value
+        GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting", shouldResistFingerprinting, GeckoPreferenceController.PREF_BRANCH_USER)
+        
+        // If Tor is on, we definitely want UTC. If AFP is on and spoofTimezone is on, we also want UTC.
+        val shouldSpoofTimezone = (info.spoofTimezone && info.afpEnabled) || torEnabled.value
+        if (shouldSpoofTimezone) {
+            // Gecko doesn't have a direct "set timezone" pref, but RFP forces UTC.
+            // We ensure it's on if Tor is on.
+            GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting", true, GeckoPreferenceController.PREF_BRANCH_USER)
+        }
+
         GeckoPreferenceController.setGeckoPref("webgl.disabled", info.disableWebGl || !info.afpEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
         GeckoPreferenceController.setGeckoPref("dom.audioContext.enabled", !info.disableAudioContext && info.afpEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
 

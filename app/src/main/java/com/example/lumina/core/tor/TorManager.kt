@@ -7,11 +7,18 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
 import java.io.File
+import java.net.InetSocketAddress
+import java.net.Proxy
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,6 +39,15 @@ class TorManager @Inject constructor(
 
     private val _torLogs = MutableStateFlow("")
     val torLogs: StateFlow<String> = _torLogs
+    
+    private val _exitNodeTimezone = MutableStateFlow<String?>(null)
+    val exitNodeTimezone: StateFlow<String?> = _exitNodeTimezone
+
+    private val _exitNodeOffsetMinutes = MutableStateFlow<Int>(0)
+    val exitNodeOffsetMinutes: StateFlow<Int> = _exitNodeOffsetMinutes
+
+    private val _exitNodeIp = MutableStateFlow<String?>(null)
+    val exitNodeIp: StateFlow<String?> = _exitNodeIp
 
     init {
         scope.launch {
@@ -40,9 +56,77 @@ class TorManager @Inject constructor(
                     startTor()
                 } else {
                     stopTor()
+                    _exitNodeTimezone.value = null
+                    _exitNodeOffsetMinutes.value = 0
                 }
             }
         }
+        
+        // Monitor bootstrapping to fetch timezone when ready
+        scope.launch {
+            _bootstrappingProgress.collect { progress ->
+                if (progress == 100) {
+                    fetchExitNodeTimezone()
+                }
+            }
+        }
+    }
+
+    private suspend fun fetchExitNodeTimezone() {
+        var retries = 5
+        val url = "https://ipwho.is/"
+        
+        while (retries > 0) {
+            delay(3000) // Wait for Tor to stabilize
+            
+            val proxy = Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", 9050))
+            val client = OkHttpClient.Builder()
+                .proxy(proxy)
+                .connectTimeout(20, TimeUnit.SECONDS)
+                .readTimeout(20, TimeUnit.SECONDS)
+                .build()
+
+            try {
+                Log.d(TAG, "Fetching location from $url (Attempt ${6-retries})...")
+                val request = Request.Builder().url(url).build()
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val body = response.body?.string()
+                    if (body != null) {
+                        val json = JSONObject(body)
+                        val success = json.optBoolean("success", false)
+                        if (success) {
+                            val ip = json.optString("ip")
+                            val countryCode = json.optString("country_code")
+                            val connection = json.optJSONObject("connection")
+                            val timezoneObj = json.optJSONObject("timezone")
+                            
+                            val timezoneId = timezoneObj?.optString("id") ?: "UTC"
+                            val offsetSec = timezoneObj?.optInt("offset", 0) ?: 0
+                            val offsetMin = offsetSec / 60
+                            
+                            Log.i(TAG, "Tor Exit Node Identified: $ip in $countryCode. Timezone: $timezoneId (Offset: $offsetMin min)")
+                            _exitNodeTimezone.value = timezoneId
+                            _exitNodeOffsetMinutes.value = offsetMin
+                            _exitNodeIp.value = ip
+                            _torLogs.value += "Exit Node: $ip ($countryCode / $timezoneId)\n"
+                            return // Success
+                        } else {
+                            Log.w(TAG, "API returned success=false: ${json.optJSONObject("message")}")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to fetch from $url: ${e.message}")
+            }
+            
+            retries--
+            delay(2000)
+        }
+        
+        Log.e(TAG, "Timezone detection failed after all retries. Defaulting to UTC.")
+        _exitNodeTimezone.value = "UTC"
+        _exitNodeOffsetMinutes.value = 0
     }
 
     private fun startTor() {
