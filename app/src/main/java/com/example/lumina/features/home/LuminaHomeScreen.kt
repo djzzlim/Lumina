@@ -100,6 +100,9 @@ fun LuminaHomeScreen(
     onNavigateToSettings: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val torEnabled by viewModel.torEnabled.collectAsState()
+    val torProgress by viewModel.torProgress.collectAsState()
+    
     var isNavigating by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
     
@@ -170,6 +173,8 @@ fun LuminaHomeScreen(
                     items = uiState.luminaItems,
                     selectionMode = uiState.selectionMode,
                     selectedItems = uiState.selectedItems,
+                    torEnabled = torEnabled,
+                    torProgress = torProgress,
                     onItemClick = {
                         if (uiState.selectionMode) {
                             viewModel.toggleItemSelection(it.id)
@@ -402,9 +407,13 @@ fun LuminaItemsGrid(
     items: List<LuminaInfo>,
     selectionMode: Boolean,
     selectedItems: Set<Long>,
+    torEnabled: Boolean,
+    torProgress: Int,
     onItemClick: (LuminaInfo) -> Unit,
     onItemLongClick: (LuminaInfo) -> Unit
 ) {
+    val isTorLoading = torEnabled && torProgress < 100
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -421,6 +430,7 @@ fun LuminaItemsGrid(
             LuminaItemCard(
                 item = item,
                 isSelected = selectedItems.contains(item.id),
+                isEnabled = !isTorLoading,
                 onClick = { onItemClick(item) },
                 onLongClick = { onItemLongClick(item) }
             )
@@ -433,6 +443,7 @@ fun LuminaItemsGrid(
 fun LuminaItemCard(
     item: LuminaInfo,
     isSelected: Boolean,
+    isEnabled: Boolean = true,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -440,20 +451,23 @@ fun LuminaItemCard(
     val iconVector = remember(item.icon) { IconUtils.getIconVector(item.icon) }
     val maskedUrl = remember(item.url) { maskUrl(item.url) }
     val iconColor = remember(item.color) { Color(item.color.toInt()) }
+    
+    val alpha = if (isEnabled) 1.0f else 0.45f
 
     Card(
         modifier = modifier
             .aspectRatio(0.92f)
             .clip(RoundedCornerShape(20.dp))
             .combinedClickable(
+                enabled = isEnabled,
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF151525)
+            containerColor = Color(0xFF151525).copy(alpha = alpha)
         ),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f * alpha))
     ) {
         Box {
             Column(
@@ -471,14 +485,14 @@ fun LuminaItemCard(
                 ) {
                     Surface(
                         modifier = Modifier.size(48.dp),
-                        color = iconColor.copy(alpha = 0.15f),
+                        color = iconColor.copy(alpha = 0.15f * alpha),
                         shape = CircleShape
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = iconVector,
                                 contentDescription = item.name,
-                                tint = iconColor,
+                                tint = iconColor.copy(alpha = alpha),
                                 modifier = Modifier.size(26.dp)
                             )
                         }
@@ -492,7 +506,7 @@ fun LuminaItemCard(
                     var fontSize by remember(item.name) { mutableStateOf(12.sp) }
                     Text(
                         text = item.name,
-                        color = Color.White,
+                        color = Color.White.copy(alpha = alpha),
                         fontWeight = FontWeight.SemiBold,
                         fontSize = fontSize,
                         maxLines = 1,
@@ -509,7 +523,7 @@ fun LuminaItemCard(
 
                     Text(
                         text = maskedUrl,
-                        color = Color.White.copy(alpha = 0.45f),
+                        color = Color.White.copy(alpha = 0.45f * alpha),
                         fontSize = 8.5.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

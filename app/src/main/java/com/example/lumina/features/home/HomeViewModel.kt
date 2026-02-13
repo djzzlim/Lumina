@@ -6,16 +6,20 @@ import com.example.lumina.core.AppPreferences
 import com.example.lumina.core.LuminaRepository
 import com.example.lumina.core.ProfileManager
 import com.example.lumina.core.database.LuminaInfo
+import com.example.lumina.core.tor.TorManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -42,11 +46,18 @@ data class HomeUiState(
 class HomeViewModel @Inject constructor(
     private val repository: LuminaRepository,
     private val profileManager: ProfileManager,
-    private val appPreferences: AppPreferences
+    private val appPreferences: AppPreferences,
+    private val torManager: TorManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState = _uiState.asStateFlow()
+
+    val torEnabled: StateFlow<Boolean> = appPreferences.torEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val torProgress: StateFlow<Int> = torManager.bootstrappingProgress
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     private var autoShutdownJob: Job? = null
     private var shouldAutoShutdownOnBackground: Boolean = true
