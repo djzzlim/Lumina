@@ -2,12 +2,14 @@ package com.example.lumina
 
 import android.app.Application
 import com.example.lumina.core.ProfileManager
+import com.example.lumina.core.di.GeckoRuntimeModule
 import com.example.lumina.core.tor.TorManager
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.sqlcipher.database.SQLiteDatabase
+import org.mozilla.geckoview.StorageController
 import javax.inject.Inject
 
 /**
@@ -35,5 +37,21 @@ class LuminaApplication : Application() {
         CoroutineScope(Dispatchers.Main).launch {
             profileManager.createDefaultProfileIfNeeded()
         }
+    }
+
+    override fun onTerminate() {
+        // 1. Clear GeckoRuntime Data and Shutdown
+        GeckoRuntimeModule.getRuntime()?.let { runtime ->
+            runtime.storageController.clearData(StorageController.ClearFlags.ALL)
+            runtime.shutdown()
+        }
+
+        // 2. Stop Tor
+        torManager.stopTor()
+
+        super.onTerminate()
+        
+        // 3. Force Process Exit for a hard purge of memory
+        android.os.Process.killProcess(android.os.Process.myPid())
     }
 }

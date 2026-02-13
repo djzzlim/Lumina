@@ -160,4 +160,8 @@ class SettingsViewModel @Inject constructor(
     fun requestNewTorCircuit() {
         torManager.requestNewNym()
     }
+
+    fun refreshTor() {
+        torManager.restartTor()
+    }
 }

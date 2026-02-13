@@ -11,6 +11,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -235,12 +236,25 @@ class TorManager @Inject constructor(
     /**
      * Stops the running Tor proxy process.
      */
-    private fun stopTor() {
+    fun stopTor() {
         Log.d(TAG, "Stopping Tor")
         torProcess?.destroy()
         torProcess = null
         _isTorRunning.value = false
         _bootstrappingProgress.value = 0
+    }
+
+    /**
+     * Restarts the Tor proxy process.
+     */
+    fun restartTor() {
+        scope.launch {
+            stopTor()
+            delay(1000) // Small delay to ensure process is killed
+            if (settingsDataStore.torEnabledFlow.first()) {
+                startTor()
+            }
+        }
     }
 
     /**

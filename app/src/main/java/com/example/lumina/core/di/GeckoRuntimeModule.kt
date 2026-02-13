@@ -32,6 +32,10 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object GeckoRuntimeModule {
 
+    private var runtime: GeckoRuntime? = null
+
+    fun getRuntime(): GeckoRuntime? = runtime
+
     @OptIn(ExperimentalGeckoViewApi::class)
     @Provides
     @Singleton
@@ -42,6 +46,7 @@ object GeckoRuntimeModule {
         torManager: TorManager,
         luminaRepository: com.example.lumina.core.LuminaRepository
     ): GeckoRuntime {
+        runtime?.let { return it }
         // 1. Set Preferences BEFORE creating the runtime to ensure they take effect immediately
         
         // Tor Proxy Settings
@@ -106,6 +111,22 @@ object GeckoRuntimeModule {
         GeckoPreferenceController.setGeckoPref("network.http.sendRefererHeader", 2, GeckoPreferenceController.PREF_BRANCH_USER) // Send referrers
         GeckoPreferenceController.setGeckoPref("privacy.partition.network_state", true, GeckoPreferenceController.PREF_BRANCH_USER)
 
+        // --- ENFORCE DATA CLEARING & NO PERSISTENCE ---
+        // Ensure nothing is saved to disk between restarts
+        GeckoPreferenceController.setGeckoPref("browser.privatebrowsing.autostart", true, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("browser.sessionstore.resume_from_crash", false, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("browser.shell.checkDefaultBrowser", false, GeckoPreferenceController.PREF_BRANCH_USER)
+        
+        // Clear everything on shutdown (for extra safety)
+        GeckoPreferenceController.setGeckoPref("privacy.sanitize.sanitizeOnShutdown", true, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("privacy.clearOnShutdown.cookies", true, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("privacy.clearOnShutdown.history", true, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("privacy.clearOnShutdown.sessions", true, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("privacy.clearOnShutdown.cache", true, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("privacy.clearOnShutdown.downloads", true, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("privacy.clearOnShutdown.formdata", true, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("privacy.clearOnShutdown.offlineApps", true, GeckoPreferenceController.PREF_BRANCH_USER)
+
         val runtimeSettings = GeckoRuntimeSettings.Builder()
             .aboutConfigEnabled(true)
             .fissionEnabled(true)
@@ -117,6 +138,7 @@ object GeckoRuntimeModule {
             .setWebContentIsolationStrategy(isolationStrategy)
 
         val runtime = GeckoRuntime.create(context, runtimeSettings)
+        this.runtime = runtime
 
         // 2. Set PromptDelegate to auto-grant permissions (including Private Browsing)
         runtime.webExtensionController.promptDelegate = object : WebExtensionController.PromptDelegate {

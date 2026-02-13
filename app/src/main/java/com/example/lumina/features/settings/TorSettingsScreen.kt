@@ -60,6 +60,13 @@ fun TorSettingsScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
                     }
                 },
+                actions = {
+                    if (torEnabled) {
+                        IconButton(onClick = { viewModel.refreshTor() }) {
+                            Icon(Icons.Default.Refresh, "Refresh Tor Service", tint = Color.White)
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black)
             )
         },
@@ -107,7 +114,11 @@ fun TorSettingsScreen(
                         }
                         if (torEnabled && torProgress == 100) {
                             IconButton(onClick = { viewModel.requestNewTorCircuit() }) {
-                                Icon(Icons.Default.Refresh, "New Identity", tint = Color(0xFFBB86FC))
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "New Circuit",
+                                    tint = Color(0xFFBB86FC)
+                                )
                             }
                         }
                     }

@@ -624,8 +624,12 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     override fun onCleared() {
         super.onCleared()
         autoCloseJob?.cancel()
-        if (_geckoSession.isOpen) _geckoSession.close()
+        if (_geckoSession.isOpen) {
+            _geckoSession.stop()
+            _geckoSession.close()
+        }
         globalGeckoRuntime.storageController.clearDataForSessionContext(sessionContextId)
+        // Also clear general temp data to be safe
         globalGeckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
         System.gc()
     }
