@@ -240,6 +240,14 @@ fun WebsiteInputSection(
                 onValueChange = onNameChange,
                 placeholder = { Text("Name", color = Color.Gray) },
                 modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Next,
+                    autoCorrect = false,
+                    platformImeOptions = androidx.compose.ui.text.input.PlatformImeOptions(
+                        privateImeOptions = "noPersonalizedLearning"
+                    )
+                ),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
@@ -257,7 +265,14 @@ fun WebsiteInputSection(
                 placeholder = { Text("URL", color = Color.Gray) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Uri,
+                    imeAction = ImeAction.Done,
+                    autoCorrect = false,
+                    platformImeOptions = androidx.compose.ui.text.input.PlatformImeOptions(
+                        privateImeOptions = "noPersonalizedLearning"
+                    )
+                ),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,

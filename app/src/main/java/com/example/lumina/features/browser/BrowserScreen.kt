@@ -358,21 +358,27 @@ fun BrowserScreen(
                                     Spacer(modifier = Modifier.width(6.dp))
                                 }
 
-                                BasicTextField(
-                                    value = searchQuery,
-                                    onValueChange = { searchQuery = it },
-                                    modifier = Modifier.weight(1f),
-                                    singleLine = true,
-                                    textStyle = TextStyle(
-                                        color = Color.White,
-                                        fontSize = 13.sp
-                                    ),
-                                    cursorBrush = SolidColor(Color(0xFFBB86FC)),
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-                                    keyboardActions = KeyboardActions(onGo = {
-                                        browserViewModel.onSearchQuery(searchQuery)
-                                        focusManager.clearFocus()
-                                    }),
+                                    BasicTextField(
+                                        value = searchQuery,
+                                        onValueChange = { searchQuery = it },
+                                        modifier = Modifier.weight(1f),
+                                        singleLine = true,
+                                        textStyle = TextStyle(
+                                            color = Color.White,
+                                            fontSize = 13.sp
+                                        ),
+                                        cursorBrush = SolidColor(Color(0xFFBB86FC)),
+                                        keyboardOptions = KeyboardOptions(
+                                            imeAction = ImeAction.Go,
+                                            autoCorrect = false,
+                                            platformImeOptions = androidx.compose.ui.text.input.PlatformImeOptions(
+                                                privateImeOptions = "noPersonalizedLearning"
+                                            )
+                                        ),
+                                        keyboardActions = KeyboardActions(onGo = {
+                                            browserViewModel.onSearchQuery(searchQuery)
+                                            focusManager.clearFocus()
+                                        }),
                                     decorationBox = { innerTextField ->
                                         if (searchQuery.isEmpty()) {
                                             Text(

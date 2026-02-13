@@ -49,9 +49,18 @@ class LuminaApplication : Application() {
         // 2. Stop Tor
         torManager.stopTor()
 
+        // 3. Clear System Clipboard to prevent forensic leaks
+        try {
+            val clipboard = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            val clipData = android.content.ClipData.newPlainText("cleared", "")
+            clipboard.setPrimaryClip(clipData)
+        } catch (e: Exception) {
+            // Ignore clipboard errors during shutdown
+        }
+
         super.onTerminate()
         
-        // 3. Force Process Exit for a hard purge of memory
+        // 4. Force Process Exit for a hard purge of memory
         android.os.Process.killProcess(android.os.Process.myPid())
     }
 }
