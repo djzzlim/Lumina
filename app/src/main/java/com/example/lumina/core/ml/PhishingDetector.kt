@@ -27,6 +27,32 @@ class PhishingDetector(private val context: Context) {
     private var tokenizer: WordPieceTokenizer? = null
     private var isInitialized = false
 
+    // Whitelist of trusted domains to reduce false positives for common sites
+    private val trustedDomains = setOf(
+        "google.com", "google.co.jp", "google.co.uk", "google.de", "google.fr",
+        "bing.com",
+        "duckduckgo.com",
+        "yahoo.com",
+        "baidu.com",
+        "yandex.ru",
+        "instagram.com",
+        "facebook.com",
+        "twitter.com", "x.com",
+        "linkedin.com",
+        "apple.com", "icloud.com",
+        "microsoft.com", "outlook.com",
+        "github.com",
+        "amazon.com", "amazon.co.uk", "amazon.de", "amazon.co.jp",
+        "wikipedia.org",
+        "mozilla.org",
+        "android.com",
+        "youtube.com",
+        "netflix.com",
+        "spotify.com",
+        "reddit.com",
+        "twitch.tv"
+    )
+
     init {
         try {
             val modelName = "urlbert_phishing.onnx"
@@ -98,6 +124,13 @@ class PhishingDetector(private val context: Context) {
             // 1. Normalization (Match Python logic: no forced trailing slash)
             val normalizedUrl = url.lowercase().trim()
             
+            // Check whitelist before running ML model
+            val host = try { android.net.Uri.parse(normalizedUrl).host?.removePrefix("www.") } catch (e: Exception) { null }
+            if (host != null && trustedDomains.contains(host)) {
+                Log.d("PhishingDetector", "✅ URL whitelisted: $normalizedUrl")
+                return@withContext false
+            }
+
             Log.d("PhishingDetector", "🔍 Analyzing URL: $normalizedUrl")
             
             // 2. Tokenization matching BERT special tokens
