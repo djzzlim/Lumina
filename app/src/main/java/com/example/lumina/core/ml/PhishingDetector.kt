@@ -77,7 +77,7 @@ class PhishingDetector(private val context: Context) {
                         }
                     }
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Ignore if .data doesn't exist
             }
 
@@ -125,7 +125,7 @@ class PhishingDetector(private val context: Context) {
             val normalizedUrl = url.lowercase().trim()
             
             // Check whitelist before running ML model
-            val host = try { android.net.Uri.parse(normalizedUrl).host?.removePrefix("www.") } catch (e: Exception) { null }
+            val host = try { android.net.Uri.parse(normalizedUrl).host?.removePrefix("www.") } catch (_: Exception) { null }
             if (host != null && trustedDomains.contains(host)) {
                 Log.d("PhishingDetector", "✅ URL whitelisted: $normalizedUrl")
                 return@withContext false
@@ -140,9 +140,9 @@ class PhishingDetector(private val context: Context) {
             tokens.add("[SEP]")
 
             val maxLen = 64 
-            val inputIds = LongArray(maxLen) { 0L }
-            val attentionMask = LongArray(maxLen) { 0L }
-            val tokenTypeIds = LongArray(maxLen) { 0L } 
+            val inputIds = LongArray(maxLen)
+            val attentionMask = LongArray(maxLen)
+            val tokenTypeIds = LongArray(maxLen)
 
             val tokenIds = currentTokenizer.convertTokensToIds(tokens)
             for (i in 0 until minOf(tokenIds.size, maxLen)) {
