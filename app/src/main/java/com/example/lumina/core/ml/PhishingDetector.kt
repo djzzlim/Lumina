@@ -4,7 +4,6 @@ import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import android.content.Context
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -84,9 +83,7 @@ class PhishingDetector(private val context: Context) {
             session = env.createSession(modelFile.absolutePath)
             tokenizer = WordPieceTokenizer.loadFromAssets(context, "vocab.txt")
             isInitialized = true
-            Log.d("PhishingDetector", "✅ Model loaded successfully")
-        } catch (e: Exception) {
-            Log.e("PhishingDetector", "❌ Failed to load phishing model: ${e.message}")
+        } catch (_: Exception) {
             isInitialized = false
         }
     }
@@ -127,11 +124,8 @@ class PhishingDetector(private val context: Context) {
             // Check whitelist before running ML model
             val host = try { android.net.Uri.parse(normalizedUrl).host?.removePrefix("www.") } catch (_: Exception) { null }
             if (host != null && trustedDomains.contains(host)) {
-                Log.d("PhishingDetector", "✅ URL whitelisted: $normalizedUrl")
                 return@withContext false
             }
-
-            Log.d("PhishingDetector", "🔍 Analyzing URL: $normalizedUrl")
             
             // 2. Tokenization matching BERT special tokens
             val tokens = mutableListOf<String>()
@@ -186,11 +180,9 @@ class PhishingDetector(private val context: Context) {
                 val threshold = 0.9f
                 val isPhishing = phishingProbability >= threshold
 
-                Log.d("PhishingDetector", "📊 URL: $normalizedUrl | Prob: ${String.format("%.4f", phishingProbability)} | Block: $isPhishing")
                 isPhishing
             }
-        } catch (e: Exception) {
-            Log.e("PhishingDetector", "❌ Inference failed for $url: ${e.message}")
+        } catch (_: Exception) {
             false
         }
     }
@@ -202,8 +194,8 @@ class PhishingDetector(private val context: Context) {
         try {
             session?.close()
             env.close()
-        } catch (e: Exception) {
-            Log.e("PhishingDetector", "Error closing session: ${e.message}")
+        } catch (_: Exception) {
+            // Silently close
         }
     }
 }
