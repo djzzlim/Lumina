@@ -15,83 +15,95 @@ class WordPieceTokenizer(private val vocab: Map<String, Int>) {
     private val maxInputCharsPerWord = 100
 
     /**
-     * Tokenizes a string into a list of WordPiece tokens.
+     * Tokenizes a character array into a list of WordPiece tokens.
      * It handles whitespace splitting, punctuation splitting, and the WordPiece algorithm.
      *
-     * @param text The input text to tokenize.
+     * @param text The input character array to tokenize.
      * @return A list of tokens.
      */
-    fun tokenize(text: String): List<String> {
+    fun tokenize(text: CharArray): List<String> {
         val outputTokens = mutableListOf<String>()
-        // 1. Split by whitespace
-        val words = text.split(Regex("\\s+"))
         
-        for (word in words) {
-            if (word.isEmpty()) continue
-            
-            // 2. Split by punctuation to handle URLs correctly (e.g., http://google.com -> http, :, /, /, google, ., com)
-            val tokens = splitByPunctuation(word)
-            
-            for (token in tokens) {
-                if (token.length > maxInputCharsPerWord) {
-                    outputTokens.add(unkToken)
-                    continue
+        var wordStart = -1
+        for (i in text.indices) {
+            val char = text[i]
+            if (char.isWhitespace()) {
+                if (wordStart != -1) {
+                    processWord(text, wordStart, i, outputTokens)
+                    wordStart = -1
                 }
-
-                // 3. Apply WordPiece algorithm to each sub-token
-                var isBad = false
-                var start = 0
-                val subTokens = mutableListOf<String>()
-                while (start < token.length) {
-                    var end = token.length
-                    var curSubstr: String? = null
-                    while (start < end) {
-                        var substr = token.substring(start, end)
-                        if (start > 0) {
-                            substr = "##$substr"
-                        }
-                        if (vocab.containsKey(substr)) {
-                            curSubstr = substr
-                            break
-                        }
-                        end--
-                    }
-                    if (curSubstr == null) {
-                        isBad = true
-                        break
-                    }
-                    subTokens.add(curSubstr)
-                    start = end
-                }
-
-                if (isBad) {
-                    outputTokens.add(unkToken)
-                } else {
-                    outputTokens.addAll(subTokens)
+            } else {
+                if (wordStart == -1) {
+                    wordStart = i
                 }
             }
         }
+        if (wordStart != -1) {
+            processWord(text, wordStart, text.size, outputTokens)
+        }
+        
         return outputTokens
     }
 
-    private fun splitByPunctuation(text: String): List<String> {
-        val result = mutableListOf<String>()
-        val current = StringBuilder()
-        for (char in text) {
-            if (isPunctuation(char)) {
-                if (current.isNotEmpty()) {
-                    result.add(current.toString())
-                    current.setLength(0)
+    private fun processWord(text: CharArray, start: Int, end: Int, outputTokens: MutableList<String>) {
+        var subStart = start
+        for (i in start until end) {
+            if (isPunctuation(text[i])) {
+                if (subStart < i) {
+                    applyWordPiece(text, subStart, i, outputTokens)
                 }
-                result.add(char.toString())
-            } else {
-                current.append(char)
+                // Punctuation is a token itself
+                applyWordPiece(text, i, i + 1, outputTokens)
+                subStart = i + 1
             }
         }
-        if (current.isNotEmpty()) {
-            result.add(current.toString())
+        if (subStart < end) {
+            applyWordPiece(text, subStart, end, outputTokens)
         }
-        return result
+    }
+
+    private fun applyWordPiece(text: CharArray, start: Int, end: Int, outputTokens: MutableList<String>) {
+        val length = end - start
+        if (length > maxInputCharsPerWord) {
+            outputTokens.add(unkToken)
+            return
+        }
+
+        var isBad = false
+        var curStart = start
+        val subTokens = mutableListOf<String>()
+        
+        while (curStart < end) {
+            var curEnd = end
+            var curSubstr: String? = null
+            while (curStart < curEnd) {
+                // We unfortunately need a String for Map lookup, but we keep it local
+                val substr = if (curStart > start) {
+                    "##" + String(text, curStart, curEnd - curStart)
+                } else {
+                    String(text, curStart, curEnd - curStart)
+                }
+
+                if (vocab.containsKey(substr)) {
+                    curSubstr = substr
+                    break
+                }
+                curEnd--
+            }
+
+            if (curSubstr == null) {
+                isBad = true
+                break
+            }
+            subTokens.add(curSubstr)
+            curStart = curEnd
+        }
+
+        if (isBad) {
+            outputTokens.add(unkToken)
+        } else {
+            outputTokens.addAll(subTokens)
+        }
     }
 
     private fun isPunctuation(char: Char): Boolean {

@@ -11,6 +11,8 @@ import java.io.FileOutputStream
 import java.nio.LongBuffer
 import kotlin.math.exp
 
+import java.util.Arrays
+
 /**
  * PhishingDetector is responsible for analyzing URLs using a local ONNX machine learning model
  * to determine if they are potential phishing attempts.
@@ -106,10 +108,10 @@ class PhishingDetector(private val context: Context) {
      * This method performs tokenization, prepares the input tensors, runs the ONNX inference,
      * and converts the output logits to a probability score.
      *
-     * @param url The URL to analyze.
+     * @param url The URL to analyze as a character array.
      * @return True if the URL is classified as phishing based on the model's threshold, false otherwise.
      */
-    suspend fun predict(url: String): Boolean = withContext(Dispatchers.Default) {
+    suspend fun predict(url: CharArray): Boolean = withContext(Dispatchers.Default) {
         val currentSession = session
         val currentTokenizer = tokenizer
         
@@ -117,12 +119,23 @@ class PhishingDetector(private val context: Context) {
             return@withContext false
         }
 
+        // We make a working copy so we can normalize and then wipe it
+        val normalizedUrl = url.copyOf()
         try {
-            // 1. Normalization (Match Python logic: no forced trailing slash)
-            val normalizedUrl = url.lowercase().trim()
+            // 1. Normalization (In-place lowercase and basic trim)
+            var writeIdx = 0
+            for (i in normalizedUrl.indices) {
+                val char = normalizedUrl[i]
+                if (!char.isWhitespace()) {
+                    normalizedUrl[writeIdx++] = char.lowercaseChar()
+                }
+            }
             
-            // Check whitelist before running ML model
-            val host = try { android.net.Uri.parse(normalizedUrl).host?.removePrefix("www.") } catch (_: Exception) { null }
+            // The effective normalized URL is normalizedUrl[0..writeIdx-1]
+            // We still need a temporary string for whitelist/URI parsing, 
+            // but we keep it local and short-lived.
+            val tempUrlString = String(normalizedUrl, 0, writeIdx)
+            val host = try { android.net.Uri.parse(tempUrlString).host?.removePrefix("www.") } catch (_: Exception) { null }
             if (host != null && trustedDomains.contains(host)) {
                 return@withContext false
             }
@@ -130,8 +143,13 @@ class PhishingDetector(private val context: Context) {
             // 2. Tokenization matching BERT special tokens
             val tokens = mutableListOf<String>()
             tokens.add("[CLS]")
-            tokens.addAll(currentTokenizer.tokenize(normalizedUrl))
+            // We pass the CharArray segment to tokenizer
+            val segment = if (writeIdx == normalizedUrl.size) normalizedUrl else normalizedUrl.copyOfRange(0, writeIdx)
+            tokens.addAll(currentTokenizer.tokenize(segment))
             tokens.add("[SEP]")
+            
+            // Wipe segment if it was a copy
+            if (segment !== normalizedUrl) Arrays.fill(segment, '\u0000')
 
             val maxLen = 64 
             val inputIds = LongArray(maxLen)
@@ -156,12 +174,10 @@ class PhishingDetector(private val context: Context) {
             val inputs = mutableMapOf<String, OnnxTensor>()
             val expectedInputs = currentSession.inputNames
             
-            // Match input names exactly as model expects
             if (expectedInputs.contains("input_ids")) inputs["input_ids"] = inputTensor
             if (expectedInputs.contains("attention_mask")) inputs["attention_mask"] = maskTensor
             if (expectedInputs.contains("token_type_ids")) inputs["token_type_ids"] = typeTensor
             
-            // Handle common ONNX export variants
             if (expectedInputs.contains("input.1") && !inputs.containsKey("input_ids")) inputs["input.1"] = inputTensor
 
             currentSession.run(inputs).use { results ->
@@ -169,21 +185,20 @@ class PhishingDetector(private val context: Context) {
                 val output = results[0].value as Array<FloatArray>
                 val logits = output[0]
                 
-                // 3. Convert Logits to Probabilities (Softmax logic from sanity check)
                 val phishingProbability: Float = if (logits.size == 1) {
                     sigmoid(logits[0])
                 } else {
                     val probs = softmax(logits)
-                    probs[1] // Index 1 is the 'Phish' label in sanity check
+                    probs[1]
                 }
 
                 val threshold = 0.9f
-                val isPhishing = phishingProbability >= threshold
-
-                isPhishing
+                phishingProbability >= threshold
             }
         } catch (_: Exception) {
             false
+        } finally {
+            Arrays.fill(normalizedUrl, '\u0000')
         }
     }
 

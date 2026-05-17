@@ -34,6 +34,7 @@ import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.StorageController
 import org.mozilla.geckoview.WebRequestError
+import java.util.Arrays
 import javax.inject.Inject
 
 /**
@@ -75,6 +76,14 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
 
     private val _currentUrl = MutableStateFlow("")
     val currentUrl: StateFlow<String> = _currentUrl.asStateFlow()
+
+    private fun updateCurrentUrl(url: String?) {
+        _currentUrl.value = url ?: ""
+    }
+
+    private fun updateCurrentUrl(url: CharArray?) {
+        _currentUrl.value = if (url != null) String(url) else ""
+    }
 
     private val _title = MutableStateFlow("")
     val title: StateFlow<String> = _title.asStateFlow()
@@ -122,8 +131,8 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     private var isInitialized = false
     private var isGoingBack = false
     
-    private var lastAttemptedUrl: String? = null
-    private var lastCommittedUrl: String = ""
+    private var lastAttemptedUrl: CharArray? = null
+    private var lastCommittedUrl: CharArray? = null
     private var lastCommittedTitle: String = ""
     private var wasHttpsForced = false
     private val allowedInsecureHosts = mutableSetOf<String>()
@@ -217,7 +226,11 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                         Log.d("BrowserViewModel", "Initializing session from restored history state")
                         _geckoSession.restoreState(sessionState)
                     } else {
-                        val initialUrl = if (lastCommittedUrl.isNotEmpty()) lastCommittedUrl else info.url
+                        val initialUrl = if (lastCommittedUrl != null && lastCommittedUrl?.isNotEmpty() == true) {
+                            String(lastCommittedUrl!!)
+                        } else {
+                            info.url
+                        }
                         loadUrl(initialUrl)
                     }
                     isInitialized = true
@@ -256,8 +269,17 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
         if (_geckoSession.isOpen) _geckoSession.close()
         globalGeckoRuntime.storageController.clearDataForSessionContext(sessionContextId)
         globalGeckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
-        lastCommittedUrl = ""
-        _currentUrl.value = ""
+        
+        lastCommittedUrl?.let { Arrays.fill(it, '\u0000') }
+        lastCommittedUrl = null
+        
+        lastAttemptedUrl?.let { Arrays.fill(it, '\u0000') }
+        lastAttemptedUrl = null
+        
+        allowedInsecureHosts.clear()
+        allowedPhishingHosts.clear()
+
+        updateCurrentUrl("")
     }
 
     fun onAppForegrounded() {
@@ -333,8 +355,9 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
 
             override fun onLocationChange(session: GeckoSession, url: String?, permissions: List<GeckoSession.PermissionDelegate.ContentPermission>, hasUserGesture: Boolean) {
                 if (!url.isNullOrEmpty() && url != "about:blank") {
-                    lastCommittedUrl = url
-                    _currentUrl.value = url
+                    lastCommittedUrl?.let { Arrays.fill(it, '\u0000') }
+                    lastCommittedUrl = url.toCharArray()
+                    updateCurrentUrl(lastCommittedUrl)
                     
                     // Optimistic security check to prevent incorrect "not safe" warning on back navigation
                     if (url.startsWith("https://")) {
@@ -356,8 +379,9 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                 val host = try { android.net.Uri.parse(request.uri).host ?: "" } catch (e: Exception) { "" }
 
                 if (!request.isRedirect) {
-                    lastAttemptedUrl = request.uri
-                    _currentUrl.value = request.uri
+                    lastAttemptedUrl?.let { Arrays.fill(it, '\u0000') }
+                    lastAttemptedUrl = request.uri.toCharArray()
+                    updateCurrentUrl(lastAttemptedUrl)
                     _lastError.value = null
                     _showInsecureWarning.value = null
                     _showPhishingWarning.value = null
@@ -370,9 +394,15 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                     val isLocalMLEnabled = appPreferences.localPhishingModelEnabledFlow.first()
                     
                     if (isLocalMLEnabled && !allowedPhishingHosts.contains(host)) {
-                        val isPhishing = phishingDetector.predict(request.uri)
+                        val uriChars = request.uri.toCharArray()
+                        val isPhishing = try {
+                            phishingDetector.predict(uriChars)
+                        } finally {
+                            Arrays.fill(uriChars, '\u0000')
+                        }
+
                         if (isPhishing) {
-                            _currentUrl.value = request.uri
+                            updateCurrentUrl(request.uri)
                             _showPhishingWarning.value = request.uri
                             resetSecurityState()
                             _geckoSession.stop()
@@ -383,7 +413,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
 
                     if (request.uri.startsWith("http://") && !request.isRedirect) {
                         if (!allowedInsecureHosts.contains(host)) {
-                            _currentUrl.value = request.uri
+                            updateCurrentUrl(request.uri)
                             _showInsecureWarning.value = request.uri
                             resetSecurityState()
                             _geckoSession.stop()
@@ -407,8 +437,9 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                 _lastError.value = error
                 resetSecurityState()
                 if (uri != null) {
-                    _currentUrl.value = uri
-                    lastAttemptedUrl = uri
+                    updateCurrentUrl(uri)
+                    lastAttemptedUrl?.let { Arrays.fill(it, '\u0000') }
+                    lastAttemptedUrl = uri.toCharArray()
                 }
                 return null
             }
@@ -542,11 +573,12 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
             }
         }
 
-        lastAttemptedUrl = targetUrl
+        lastAttemptedUrl?.let { Arrays.fill(it, '\u0000') }
+        lastAttemptedUrl = targetUrl.toCharArray()
         _lastError.value = null
         _showInsecureWarning.value = null
         _showPhishingWarning.value = null
-        _currentUrl.value = targetUrl
+        updateCurrentUrl(lastAttemptedUrl)
         _title.value = "" 
         resetSecurityState()
         _geckoSession.loadUri(targetUrl)
@@ -579,8 +611,8 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     fun cancelUnsafeSite(): Boolean {
         _showInsecureWarning.value = null
         _showPhishingWarning.value = null
-        return if (lastCommittedUrl.isNotEmpty() && lastCommittedUrl != "about:blank") {
-            _currentUrl.value = lastCommittedUrl
+        return if (lastCommittedUrl != null && lastCommittedUrl?.isNotEmpty() == true && String(lastCommittedUrl!!) != "about:blank") {
+            updateCurrentUrl(lastCommittedUrl)
             _title.value = lastCommittedTitle
             _geckoSession.stop()
             _geckoSession.reload()
@@ -599,8 +631,12 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
         if (_lastError.value != null) {
             _lastError.value = null
             resetSecurityState()
-            if (lastAttemptedUrl != lastCommittedUrl && lastCommittedUrl.isNotEmpty() && lastCommittedUrl != "about:blank") {
-                _currentUrl.value = lastCommittedUrl
+            
+            val lastCommittedUrlStr = lastCommittedUrl?.let { String(it) } ?: ""
+            val lastAttemptedUrlStr = lastAttemptedUrl?.let { String(it) } ?: ""
+
+            if (lastAttemptedUrlStr != lastCommittedUrlStr && lastCommittedUrlStr.isNotEmpty() && lastCommittedUrlStr != "about:blank") {
+                updateCurrentUrl(lastCommittedUrl)
                 _title.value = lastCommittedTitle
                 _geckoSession.stop()
                 _geckoSession.reload() 
@@ -624,7 +660,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
             val hadError = _lastError.value != null
             _lastError.value = null
             resetSecurityState()
-            if (hadError && lastAttemptedUrl != null) loadUrl(lastAttemptedUrl!!, allowUpgrade = false)
+            if (hadError && lastAttemptedUrl != null) loadUrl(String(lastAttemptedUrl!!), allowUpgrade = false)
             else _geckoSession.reload()
         }
     }
@@ -651,6 +687,15 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
         globalGeckoRuntime.storageController.clearDataForSessionContext(sessionContextId)
         // Also clear general temp data to be safe
         globalGeckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
+        
+        lastCommittedUrl?.let { Arrays.fill(it, '\u0000') }
+        lastCommittedUrl = null
+        lastAttemptedUrl?.let { Arrays.fill(it, '\u0000') }
+        lastAttemptedUrl = null
+
+        allowedInsecureHosts.clear()
+        allowedPhishingHosts.clear()
+
         System.gc()
     }
 }

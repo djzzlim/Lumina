@@ -242,6 +242,10 @@ class TorManager @Inject constructor(
         torProcess = null
         _isTorRunning.value = false
         _bootstrappingProgress.value = 0
+        _torLogs.value = ""
+        _exitNodeIp.value = null
+        _exitNodeTimezone.value = null
+        _exitNodeOffsetMinutes.value = 0
     }
 
     /**
