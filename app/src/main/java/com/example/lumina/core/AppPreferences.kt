@@ -50,6 +50,14 @@ class AppPreferences @Inject constructor(
     val torEnabledFlow: Flow<Boolean> = settingsDataStore.torEnabledFlow
     /** A [Flow] of the current Tor profile name. */
     val torProfileFlow: Flow<String> = settingsDataStore.torProfileFlow
+
+    /** A [Flow] of the last exit timestamp. */
+    val lastExitTimeFlow: Flow<Long> = settingsDataStore.lastExitTimeFlow
+
+    /** Saves the current time as the last exit time. */
+    suspend fun saveLastExitTime(timestamp: Long) {
+        settingsDataStore.saveLastExitTime(timestamp)
+    }
 }
 
 /**

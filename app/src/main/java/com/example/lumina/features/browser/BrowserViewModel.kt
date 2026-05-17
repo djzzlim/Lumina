@@ -73,7 +73,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _currentUrl = MutableStateFlow(savedStateHandle.get<String>("persisted_url") ?: "")
+    private val _currentUrl = MutableStateFlow("")
     val currentUrl: StateFlow<String> = _currentUrl.asStateFlow()
 
     private val _title = MutableStateFlow("")
@@ -123,7 +123,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     private var isGoingBack = false
     
     private var lastAttemptedUrl: String? = null
-    private var lastCommittedUrl: String = savedStateHandle.get<String>("persisted_url") ?: ""
+    private var lastCommittedUrl: String = ""
     private var lastCommittedTitle: String = ""
     private var wasHttpsForced = false
     private val allowedInsecureHosts = mutableSetOf<String>()
@@ -238,17 +238,26 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     }
 
     fun onAppBackgrounded() {
+        viewModelScope.launch {
+            appPreferences.saveLastExitTime(System.currentTimeMillis())
+        }
         autoCloseJob?.cancel()
         autoCloseJob = viewModelScope.launch {
             val timeout = appPreferences.autoCloseTimeoutFlow.first()
             if (timeout.minutes > 0) {
                 delay(timeout.minutes * 60 * 1000)
-                if (_geckoSession.isOpen) _geckoSession.close()
-                globalGeckoRuntime.storageController.clearDataForSessionContext(sessionContextId)
-                globalGeckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
+                performSecurityWipe()
                 _shouldClose.value = true
             }
         }
+    }
+
+    private suspend fun performSecurityWipe() {
+        if (_geckoSession.isOpen) _geckoSession.close()
+        globalGeckoRuntime.storageController.clearDataForSessionContext(sessionContextId)
+        globalGeckoRuntime.storageController.clearData(StorageController.ClearFlags.ALL)
+        lastCommittedUrl = ""
+        _currentUrl.value = ""
     }
 
     fun onAppForegrounded() {
@@ -256,17 +265,30 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
         autoCloseJob?.cancel()
         autoCloseJob = null
 
-        val wasSessionClosed = !geckoSession.isOpen
+        viewModelScope.launch {
+            val lastExitTime = appPreferences.lastExitTimeFlow.first()
+            val now = System.currentTimeMillis()
+            val gapSeconds = (now - lastExitTime) / 1000
 
-        if (wasSessionClosed) {
-            Log.d("BrowserViewModel", "GeckoSession not open on foreground. Re-initializing.")
-            _geckoSession.open(globalGeckoRuntime)
-        }
-        _geckoSession.setActive(true)
-
-        // If session was closed or UI is blank, force recovery from persisted state
-        if (wasSessionClosed || _currentUrl.value.isEmpty()) {
-            restoreSession()
+            if (gapSeconds > 60) {
+                Log.d("BrowserViewModel", "Gap > 60s ($gapSeconds s). Wiping PII.")
+                performSecurityWipe()
+                
+                // Re-open session after wipe if it was closed
+                if (!_geckoSession.isOpen) {
+                    _geckoSession.open(globalGeckoRuntime)
+                }
+                
+                // Load default URL instead of restoring
+                val info = luminaInfo.filterNotNull().first()
+                loadUrl(info.url)
+            } else {
+                val wasSessionClosed = !geckoSession.isOpen
+                if (wasSessionClosed) {
+                    _geckoSession.open(globalGeckoRuntime)
+                }
+                _geckoSession.setActive(true)
+            }
         }
     }
 
@@ -300,8 +322,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
             }
 
             override fun onSessionStateChange(session: GeckoSession, sessionState: GeckoSession.SessionState) {
-                // SessionState is directly Parcelable in modern GeckoView
-                savedStateHandle["persisted_session_state"] = sessionState
+                // Do not persist session state to SavedStateHandle to prevent PII leakage via disk-persisted state
             }
         }
 
@@ -314,7 +335,6 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                 if (!url.isNullOrEmpty() && url != "about:blank") {
                     lastCommittedUrl = url
                     _currentUrl.value = url
-                    savedStateHandle["persisted_url"] = url 
                     
                     // Optimistic security check to prevent incorrect "not safe" warning on back navigation
                     if (url.startsWith("https://")) {

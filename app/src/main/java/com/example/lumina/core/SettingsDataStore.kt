@@ -37,6 +37,7 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     val torEnabledKey = booleanPreferencesKey("tor_enabled")
     val torProfileKey = stringPreferencesKey("tor_profile")
     val useNetworkTimezoneKey = booleanPreferencesKey("use_network_timezone")
+    val lastExitTimeKey = longPreferencesKey("last_exit_time")
 
     /** A [Flow] of the selected DNS provider name. */
     val dnsProviderFlow: Flow<String> = context.dataStore.data
@@ -170,5 +171,18 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
             settings[useNetworkTimezoneKey] = enabled
         }
     }
+
+    /** Saves the timestamp of when the app was last exited/backgrounded. */
+    suspend fun saveLastExitTime(timestamp: Long) {
+        context.dataStore.edit { settings ->
+            settings[lastExitTimeKey] = timestamp
+        }
+    }
+
+    /** Retrieves the last recorded exit time. */
+    val lastExitTimeFlow: Flow<Long> = context.dataStore.data
+        .map { preferences ->
+            preferences[lastExitTimeKey] ?: 0L
+        }
 }
 
