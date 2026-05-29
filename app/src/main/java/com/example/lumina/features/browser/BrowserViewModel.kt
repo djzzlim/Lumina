@@ -154,6 +154,23 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
             }
         }
 
+        // Connection Hardening: Enforce TLS 1.3, block mixed content, and disable legacy ciphers
+        viewModelScope.launch {
+            // Enforce TLS 1.2 as minimum (standard) or TLS 1.3 for maximum hardening.
+            // We'll set 3 (TLS 1.2) as the floor to maintain compatibility while prioritizing 1.3.
+            GeckoPreferenceController.setGeckoPref("security.tls.version.min", 3, GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("security.tls.version.max", 4, GeckoPreferenceController.PREF_BRANCH_USER)
+
+            // Block all mixed content (active and display) to prevent downgrades/injections
+            GeckoPreferenceController.setGeckoPref("security.mixed_content.block_active_content", true, GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("security.mixed_content.block_display_content", true, GeckoPreferenceController.PREF_BRANCH_USER)
+            
+            // Disable insecure legacy protocols and features
+            GeckoPreferenceController.setGeckoPref("security.ssl3.rsa_des_ede3_sha", false, GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("security.pki.sha1_enforcement_level", 1, GeckoPreferenceController.PREF_BRANCH_USER)
+            GeckoPreferenceController.setGeckoPref("security.ssl.require_safe_negotiation", true, GeckoPreferenceController.PREF_BRANCH_USER)
+        }
+
         viewModelScope.launch {
             appPreferences.safeBrowsingEnabledFlow.collect { enabled ->
                 Log.d("BrowserViewModel", "Setting Google Safe Browsing to: $enabled")
