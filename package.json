@@ -1,0 +1,26 @@
+{
+  "name": "lumina",
+  "version": "1.0.0",
+  "description": "Lumina is a privacy-first, multi-profile Android browser built on **GeckoView**. It is designed for users who require high-level forensic protection and granular control over their digital fingerprint.",
+  "main": "index.js",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.4.1",
+    "eslint-plugin-security": "^4.0.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/djzzlim/Lumina.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/djzzlim/Lumina/issues"
+  },
+  "homepage": "https://github.com/djzzlim/Lumina#readme"
+}

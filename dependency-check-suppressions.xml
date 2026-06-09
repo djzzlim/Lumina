@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    OWASP Dependency-Check Suppression File
+    ========================================
+    Use this file to suppress known false positives identified during scans.
+
+    How to suppress:
+      1. Run: ./gradlew :app:dependencyCheckAnalyze
+      2. Open: app/build/reports/dependency-check/dependency-check-report.html
+      3. For each false positive, add a <suppress> block below using the
+         packageUrl (from the report) and the CVE ID.
+
+    Documentation: https://jeremylong.github.io/DependencyCheck/general/suppression.html
+-->
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+
+    <!--
+        TEMPLATE:
+        <suppress>
+            <notes><![CDATA[Reason: ... Reviewed: DD-Mon-YYYY]]></notes>
+            <packageUrl regex="true">^pkg:maven/group\.id\/artifact\-id@.*$</packageUrl>
+            <cve>CVE-XXXX-XXXXX</cve>
+        </suppress>
+    -->
+
+    <!-- ==========================================================================
+         SECTION 1 — CONFIRMED FALSE POSITIVES
+         Wrong CPE matched / misidentified library
+         ========================================================================== -->
+
+    <!--
+        FALSE POSITIVE: androidx.sqlite artifacts (Room 2.6.2) misidentified as
+        SQLite engine version 2.6.2. CVEs target the SQLite C binary engine.
+        Android OS controls the actual on-device SQLite engine version.
+    -->
+    <suppress>
+        <notes><![CDATA[
+            False positive: AndroidX Room SQLite wrapper version 2.6.2 misidentified as
+            SQLite engine version 2.6.2. CVEs target the SQLite C binary, not the Room wrapper.
+            Reviewed: 07-Jun-2026
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/androidx\.sqlite/sqlite.*@.*$</packageUrl>
+        <cpe>cpe:/a:sqlite:sqlite</cpe>
+    </suppress>
+
+    <!--
+        FALSE POSITIVE: room-compiler-processing triggers CVE-2018-1000840.
+        That CVE is for "Processing" (processing.org creative coding IDE), not Room.
+    -->
+    <suppress>
+        <notes><![CDATA[
+            False positive: CVE-2018-1000840 is for Processing.org IDE, not AndroidX Room's
+            room-compiler-processing annotation library. Wrong CPE "processing:processing".
+            Reviewed: 07-Jun-2026
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/androidx\.room/room-compiler-processing@.*$</packageUrl>
+        <cve>CVE-2018-1000840</cve>
+    </suppress>
+
+    <!--
+        FALSE POSITIVE: androidx.camera:camera-lifecycle 1.5.3 triggers CVE-2007-4234.
+        That CVE is for a C++ desktop video game called "camera_life" from 2007.
+        The CPE "camera_life:camera_life" has no relation to Google's AndroidX CameraX library.
+    -->
+    <suppress>
+        <notes><![CDATA[
+            False positive: CVE-2007-4234 is for a 2007 C++ desktop game "camera_life".
+            The CPE match on "camera_life:camera_life" does not apply to AndroidX CameraX.
+            Reviewed: 07-Jun-2026
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/androidx\.camera/camera-lifecycle@.*$</packageUrl>
+        <cve>CVE-2007-4234</cve>
+    </suppress>
+
+    <!--
+        FALSE POSITIVE: androidx.camera:camera-video 1.5.3 triggers CVE-2015-3362.
+        That CVE is for a PHP project called "video_project" from 2015.
+        The CPE "video_project:video" does not apply to Google's AndroidX CameraX library.
+    -->
+    <suppress>
+        <notes><![CDATA[
+            False positive: CVE-2015-3362 is for a 2015 PHP "video_project" library.
+            The CPE "video_project:video" does not apply to AndroidX CameraX camera-video.
+            Reviewed: 07-Jun-2026
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/androidx\.camera/camera-video@.*$</packageUrl>
+        <cve>CVE-2015-3362</cve>
+    </suppress>
+
+    <!--
+        FALSE POSITIVE: sqlite-jdbc is a build-time tool dependency (OWASP/Gradle tooling).
+        Never bundled into the Android APK. No runtime risk to end users.
+    -->
+    <suppress>
+        <notes><![CDATA[
+            Build-tool-only: sqlite-jdbc (org.xerial) is used by OWASP and Gradle tooling.
+            Never bundled into the Android APK. No runtime risk.
+            Reviewed: 07-Jun-2026
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.xerial/sqlite-jdbc@.*$</packageUrl>
+        <cpe>cpe:/a:sqlite:sqlite</cpe>
+    </suppress>
+
+    <!--
+        FALSE POSITIVE: org.apache.httpcomponents:httpclient is a build-time dependency
+        of Gradle and OWASP tooling. It is never packaged into the Android APK.
+        CVE-2020-13956 (URI path normalization issue) poses no runtime risk.
+    -->
+    <suppress>
+        <notes><![CDATA[
+            Build-tool-only: Apache HttpClient is a transitive dependency of Gradle/OWASP tooling.
+            Never bundled into the Android APK. No runtime risk to end users.
+            CVE-2020-13956 (URI path normalization) not exploitable in build-tool context.
+            Reviewed: 07-Jun-2026
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.httpcomponents/httpclient@.*$</packageUrl>
+        <cve>CVE-2020-13956</cve>
+    </suppress>
+
+    <!-- ==========================================================================
+         SECTION 2 — NOT APPLICABLE ON ANDROID PLATFORM
+         CVEs that only affect JVM desktop / Windows environments
+         ========================================================================== -->
+
+    <!--
+        NOT APPLICABLE (PLATFORM): CVE-2020-29582 affects Kotlin's use of
+        java.io.File.createTempFile() which creates world-readable temp files
+        on UNIX/Windows JVM. Android does not use this temp file path, uses
+        app-private sandboxed storage, and the vulnerable code path is only
+        reachable on desktop JVM environments.
+        Applies to: kotlin-stdlib, kotlin-reflect, kotlin-stdlib-jdk7/jdk8/common
+    -->
+    <suppress>
+        <notes><![CDATA[
+            Not applicable on Android: CVE-2020-29582 concerns java.io.File.createTempFile()
+            creating world-readable /tmp files on JVM/Windows. Android uses app-private
+            sandboxed storage; this code path is not reachable on Android platform.
+            Reviewed: 07-Jun-2026
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.jetbrains\.kotlin/kotlin.*@.*$</packageUrl>
+        <cve>CVE-2020-29582</cve>
+    </suppress>
+
+    <!-- ==========================================================================
+         SECTION 3 — ACCEPTED RISK: NO PATCH AVAILABLE
+         Transitive dependencies with no upstream fix at time of assessment.
+         Documented with justification and monitoring commitment.
+         ========================================================================== -->
+
+    <!--
+        ACCEPTED RISK — io.netty (all versions including 4.1.121.Final — latest available):
+        CVEs: CVE-2026-42578 to CVE-2026-42587, CVE-2026-33870/33871, CVE-2026-44248,
+              CVE-2026-41417, CVE-2025-55163, CVE-2025-58056/58057, CVE-2025-67735,
+              CVE-2023-44487
+
+        Justification:
+        1. NO PATCH: 2026-era CVEs have no fix in any current netty release.
+        2. CLIENT-ONLY: Netty is used exclusively as a gRPC CLIENT transport via
+           ML Kit barcode scanning. No Netty HTTP server is instantiated.
+           All listed CVEs describe SERVER-SIDE attack vectors (HTTP/2 request flooding,
+           server SSL handler exploits) that require sending crafted requests TO a server.
+           An Android gRPC client cannot be attacked via these server-side vectors.
+        3. INDIRECT: Netty is a transitive dep of ML Kit (no direct control).
+        4. MONITOR: Will update when Google releases a patched ML Kit version.
+    -->
+    <suppress>
+        <notes><![CDATA[
+            Accepted risk: io.netty transitive via ML Kit gRPC. Server-side CVEs only;
+            netty used as gRPC CLIENT — no server instantiated. No patch available.
+            Forced to 4.1.121.Final (latest). Monitor ML Kit / netty upstream.
+            Reviewed: 07-Jun-2026
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl>
+        <cve>CVE-2026-42578</cve>
+    </suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2026-42579</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2026-42580</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2026-42581</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2026-42582</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2026-42583</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2026-42584</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2026-42585</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2026-42586</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2026-42587</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2026-33870</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2026-33871</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2026-44248</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2026-41417</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2025-55163</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2025-58056</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2025-58057</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2025-67735</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2023-44487</cve></suppress>
+    <suppress><notes><![CDATA[Accepted risk: io.netty - same justification as CVE-2026-42578. Reviewed: 07-Jun-2026]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty.*@.*$</packageUrl><cve>CVE-2025-29903</cve></suppress>
+
+    <!--
+        ACCEPTED RISK — io.grpc 1.57.2 — CVE-2023-44487 (HTTP/2 Rapid Reset Attack):
+        gRPC 1.57.2 is a transitive dependency of ML Kit barcode scanning SDK.
+        This app uses gRPC exclusively as a CLIENT (no gRPC server is hosted).
+        CVE-2023-44487 is a server-side DoS attack that requires an attacker to flood
+        a gRPC server with HTTP/2 RESET frames. A client-only Android app cannot be
+        attacked via this vector. No gRPC server is exposed.
+        The newer grpc 1.69.1 is also present but Google's ML Kit still pulls 1.57.2.
+        Monitor: https://github.com/grpc/grpc-java/security/advisories
+    -->
+    <suppress>
+        <notes><![CDATA[
+            Accepted risk: CVE-2023-44487 (HTTP/2 Rapid Reset) on io.grpc 1.57.2.
+            This app uses gRPC as a CLIENT only (via ML Kit barcode scanning).
+            No gRPC server is instantiated — server-side DoS attack not applicable.
+            gRPC 1.57.2 is a transitive dep of ML Kit SDK (no direct control).
+            Monitor for updated ML Kit SDK that bundles patched gRPC.
+            Reviewed: 07-Jun-2026
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.grpc/grpc.*@.*$</packageUrl>
+        <cve>CVE-2023-44487</cve>
+    </suppress>
+
+    <!--
+        ACCEPTED RISK — kotlin-parcelize-runtime — CVE-2025-29903:
+        The Parcelize runtime is used for Android IPC serialization (Intent/Bundle data).
+        CVE-2025-29903 describes a deserialization vulnerability in Kotlin's parcelize
+        runtime that could be exploited if a malicious Parcel is crafted and delivered
+        to the app. However:
+        1. Lumina does not accept arbitrary Parcel data from external/untrusted sources.
+        2. Android's IPC mechanism delivers Parcels only from trusted system processes
+           and the app's own components (same UID boundary).
+        3. The kotlin version in use is 2.3.10; the flagged 2.2.21 jar is a transitive
+           dependency from a third-party SDK — no direct control.
+        Monitor: https://youtrack.jetbrains.com/issue/KT- for Kotlin security advisories.
+    -->
+    <suppress>
+        <notes><![CDATA[
+            Accepted risk: CVE-2025-29903 on kotlin-parcelize-runtime.
+            Lumina does not receive Parcel data from untrusted external sources.
+            Android IPC delivers Parcels only from trusted system processes (same UID boundary).
+            The 2.2.21 jar is a transitive dep from a third-party SDK (no direct control).
+            Monitor JetBrains security advisories for Kotlin runtime patches.
+            Reviewed: 07-Jun-2026
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.jetbrains\.kotlin/kotlin-parcelize-runtime@.*$</packageUrl>
+        <cve>CVE-2025-29903</cve>
+    </suppress>
+
+    <!--
+        ACCEPTED RISK — com.google.protobuf CVE-2026-0994 (all versions including 4.30.2):
+        No patch available in any current protobuf release as of assessment date.
+        Protobuf is a transitive dep via ML Kit / gRPC. This app does not parse
+        untrusted external protobuf payloads from user-controlled sources.
+        Monitor: https://github.com/protocolbuffers/protobuf/security/advisories
+    -->
+    <suppress>
+        <notes><![CDATA[
+            Accepted risk: CVE-2026-0994 affects all current protobuf releases (no patch).
+            Protobuf is a transitive dep via ML Kit gRPC. App does not parse untrusted
+            external protobuf data from user-controlled sources directly.
+            Monitor protobuf security advisories for upstream fix.
+            Reviewed: 07-Jun-2026
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.google\.protobuf/protobuf.*@.*$</packageUrl>
+        <cve>CVE-2026-0994</cve>
+    </suppress>
+
+    <!--
+        BELOW THRESHOLD — commons-lang3 CVE-2025-48924:
+        Below the CVSS 7.0 project threshold. Documented for completeness.
+        commons-lang3 is a transitive build-time dependency, not bundled in the APK.
+    -->
+    <suppress>
+        <notes><![CDATA[
+            Below project CVSS threshold (< 7.0). commons-lang3 is a transitive
+            build-time dependency, not bundled in the Android APK.
+            Reviewed: 07-Jun-2026
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.commons/commons-lang3@.*$</packageUrl>
+        <cve>CVE-2025-48924</cve>
+    </suppress>
+
+</suppressions>

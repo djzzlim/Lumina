@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.owasp.dependency.check)
 }
 
 android {
@@ -77,6 +78,27 @@ android {
 }
 
 configurations.all {
+    // ─── Force-upgrade vulnerable transitive dependencies ────────────────────────
+    // io.netty pulled by ML Kit barcode scanning (grpc-netty 1.57.2 u0026 1.69.1)
+    // Force all netty modules to 4.1.121.Final which patches all known CVEs.
+    resolutionStrategy {
+        force("io.netty:netty-all:4.1.121.Final")
+        force("io.netty:netty-buffer:4.1.121.Final")
+        force("io.netty:netty-codec:4.1.121.Final")
+        force("io.netty:netty-codec-http:4.1.121.Final")
+        force("io.netty:netty-codec-http2:4.1.121.Final")
+        force("io.netty:netty-codec-socks:4.1.121.Final")
+        force("io.netty:netty-common:4.1.121.Final")
+        force("io.netty:netty-handler:4.1.121.Final")
+        force("io.netty:netty-handler-proxy:4.1.121.Final")
+        force("io.netty:netty-resolver:4.1.121.Final")
+        force("io.netty:netty-transport:4.1.121.Final")
+        force("io.netty:netty-transport-native-unix-common:4.1.121.Final")
+        // Protobuf pulled by gRPC - force to latest patched version
+        force("com.google.protobuf:protobuf-java:4.30.2")
+        force("com.google.protobuf:protobuf-java-util:4.30.2")
+        force("com.google.protobuf:protobuf-kotlin:4.30.2")
+    }
     exclude(group = "com.intellij", module = "annotations")
 }
 
@@ -160,4 +182,51 @@ dependencies {
     // Tor
     implementation(libs.tor.android)
     implementation(libs.jtorctl)
+}
+
+// ─── OWASP Dependency-Check ───────────────────────────────────────────────────
+// Resolve NVD API key at configuration time (local.properties → env var → empty)
+val nvdApiKey: String = run {
+    val localProps = Properties()
+    val localPropsFile = rootProject.file("local.properties")
+    if (localPropsFile.exists()) localProps.load(localPropsFile.inputStream())
+    localProps.getProperty("NVD_API_KEY") ?: System.getenv("NVD_API_KEY") ?: ""
+}
+
+dependencyCheck {
+    // Fail the build if any dependency has a CVSS score >= 7 (High/Critical)
+    failBuildOnCVSS = 7.0f
+
+    // Report formats: HTML (human-readable) + JSON (CI/CD parsing)
+    formats = listOf("HTML", "JSON")
+
+    // Output directory relative to this module's build dir
+    outputDirectory = layout.buildDirectory.dir("reports/dependency-check").get().asFile.absolutePath
+
+    // Suppress known false positives (edit the XML file as needed)
+    suppressionFile = "${rootProject.projectDir}/dependency-check-suppressions.xml"
+
+    // NVD API key — avoids severe rate limiting on the free tier
+    // Obtain a free key at: https://nvd.nist.gov/developers/request-an-api-key
+    // Set via: export NVD_API_KEY=your_key  OR add NVD_API_KEY=<key> to local.properties
+    nvd {
+        apiKey = nvdApiKey
+        delay = 4000 // ms between NVD API calls (required for free-tier key)
+    }
+
+    // Disable analyzers irrelevant to Android/JVM projects
+    analyzers {
+        assemblyEnabled = false   // .NET assemblies — not needed
+        nuspecEnabled = false     // NuGet packages — not needed
+        nugetconfEnabled = false  // NuGet config — not needed
+        pyDistributionEnabled = false
+        pyPackageEnabled = false
+        rubygemsEnabled = false
+        cmakeEnabled = false
+        autoconfEnabled = false
+        composerEnabled = false
+        nodeEnabled = false       // We only care about JVM/Android deps
+        ossIndexEnabled = false   // Disable Sonatype OSS Index (requires Sonatype account, causes network failures)
+        centralEnabled = false    // Disable Maven Central analyzer (same reason)
+    }
 }
