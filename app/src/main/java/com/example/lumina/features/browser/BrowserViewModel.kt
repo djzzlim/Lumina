@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.lumina.core.AppPreferences
 import com.example.lumina.core.LuminaRepository
 import com.example.lumina.core.ProfileManager
+import com.example.lumina.core.UriSanitizer
 import com.example.lumina.core.database.LuminaInfo
 import com.example.lumina.core.ml.PhishingDetector
 import com.example.lumina.core.tor.TorManager
@@ -111,6 +112,11 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
 
     private val _showPhishingWarning = MutableStateFlow<String?>(null)
     val showPhishingWarning: StateFlow<String?> = _showPhishingWarning.asStateFlow()
+
+    /** Carries info about a URI blocked by [UriSanitizer] to display the warning screen. */
+    data class BlockedUriInfo(val uri: String, val reason: UriSanitizer.BlockReason)
+    private val _showBlockedUriWarning = MutableStateFlow<BlockedUriInfo?>(null)
+    val showBlockedUriWarning: StateFlow<BlockedUriInfo?> = _showBlockedUriWarning.asStateFlow()
 
     private val _shouldClose = MutableStateFlow(false)
     val shouldClose: StateFlow<Boolean> = _shouldClose.asStateFlow()
@@ -295,6 +301,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
         
         allowedInsecureHosts.clear()
         allowedPhishingHosts.clear()
+        _showBlockedUriWarning.value = null
 
         updateCurrentUrl("")
     }
@@ -404,6 +411,20 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                     _showPhishingWarning.value = null
                     _title.value = "" 
                     resetSecurityState()
+                }
+
+                // ── URI Sanitizer (synchronous – pure string analysis, no coroutine needed) ──
+                // Blocks dangerous schemes (javascript:, intent:, data:text/html, etc.),
+                // private file:// access, and null-byte injection BEFORE any async work.
+                val sanitizeResult = UriSanitizer.check(request.uri)
+                if (sanitizeResult.isBlocked) {
+                    Log.w("BrowserViewModel", "URI blocked by sanitizer [${sanitizeResult.reason}]")
+                    if (!request.isRedirect) {
+                        // Show the warning screen and revert URL bar to last safe page.
+                        _showBlockedUriWarning.value = BlockedUriInfo(request.uri, sanitizeResult.reason!!)
+                        updateCurrentUrl(lastCommittedUrl)
+                    }
+                    return GeckoResult.fromValue(AllowOrDeny.DENY)
                 }
 
                 val result = GeckoResult<AllowOrDeny>()
@@ -611,6 +632,16 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     }
 
     private fun loadUrl(url: String, allowUpgrade: Boolean = true) {
+        // ── URI Sanitizer: run FIRST, before any state mutation ───────────────────────
+        // Catches dangerous schemes/injections from saved items, the address bar,
+        // and QR scanner BEFORE GeckoView sees the URL.
+        val sanitizeResult = UriSanitizer.check(url)
+        if (sanitizeResult.isBlocked) {
+            Log.w("BrowserViewModel", "loadUrl blocked [${sanitizeResult.reason}]: ${url.take(100)}")
+            _showBlockedUriWarning.value = BlockedUriInfo(url, sanitizeResult.reason!!)
+            return
+        }
+
         var targetUrl = url
         wasHttpsForced = false
         val host = try { android.net.Uri.parse(url).host ?: "" } catch (e: Exception) { "" }
@@ -630,8 +661,9 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
         _lastError.value = null
         _showInsecureWarning.value = null
         _showPhishingWarning.value = null
+        _showBlockedUriWarning.value = null
         updateCurrentUrl(lastAttemptedUrl)
-        _title.value = "" 
+        _title.value = ""
         resetSecurityState()
         _geckoSession.loadUri(targetUrl)
     }
@@ -663,6 +695,22 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     fun cancelUnsafeSite(): Boolean {
         _showInsecureWarning.value = null
         _showPhishingWarning.value = null
+        _showBlockedUriWarning.value = null
+        return if (lastCommittedUrl != null && lastCommittedUrl?.isNotEmpty() == true && String(lastCommittedUrl!!) != "about:blank") {
+            updateCurrentUrl(lastCommittedUrl)
+            _title.value = lastCommittedTitle
+            _geckoSession.stop()
+            _geckoSession.reload()
+            true
+        } else {
+            _shouldClose.value = true
+            false
+        }
+    }
+
+    /** Dismisses the blocked-URI warning and navigates back to safety. */
+    fun cancelBlockedUri(): Boolean {
+        _showBlockedUriWarning.value = null
         return if (lastCommittedUrl != null && lastCommittedUrl?.isNotEmpty() == true && String(lastCommittedUrl!!) != "about:blank") {
             updateCurrentUrl(lastCommittedUrl)
             _title.value = lastCommittedTitle
@@ -678,6 +726,10 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
     fun goBack(): Boolean {
         if (_showInsecureWarning.value != null || _showPhishingWarning.value != null) {
             cancelUnsafeSite()
+            return true
+        }
+        if (_showBlockedUriWarning.value != null) {
+            cancelBlockedUri()
             return true
         }
         if (_lastError.value != null) {

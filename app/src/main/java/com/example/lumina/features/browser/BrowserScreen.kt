@@ -34,6 +34,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -117,6 +118,7 @@ fun BrowserScreen(
     val lastError by browserViewModel.lastError.collectAsState()
     val showInsecureWarning by browserViewModel.showInsecureWarning.collectAsState()
     val showPhishingWarning by browserViewModel.showPhishingWarning.collectAsState()
+    val showBlockedUriWarning by browserViewModel.showBlockedUriWarning.collectAsState()
     val shouldClose by browserViewModel.shouldClose.collectAsState()
     val torEnabled by browserViewModel.torEnabled.collectAsState()
     val isTorRunning by browserViewModel.isTorRunning.collectAsState()
@@ -508,7 +510,13 @@ fun BrowserScreen(
                         )
                     }
 
-                    if (showPhishingWarning != null) {
+                    if (showBlockedUriWarning != null) {
+                        BlockedUriWarning(
+                            info = showBlockedUriWarning!!,
+                            onDismiss = { browserViewModel.cancelBlockedUri() },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else if (showPhishingWarning != null) {
                         PhishingWarning(
                             url = showPhishingWarning!!,
                             onProceed = { browserViewModel.proceedToPhishingSite() },
@@ -529,6 +537,110 @@ fun BrowserScreen(
         
         if (!isAppLevelFullscreen) {
             Box(modifier = Modifier.fillMaxWidth().navigationBarsPadding())
+        }
+    }
+}
+
+/**
+ * A full-screen warning shown when a URI is blocked by [UriSanitizer].
+ * Covers dangerous scheme injections (javascript:, intent:, data:text/html),
+ * private file access, and null-byte injection attacks.
+ * There is intentionally NO "proceed anyway" option for these hard-blocked threats.
+ */
+@Composable
+fun BlockedUriWarning(
+    info: BrowserViewModel.BlockedUriInfo,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val (title, subtitle, detail) = remember(info.reason) {
+        when (info.reason) {
+            com.example.lumina.core.UriSanitizer.BlockReason.DANGEROUS_SCHEME -> Triple(
+                "Malicious URI Blocked",
+                "This link uses a dangerous URI scheme that can execute code or trigger system actions on your device.",
+                "Blocked scheme: \"${info.uri.substringBefore(":").take(30)}:\""
+            )
+            com.example.lumina.core.UriSanitizer.BlockReason.DANGEROUS_DATA_URI -> Triple(
+                "Script Injection Blocked",
+                "This link encodes executable HTML or JavaScript directly in the URL, a common technique used to steal data or hijack sessions.",
+                "Blocked: data: URI with script-capable content type"
+            )
+            com.example.lumina.core.UriSanitizer.BlockReason.PRIVATE_FILE_ACCESS -> Triple(
+                "Unauthorized File Access Blocked",
+                "This link attempted to access private app data on your device, which could expose passwords, databases, or session tokens.",
+                "Blocked path: ${info.uri.take(80)}"
+            )
+            com.example.lumina.core.UriSanitizer.BlockReason.NULL_BYTE_INJECTION -> Triple(
+                "Null-Byte Injection Blocked",
+                "This URL contains a hidden null byte (%00) used to confuse security checks and disguise the real destination.",
+                "Detected: null byte in \"${info.uri.take(60)}\u2026\""
+            )
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .background(Color(0xFF0A0A1A))
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Block,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = Color(0xFFFF6B35)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = Color(0xFFFF6B35),
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.White.copy(alpha = 0.9f),
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = Color.White.copy(alpha = 0.05f),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFFFF6B35).copy(alpha = 0.8f),
+                textAlign = TextAlign.Start,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                modifier = Modifier.padding(12.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(40.dp))
+
+        Button(
+            onClick = onDismiss,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFBB86FC),
+                contentColor = Color.Black
+            ),
+            shape = RoundedCornerShape(24.dp),
+            modifier = Modifier.fillMaxWidth().height(48.dp)
+        ) {
+            Text("Go Back to Safety", fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -560,6 +672,16 @@ fun PhishingWarning(
         hasNonAsciiChars || hasPunycodeLabels
     }
 
+    // For homograph attacks: compute the unicode lookalike form so we can show
+    // WHAT it's pretending to be (e.g. "pаypal.com") alongside what it really is
+    // (e.g. "xn--pypal-4ve.com"). IDN.toUnicode converts Punycode → unicode.
+    val unicodeHost = remember(parsedHost) {
+        if (isHomographAttack) {
+            try { java.net.IDN.toUnicode(parsedHost, java.net.IDN.ALLOW_UNASSIGNED) }
+            catch (_: Exception) { parsedHost }
+        } else parsedHost
+    }
+
     Column(
         modifier = modifier
             .background(Color(0xFF1B0000))
@@ -586,28 +708,92 @@ fun PhishingWarning(
         )
         
         Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = if (isHomographAttack)
-                "This URL uses characters from another alphabet (e.g. Cyrillic or Greek) to impersonate a real website. It looks like a trusted domain but is not:\n\n$url"
-            else
-                "Lumina has flagged this URL as a potential phishing threat:\n\n$url",
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color.White.copy(alpha = 0.9f),
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(12.dp))
-        
-        Text(
-            text = if (isHomographAttack)
-                "This is a known attack technique called an IDN Homograph Attack. The address was encoded as \"$parsedHost\". Entering any personal or financial information here is dangerous."
-            else
-                "This site may be designed to trick you into revealing personal or financial information by mimicking a trusted service.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.LightGray,
-            textAlign = TextAlign.Center
-        )
+
+        if (isHomographAttack) {
+            // Explain the trick with a clear visual comparison
+            Text(
+                text = "This URL uses look-alike characters from another alphabet (e.g. Cyrillic or Greek) to impersonate a real website.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White.copy(alpha = 0.9f),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Show the LOOKALIKE (what the attacker wants you to think it is)
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color.Red.copy(alpha = 0.12f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = "Pretends to look like:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Red.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = unicodeHost,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Show the REAL Punycode address (what it actually is)
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color.White.copy(alpha = 0.05f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = "Actual encoded address:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.LightGray.copy(alpha = 0.6f),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = parsedHost,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.LightGray,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "This is a known technique called an IDN Homograph Attack. Do not enter any personal or financial information.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.LightGray,
+                textAlign = TextAlign.Center
+            )
+        } else {
+            Text(
+                text = "Lumina has flagged this URL as a potential phishing threat:\n\n$url",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White.copy(alpha = 0.9f),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "This site may be designed to trick you into revealing personal or financial information by mimicking a trusted service.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.LightGray,
+                textAlign = TextAlign.Center
+            )
+        }
         
         Spacer(modifier = Modifier.height(40.dp))
         
