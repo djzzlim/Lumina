@@ -534,7 +534,9 @@ fun BrowserScreen(
 }
 
 /**
- * A full-screen warning page shown when a site is flagged by the local AI phishing model.
+ * A full-screen warning page shown when a site is flagged as a phishing threat.
+ * This covers both the local AI model detections and IDN homograph attacks
+ * (e.g., pаypal.com with a Cyrillic 'а' encoded as xn--pypal-4ve.com).
  */
 @Composable
 fun PhishingWarning(
@@ -543,6 +545,21 @@ fun PhishingWarning(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Detect if this is an IDN homograph attack — handles both forms GeckoView may deliver:
+    //  • unicode form:   host = "pаypal.com" (non-ASCII Cyrillic 'а') → hasNonAsciiChars = true
+    //  • Punycode form:  host = "xn--pypal-4ve.com"                   → hasPunycodeLabels = true
+    val parsedHost = remember(url) {
+        try { android.net.Uri.parse(url).host ?: "" } catch (_: Exception) { "" }
+    }
+    val isHomographAttack = remember(parsedHost) {
+        val hasNonAsciiChars = parsedHost.any { it.code > 127 }
+        val asciiHost = try {
+            java.net.IDN.toASCII(parsedHost, java.net.IDN.ALLOW_UNASSIGNED)
+        } catch (_: Exception) { parsedHost }
+        val hasPunycodeLabels = asciiHost.split(".").any { it.startsWith("xn--", ignoreCase = true) }
+        hasNonAsciiChars || hasPunycodeLabels
+    }
+
     Column(
         modifier = modifier
             .background(Color(0xFF1B0000))
@@ -561,7 +578,7 @@ fun PhishingWarning(
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            text = "Deceptive Site Detected",
+            text = if (isHomographAttack) "Lookalike Domain Attack Detected" else "Deceptive Site Detected",
             style = MaterialTheme.typography.headlineSmall,
             color = Color.Red,
             textAlign = TextAlign.Center,
@@ -571,7 +588,10 @@ fun PhishingWarning(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "Lumina's local AI has flagged this URL as a potential phishing threat:\n$url",
+            text = if (isHomographAttack)
+                "This URL uses characters from another alphabet (e.g. Cyrillic or Greek) to impersonate a real website. It looks like a trusted domain but is not:\n\n$url"
+            else
+                "Lumina has flagged this URL as a potential phishing threat:\n\n$url",
             style = MaterialTheme.typography.bodyLarge,
             color = Color.White.copy(alpha = 0.9f),
             textAlign = TextAlign.Center
@@ -580,7 +600,10 @@ fun PhishingWarning(
         Spacer(modifier = Modifier.height(12.dp))
         
         Text(
-            text = "This site may be designed to trick you into revealing personal or financial information by mimicking a trusted service.",
+            text = if (isHomographAttack)
+                "This is a known attack technique called an IDN Homograph Attack. The address was encoded as \"$parsedHost\". Entering any personal or financial information here is dangerous."
+            else
+                "This site may be designed to trick you into revealing personal or financial information by mimicking a trusted service.",
             style = MaterialTheme.typography.bodyMedium,
             color = Color.LightGray,
             textAlign = TextAlign.Center

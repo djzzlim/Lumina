@@ -409,11 +409,46 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
                 val result = GeckoResult<AllowOrDeny>()
                 viewModelScope.launch {
                     val isLocalMLEnabled = appPreferences.localPhishingModelEnabledFlow.first()
-                    
+
+                    // --- IDN Homograph Attack Detection ---
+                    // GeckoView may fire onLoadRequest with either the original unicode URI
+                    // (e.g. https://pаypal.com) or the Punycode form (https://xn--pypal-4ve.com/).
+                    // We must detect BOTH forms:
+                    //  1. Non-ASCII chars in the raw host → unicode homograph (e.g. Cyrillic 'а')
+                    //  2. xn-- labels in the ASCII-converted host → Punycode homograph
+                    val hasNonAsciiInHost = host.any { it.code > 127 }
+                    val asciiHost = try {
+                        java.net.IDN.toASCII(host, java.net.IDN.ALLOW_UNASSIGNED)
+                    } catch (_: Exception) { host }
+                    val hasPunycodeLabels = asciiHost.split(".").any { it.startsWith("xn--", ignoreCase = true) }
+                    val isIdnHomographAttack = !allowedPhishingHosts.contains(host) &&
+                        (hasNonAsciiInHost || hasPunycodeLabels)
+
+                    if (isIdnHomographAttack) {
+                        // Rebuild the URI replacing the unicode host with the Punycode form so
+                        // the URL bar shows the actual encoded domain (e.g. xn--pypal-4ve.com)
+                        // rather than the misleading lookalike characters (e.g. pаypal.com).
+                        val displayUri = try {
+                            val parsed = android.net.Uri.parse(request.uri)
+                            val authority = if (parsed.port != -1) "$asciiHost:${parsed.port}" else asciiHost
+                            parsed.buildUpon().authority(authority).build().toString()
+                        } catch (_: Exception) { request.uri }
+                        updateCurrentUrl(displayUri)
+                        _showPhishingWarning.value = displayUri
+                        resetSecurityState()
+                        _geckoSession.stop()
+                        result.complete(AllowOrDeny.DENY)
+                        return@launch
+                    }
+                    // --- End IDN Homograph Detection ---
+
+
                     if (isLocalMLEnabled && !allowedPhishingHosts.contains(host)) {
                         val uriChars = request.uri.toCharArray()
                         val isPhishing = try {
                             phishingDetector.predict(uriChars)
+                        } catch (_: Exception) {
+                            false
                         } finally {
                             Arrays.fill(uriChars, '\u0000')
                         }
