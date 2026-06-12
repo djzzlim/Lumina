@@ -90,10 +90,6 @@ class PhishingDetector(private val context: Context) {
         }
     }
 
-    private fun sigmoid(x: Float): Float {
-        return (1.0f / (1.0f + exp(-x)))
-    }
-
     private fun softmax(logits: FloatArray): FloatArray {
         // Numerically stable softmax
         val maxLogit = logits.maxOrNull() ?: 0f
@@ -185,12 +181,8 @@ class PhishingDetector(private val context: Context) {
                 val output = results[0].value as Array<FloatArray>
                 val logits = output[0]
                 
-                val phishingProbability: Float = if (logits.size == 1) {
-                    sigmoid(logits[0])
-                } else {
-                    val probs = softmax(logits)
-                    probs[1]
-                }
+                val probs = softmax(logits)
+                val phishingProbability = probs[1]
 
                 val threshold = 0.9f
                 phishingProbability >= threshold
