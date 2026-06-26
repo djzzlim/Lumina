@@ -48,8 +48,6 @@ class AppPreferences @Inject constructor(
     val localPhishingModelEnabledFlow: Flow<Boolean> = settingsDataStore.localPhishingModelEnabledFlow
     /** A [Flow] indicating if Tor is globally enabled. */
     val torEnabledFlow: Flow<Boolean> = settingsDataStore.torEnabledFlow
-    /** A [Flow] of the current Tor profile name. */
-    val torProfileFlow: Flow<String> = settingsDataStore.torProfileFlow
 
     /** A [Flow] of the last exit timestamp. */
     val lastExitTimeFlow: Flow<Long> = settingsDataStore.lastExitTimeFlow

@@ -35,7 +35,6 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     val localPhishingModelEnabledKey = booleanPreferencesKey("local_phishing_model_enabled")
 
     val torEnabledKey = booleanPreferencesKey("tor_enabled")
-    val torProfileKey = stringPreferencesKey("tor_profile")
     val useNetworkTimezoneKey = booleanPreferencesKey("use_network_timezone")
     val lastExitTimeKey = longPreferencesKey("last_exit_time")
 
@@ -87,11 +86,6 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
             preferences[torEnabledKey] ?: false
         }
 
-    /** A [Flow] of the current Tor profile (e.g., "Standard", "Safer", "Safest"). */
-    val torProfileFlow: Flow<String> = context.dataStore.data
-        .map { preferences ->
-            preferences[torProfileKey] ?: "Standard"
-        }
 
     /** A [Flow] indicating if the network (VPN/Tor) should be used for timezone detection. */
     val useNetworkTimezoneFlow: Flow<Boolean> = context.dataStore.data
@@ -158,12 +152,6 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
         }
     }
 
-    /** Saves the selected Tor profile. */
-    suspend fun saveTorProfile(profile: String) {
-        context.dataStore.edit { settings ->
-            settings[torProfileKey] = profile
-        }
-    }
 
     /** Saves whether to use the network/VPN for timezone detection. */
     suspend fun saveUseNetworkTimezone(enabled: Boolean) {

@@ -211,26 +211,6 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
             }
         }
 
-        // Dynamically toggle Tor Profile settings
-        viewModelScope.launch {
-            appPreferences.torProfileFlow.collect { profile ->
-                Log.d("BrowserViewModel", "Applying Tor Profile: $profile")
-                when (profile) {
-                    "Safer" -> {
-                        GeckoPreferenceController.setGeckoPref("javascript.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
-                        GeckoPreferenceController.setGeckoPref("svg.disabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
-                    }
-                    "Safest" -> {
-                        GeckoPreferenceController.setGeckoPref("javascript.enabled", false, GeckoPreferenceController.PREF_BRANCH_USER)
-                        GeckoPreferenceController.setGeckoPref("svg.disabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
-                    }
-                    else -> { // Standard
-                        GeckoPreferenceController.setGeckoPref("javascript.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
-                        GeckoPreferenceController.setGeckoPref("svg.disabled", false, GeckoPreferenceController.PREF_BRANCH_USER)
-                    }
-                }
-            }
-        }
 
         viewModelScope.launch {
             combine(luminaInfo.filterNotNull(), _isAnimationFinished) { info, finished ->

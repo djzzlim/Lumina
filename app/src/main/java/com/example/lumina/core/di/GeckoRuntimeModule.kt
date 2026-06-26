@@ -61,21 +61,9 @@ object GeckoRuntimeModule {
             GeckoPreferenceController.setGeckoPref("network.proxy.type", 0, GeckoPreferenceController.PREF_BRANCH_USER)
         }
 
-        val torProfile = runBlocking { settingsDataStore.torProfileFlow.first() }
-        when (torProfile) {
-            "Safer" -> {
-                GeckoPreferenceController.setGeckoPref("javascript.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
-                GeckoPreferenceController.setGeckoPref("svg.disabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
-            }
-            "Safest" -> {
-                GeckoPreferenceController.setGeckoPref("javascript.enabled", false, GeckoPreferenceController.PREF_BRANCH_USER)
-                GeckoPreferenceController.setGeckoPref("svg.disabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
-            }
-            else -> { // Standard
-                GeckoPreferenceController.setGeckoPref("javascript.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
-                GeckoPreferenceController.setGeckoPref("svg.disabled", false, GeckoPreferenceController.PREF_BRANCH_USER)
-            }
-        }
+        // Browser Hardening
+        GeckoPreferenceController.setGeckoPref("javascript.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
+        GeckoPreferenceController.setGeckoPref("svg.disabled", false, GeckoPreferenceController.PREF_BRANCH_USER)
 
         // Silence "Native manifests not supported" and Managed Storage spam
         GeckoPreferenceController.setGeckoPref("browser.storage.managed.enabled", false, GeckoPreferenceController.PREF_BRANCH_USER)

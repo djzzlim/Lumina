@@ -69,12 +69,6 @@ class SettingsViewModel @Inject constructor(
             initialValue = false
         )
 
-    val torProfile: StateFlow<String> = settingsDataStore.torProfileFlow
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = "Standard"
-        )
 
     val useNetworkTimezone: StateFlow<Boolean> = settingsDataStore.useNetworkTimezoneFlow
         .stateIn(
@@ -100,7 +94,6 @@ class SettingsViewModel @Inject constructor(
     val dnsOptions = DnsProvider.allOptions
     val searchEngineOptions = SearchEngine.allOptions
     val autoCloseOptions = AutoCloseTimeout.allOptions.map { it.name }
-    val torProfileOptions = listOf("Standard", "Safer", "Safest")
 
     fun setDnsProvider(dnsProvider: String) {
         viewModelScope.launch {
@@ -145,11 +138,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun setTorProfile(profile: String) {
-        viewModelScope.launch {
-            settingsDataStore.saveTorProfile(profile)
-        }
-    }
 
     fun setUseNetworkTimezone(enabled: Boolean) {
         viewModelScope.launch {

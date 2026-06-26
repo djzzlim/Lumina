@@ -18,7 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -46,7 +46,7 @@ fun TorSettingsScreen(
     onNavigateBack: () -> Unit
 ) {
     val torEnabled by viewModel.torEnabled.collectAsStateWithLifecycle()
-    val torProfile by viewModel.torProfile.collectAsStateWithLifecycle()
+
     val useNetworkTimezone by viewModel.useNetworkTimezone.collectAsStateWithLifecycle()
     val torLogs by viewModel.torLogs.collectAsStateWithLifecycle()
     val torProgress by viewModel.torBootstrappingProgress.collectAsStateWithLifecycle()
@@ -140,31 +140,6 @@ fun TorSettingsScreen(
                         label = "Enable Tor",
                         checked = torEnabled,
                         onCheckedChange = viewModel::setTorEnabled
-                    )
-                    if (torEnabled) {
-                        HorizontalDivider(color = Color(0xFF3A3A3C), thickness = 0.5.dp)
-                        SettingsDropdownItem(
-                            label = "Security Profile",
-                            currentValue = torProfile,
-                            options = viewModel.torProfileOptions,
-                            onOptionSelected = viewModel::setTorProfile
-                        )
-                    }
-                }
-                
-                if (torEnabled) {
-                    val securityHelpText = when (torProfile) {
-                        "Standard" -> "All browser features are enabled. This provides the best usability and site compatibility."
-                        "Safer" -> "Disables SVGs and some JavaScript optimizations. Protects against some types of fingerprinting and exploits."
-                        "Safest" -> "Completely disables JavaScript and SVGs. Provides maximum security but many websites will not work properly."
-                        else -> ""
-                    }
-                    Text(
-                        securityHelpText,
-                        color = Color(0xFFBB86FC),
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
                     )
                 }
                 Spacer(modifier = Modifier.height(24.dp))

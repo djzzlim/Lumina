@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -30,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.lumina.core.database.Profile
@@ -76,7 +79,16 @@ fun ProfilesScreen(
                         TextField(
                             value = profileNameInput,
                             onValueChange = { profileNameInput = it },
-                            label = { Text("Profile Name") }
+                            label = { Text("Profile Name") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = {
+                                if (profileNameInput.isNotBlank()) {
+                                    profilesViewModel.createProfile(profileNameInput)
+                                    showAddDialog = false
+                                    profileNameInput = ""
+                                }
+                            })
                         )
                     },
                     confirmButton = {
@@ -109,7 +121,16 @@ fun ProfilesScreen(
                         TextField(
                             value = profileNameInput,
                             onValueChange = { profileNameInput = it },
-                            label = { Text("Profile Name") }
+                            label = { Text("Profile Name") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = {
+                                if (profileNameInput.isNotBlank()) {
+                                    profilesViewModel.updateProfile(profile.copy(name = profileNameInput))
+                                    editingProfile = null
+                                    profileNameInput = ""
+                                }
+                            })
                         )
                     },
                     confirmButton = {

@@ -70,7 +70,7 @@ fun SettingsScreen(
     val safeBrowsingEnabled by viewModel.safeBrowsingEnabled.collectAsStateWithLifecycle()
     val localPhishingModelEnabled by viewModel.localPhishingModelEnabled.collectAsStateWithLifecycle()
     val torEnabled by viewModel.torEnabled.collectAsStateWithLifecycle()
-    val torProfile by viewModel.torProfile.collectAsStateWithLifecycle()
+
     val useNetworkTimezone by viewModel.useNetworkTimezone.collectAsStateWithLifecycle()
     
     val selectedAutoCloseName = remember(selectedAutoCloseTimeoutMinutes) {
@@ -141,6 +141,7 @@ fun SettingsScreen(
                                 },
                                 textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
                                 cursorBrush = SolidColor(Color(0xFFBB86FC)),
+                                singleLine = true,
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                 keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                                 modifier = Modifier.fillMaxWidth(),
