@@ -305,7 +305,6 @@ fun AppNavigation(
                     onDisableWebGlChange = vm::setDisableWebGl,
                     onRandomizeScreenChange = vm::setRandomizeScreen,
                     onSpoofHardwareChange = vm::setSpoofHardware,
-                    onDisablePaymentChange = vm::setDisablePayment,
                     onDisableJavascriptChange = vm::setDisableJavascript,
                     onNavigateBack = {
                         navController.navigateUp()
@@ -363,7 +362,6 @@ fun AppNavigation(
                     onDisableWebGlChange = vm::setDisableWebGl,
                     onRandomizeScreenChange = vm::setRandomizeScreen,
                     onSpoofHardwareChange = vm::setSpoofHardware,
-                    onDisablePaymentChange = vm::setDisablePayment,
                     onDisableJavascriptChange = vm::setDisableJavascript,
                     onNavigateBack = {
                         navController.navigateUp()

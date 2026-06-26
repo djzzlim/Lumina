@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  *
  * It contains [LuminaInfo] and [Profile] entities.
  */
-@Database(entities = [LuminaInfo::class, Profile::class], version = 7, exportSchema = false)
+@Database(entities = [LuminaInfo::class, Profile::class], version = 8, exportSchema = false)
 abstract class LuminaDatabase : RoomDatabase() {
     /**
      * Gets the DAO for lumina-related operations.
@@ -166,6 +166,65 @@ abstract class LuminaDatabase : RoomDatabase() {
                         FOREIGN KEY(`profileId`) REFERENCES `profiles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
                     )
                 """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_luminas_profileId` ON `luminas` (`profileId`)")
+            }
+        }
+
+        /**
+         * Migration from version 7 to 8.
+         * Removes the `disablePayment` column from the `luminas` table.
+         */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // 1. Create temporary table without the disablePayment column
+                database.execSQL("""
+                    CREATE TABLE `luminas_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                        `profileId` TEXT NOT NULL, 
+                        `name` TEXT NOT NULL, 
+                        `url` TEXT NOT NULL, 
+                        `icon` TEXT NOT NULL, 
+                        `color` INTEGER NOT NULL, 
+                        `isWebRtcDisabled` INTEGER NOT NULL, 
+                        `afpEnabled` INTEGER NOT NULL, 
+                        `randomizeUserAgent` INTEGER NOT NULL, 
+                        `spoofLocale` INTEGER NOT NULL, 
+                        `spoofTimezone` INTEGER NOT NULL, 
+                        `randomizeCanvas` INTEGER NOT NULL, 
+                        `disableAudioContext` INTEGER NOT NULL, 
+                        `disableWebGl` INTEGER NOT NULL, 
+                        `randomizeScreen` INTEGER NOT NULL, 
+                        `spoofHardware` INTEGER NOT NULL, 
+                        `disableJavascript` INTEGER NOT NULL,
+                        FOREIGN KEY(`profileId`) REFERENCES `profiles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+
+                // 2. Copy the data from the old table to the temporary table
+                database.execSQL("""
+                    INSERT INTO `luminas_new` (
+                        `id`, `profileId`, `name`, `url`, `icon`, `color`, 
+                        `isWebRtcDisabled`, `afpEnabled`, `randomizeUserAgent`, 
+                        `spoofLocale`, `spoofTimezone`, `randomizeCanvas`, 
+                        `disableAudioContext`, `disableWebGl`, `randomizeScreen`, 
+                        `spoofHardware`, `disableJavascript`
+                    )
+                    SELECT 
+                        `id`, `profileId`, `name`, `url`, `icon`, `color`, 
+                        `isWebRtcDisabled`, `afpEnabled`, `randomizeUserAgent`, 
+                        `spoofLocale`, `spoofTimezone`, `randomizeCanvas`, 
+                        `disableAudioContext`, `disableWebGl`, `randomizeScreen`, 
+                        `spoofHardware`, `disableJavascript`
+                    FROM `luminas`
+                """.trimIndent())
+
+                // 3. Drop the old table
+                database.execSQL("DROP TABLE IF EXISTS `luminas`")
+
+                // 4. Rename the temporary table to the original name
+                database.execSQL("ALTER TABLE `luminas_new` RENAME TO `luminas`")
+
+                // 5. Recreate index
                 database.execSQL("CREATE INDEX IF NOT EXISTS `index_luminas_profileId` ON `luminas` (`profileId`)")
             }
         }

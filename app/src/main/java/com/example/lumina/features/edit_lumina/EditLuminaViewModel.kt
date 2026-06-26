@@ -123,7 +123,6 @@ class EditLuminaViewModel @Inject constructor(
                         disableWebGl = info.disableWebGl,
                         randomizeScreen = info.randomizeScreen,
                         spoofHardware = info.spoofHardware,
-                        disablePayment = info.disablePayment,
                         disableJavascript = info.disableJavascript
                     )
                 }
@@ -164,7 +163,6 @@ class EditLuminaViewModel @Inject constructor(
                 disableWebGl = state.disableWebGl,
                 randomizeScreen = state.randomizeScreen,
                 spoofHardware = state.spoofHardware,
-                disablePayment = state.disablePayment,
                 disableJavascript = state.disableJavascript
             )
             repository.updateLumina(updatedInfo)
@@ -262,6 +260,5 @@ class EditLuminaViewModel @Inject constructor(
     fun setDisableWebGl(enabled: Boolean) = _uiState.update { it.copy(disableWebGl = enabled) }
     fun setRandomizeScreen(enabled: Boolean) = _uiState.update { it.copy(randomizeScreen = enabled) }
     fun setSpoofHardware(enabled: Boolean) = _uiState.update { it.copy(spoofHardware = enabled) }
-    fun setDisablePayment(enabled: Boolean) = _uiState.update { it.copy(disablePayment = enabled) }
     fun setDisableJavascript(enabled: Boolean) = _uiState.update { it.copy(disableJavascript = enabled) }
 }

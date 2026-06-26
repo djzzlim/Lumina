@@ -42,7 +42,8 @@ object DatabaseModule {
                 LuminaDatabase.MIGRATION_3_4,
                 LuminaDatabase.MIGRATION_4_5,
                 LuminaDatabase.MIGRATION_5_6,
-                LuminaDatabase.MIGRATION_6_7
+                LuminaDatabase.MIGRATION_6_7,
+                LuminaDatabase.MIGRATION_7_8
             )
             .fallbackToDestructiveMigration(false)
             .build()

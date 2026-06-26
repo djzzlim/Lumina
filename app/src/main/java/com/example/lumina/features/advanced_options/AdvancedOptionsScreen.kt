@@ -56,8 +56,6 @@ import com.example.lumina.ui.theme.LuminaTheme
  * @param onDisableAudioContextChange Callback for toggling AudioContext disabling.
  * @param onDisableWebGlChange Callback for toggling WebGL disabling.
  * @param onRandomizeScreenChange Callback for toggling screen dimensions randomization.
- * @param onSpoofHardwareChange Callback for toggling hardware info spoofing.
- * @param onDisablePaymentChange Callback for toggling Payment API disabling.
  * @param onDisableJavascriptChange Callback for toggling JavaScript disabling.
  * @param onNavigateBack Callback function to navigate back to the previous screen.
  */
@@ -74,7 +72,6 @@ fun AdvancedOptionsScreen(
     onDisableWebGlChange: (Boolean) -> Unit,
     onRandomizeScreenChange: (Boolean) -> Unit,
     onSpoofHardwareChange: (Boolean) -> Unit,
-    onDisablePaymentChange: (Boolean) -> Unit,
     onDisableJavascriptChange: (Boolean) -> Unit,
     onNavigateBack: () -> Unit
 ) {
@@ -109,7 +106,6 @@ fun AdvancedOptionsScreen(
                 onDisableWebGlChange = onDisableWebGlChange,
                 onRandomizeScreenChange = onRandomizeScreenChange,
                 onSpoofHardwareChange = onSpoofHardwareChange,
-                onDisablePaymentChange = onDisablePaymentChange,
                 onDisableJavascriptChange = onDisableJavascriptChange
             )
             HelpText("Lumina has many antifingerprinting measures. Some websites may not be compatible with some of these measures enabled.")
@@ -144,7 +140,6 @@ fun AntifingerprintingToggles(
     onDisableWebGlChange: (Boolean) -> Unit,
     onRandomizeScreenChange: (Boolean) -> Unit,
     onSpoofHardwareChange: (Boolean) -> Unit,
-    onDisablePaymentChange: (Boolean) -> Unit,
     onDisableJavascriptChange: (Boolean) -> Unit,
 ) {
     Column(
@@ -199,12 +194,6 @@ fun AntifingerprintingToggles(
             text = "Spoof Hardware Info",
             checked = afpState.spoofHardware,
             onCheckedChange = onSpoofHardwareChange,
-            enabled = afpState.afpEnabled
-        )
-        ToggleRowInternal(
-            text = "Disable Payment APIs",
-            checked = afpState.disablePayment,
-            onCheckedChange = onDisablePaymentChange,
             enabled = afpState.afpEnabled
         )
         ToggleRowInternal(
@@ -356,7 +345,6 @@ fun AdvancedOptionsScreenPreview() {
             onDisableWebGlChange = {},
             onRandomizeScreenChange = {},
             onSpoofHardwareChange = {},
-            onDisablePaymentChange = {},
             onDisableJavascriptChange = {},
             onNavigateBack = {}
         )

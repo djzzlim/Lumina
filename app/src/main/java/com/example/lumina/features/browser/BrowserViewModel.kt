@@ -594,14 +594,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
             } else {
                 GeckoPreferenceController.setGeckoPref("intl.accept_languages", "", GeckoPreferenceController.PREF_BRANCH_USER)
             }
-            val paymentEnabled = !info.disablePayment
-            GeckoPreferenceController.setGeckoPref("dom.payments.enabled", paymentEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
-            GeckoPreferenceController.setGeckoPref("dom.payment.request.enabled", paymentEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
-            GeckoPreferenceController.setGeckoPref("dom.payments.canMakePayment.enabled", paymentEnabled, GeckoPreferenceController.PREF_BRANCH_USER)
         } else {
-            GeckoPreferenceController.setGeckoPref("dom.payments.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
-            GeckoPreferenceController.setGeckoPref("dom.payment.request.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
-            GeckoPreferenceController.setGeckoPref("dom.payments.canMakePayment.enabled", true, GeckoPreferenceController.PREF_BRANCH_USER)
             GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting.target_video_card", "", GeckoPreferenceController.PREF_BRANCH_USER)
             GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting.canvasSerialization", false, GeckoPreferenceController.PREF_BRANCH_USER)
             GeckoPreferenceController.setGeckoPref("dom.enable_performance", true, GeckoPreferenceController.PREF_BRANCH_USER)

@@ -39,7 +39,6 @@ data class NewLuminaUiState(
     val disableWebGl: Boolean = true,
     val randomizeScreen: Boolean = true,
     val spoofHardware: Boolean = true,
-    val disablePayment: Boolean = true,
     val disableJavascript: Boolean = false,
     val isSaving: Boolean = false,
     val error: String? = null
@@ -118,7 +117,6 @@ class NewLuminaViewModel @Inject constructor(
                     disableWebGl = state.disableWebGl,
                     randomizeScreen = state.randomizeScreen,
                     spoofHardware = state.spoofHardware,
-                    disablePayment = state.disablePayment,
                     disableJavascript = state.disableJavascript
                 )
                 repository.insertLumina(luminaInfo)
@@ -140,6 +138,5 @@ class NewLuminaViewModel @Inject constructor(
     fun setDisableWebGl(enabled: Boolean) = _uiState.update { it.copy(disableWebGl = enabled) }
     fun setRandomizeScreen(enabled: Boolean) = _uiState.update { it.copy(randomizeScreen = enabled) }
     fun setSpoofHardware(enabled: Boolean) = _uiState.update { it.copy(spoofHardware = enabled) }
-    fun setDisablePayment(enabled: Boolean) = _uiState.update { it.copy(disablePayment = enabled) }
     fun setDisableJavascript(enabled: Boolean) = _uiState.update { it.copy(disableJavascript = enabled) }
 }
