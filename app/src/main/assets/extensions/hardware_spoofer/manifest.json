@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
-  "name": "Timezone Spoofer",
-  "version": "1.1",
-  "description": "Spoofs the timezone to match Tor exit node.",
+  "name": "Hardware Spoofer",
+  "version": "1.0",
+  "description": "Spoofs hardware, Navigator properties, and screen dimensions.",
   "background": {
     "scripts": ["background.js"]
   },
@@ -16,12 +16,13 @@
   ],
   "permissions": [
     "nativeMessaging",
-    "https://ipwho.is/",
-    "<all_urls>"
+    "<all_urls>",
+    "webRequest",
+    "webRequestBlocking"
   ],
   "browser_specific_settings": {
     "gecko": {
-      "id": "timezone-spoofer@lumina.example.com"
+      "id": "hardware-spoofer@lumina.example.com"
     }
   }
 }

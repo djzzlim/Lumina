@@ -41,11 +41,7 @@ const fetchTimezone = async (luminaId) => {
         if (response && response.timezone === "disabled") {
             console.log("Lumina BG: Timezone spoofing is disabled for this session.");
             return {
-                timezone: null,
-                randomizeScreen: response.randomizeScreen,
-                screenWidth: response.screenWidth,
-                screenHeight: response.screenHeight,
-                devicePixelRatio: response.devicePixelRatio
+                timezone: null
             }; 
         }
 
@@ -55,11 +51,7 @@ const fetchTimezone = async (luminaId) => {
             console.log("Lumina BG: Explicit fallback requested. Selected:", JSON.stringify(fallback));
             return {
                 timezone: fallback.timezone,
-                offset: fallback.offset,
-                randomizeScreen: response.randomizeScreen,
-                screenWidth: response.screenWidth,
-                screenHeight: response.screenHeight,
-                devicePixelRatio: response.devicePixelRatio
+                offset: fallback.offset
             };
         }
 
@@ -68,11 +60,7 @@ const fetchTimezone = async (luminaId) => {
             console.log("Lumina BG: Using Tor/Native provided TZ:", response.timezone);
             return {
                 timezone: response.timezone,
-                offset: response.offset || 0,
-                randomizeScreen: response.randomizeScreen,
-                screenWidth: response.screenWidth,
-                screenHeight: response.screenHeight,
-                devicePixelRatio: response.devicePixelRatio
+                offset: response.offset || 0
             };
         }
 
@@ -85,11 +73,7 @@ const fetchTimezone = async (luminaId) => {
             console.log("Lumina BG: Using cached network TZ:", cachedNetworkTz);
             return {
                 timezone: cachedNetworkTz,
-                offset: cachedNetworkOffset,
-                randomizeScreen: response.randomizeScreen,
-                screenWidth: response.screenWidth,
-                screenHeight: response.screenHeight,
-                devicePixelRatio: response.devicePixelRatio
+                offset: cachedNetworkOffset
             };
         }
 
@@ -113,11 +97,7 @@ const fetchTimezone = async (luminaId) => {
                     lastNetworkFetch = now;
                     return {
                         timezone: fallback.timezone,
-                        offset: fallback.offset,
-                        randomizeScreen: response.randomizeScreen,
-                        screenWidth: response.screenWidth,
-                        screenHeight: response.screenHeight,
-                        devicePixelRatio: response.devicePixelRatio
+                        offset: fallback.offset
                     };
                 } else {
                     console.log("Lumina BG: Network differs from System (VPN active). Using Network TZ.");
@@ -126,11 +106,7 @@ const fetchTimezone = async (luminaId) => {
                     lastNetworkFetch = now;
                     return {
                         timezone: cachedNetworkTz,
-                        offset: cachedNetworkOffset,
-                        randomizeScreen: response.randomizeScreen,
-                        screenWidth: response.screenWidth,
-                        screenHeight: response.screenHeight,
-                        devicePixelRatio: response.devicePixelRatio
+                        offset: cachedNetworkOffset
                     };
                 }
             } else {
@@ -149,25 +125,9 @@ const fetchTimezone = async (luminaId) => {
     const fallback = getFallback();
     return {
         timezone: fallback.timezone,
-        offset: fallback.offset,
-        randomizeScreen: false
+        offset: fallback.offset
     };
 };
-
-// Strip the _NoSR suffix from outgoing User-Agent headers
-browser.webRequest.onBeforeSendHeaders.addListener(
-    (details) => {
-        for (let header of details.requestHeaders) {
-            if (header.name.toLowerCase() === "user-agent") {
-                header.value = header.value.replace(" _NoSR", "");
-                break;
-            }
-        }
-        return { requestHeaders: details.requestHeaders };
-    },
-    { urls: ["<all_urls>"] },
-    ["blocking", "requestHeaders"]
-);
 
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "getTimezone") {

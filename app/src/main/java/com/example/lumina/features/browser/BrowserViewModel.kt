@@ -541,19 +541,19 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
 
         _geckoSession.settings.apply {
             if (info.randomizeUserAgent && info.afpEnabled) {
-                val uaSuffix = if (info.randomizeScreen) "" else " _NoSR"
+                val uaSuffix = (if (info.randomizeScreen) "" else " _NoSR") + (if (info.spoofHardware) "" else " _NoSH")
                 userAgentOverride = desktopUA + uaSuffix
                 GeckoPreferenceController.setGeckoPref("general.platform.override", "Win32", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.appversion.override", "5.0 (Windows)", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.oscpu.override", "Windows NT 10.0; Win64; x64", GeckoPreferenceController.PREF_BRANCH_USER)
             } else if (!info.randomizeUserAgent && info.afpEnabled) {
-                val uaSuffix = if (info.randomizeScreen) "" else " _NoSR"
+                val uaSuffix = (if (info.randomizeScreen) "" else " _NoSR") + (if (info.spoofHardware) "" else " _NoSH")
                 userAgentOverride = androidUA + uaSuffix
                 GeckoPreferenceController.setGeckoPref("general.platform.override", "Android", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.appversion.override", "5.0 (Android 15)", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.oscpu.override", "Android 15", GeckoPreferenceController.PREF_BRANCH_USER)
             } else {
-                userAgentOverride = "$androidUA _NoSR"
+                userAgentOverride = "$androidUA _NoSR _NoSH"
                 GeckoPreferenceController.setGeckoPref("general.platform.override", "", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.appversion.override", "", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.oscpu.override", "", GeckoPreferenceController.PREF_BRANCH_USER)
