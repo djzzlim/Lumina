@@ -67,6 +67,7 @@ import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
@@ -217,6 +218,20 @@ fun NewLuminaTopAppBar(onClose: () -> Unit, onSave: () -> Unit, saveEnabled: Boo
     )
 }
 
+private fun generateRandomName(): String {
+    val adjectives = listOf(
+        "Happy", "Funny", "Quick", "Slow", "Lazy", "Crazy", "Sleepy", "Hungry", "Tasty", "Shiny",
+        "Tiny", "Huge", "Brave", "Calm", "Gentle", "Proud", "Silly", "Witty", "Jolly", "Fancy",
+        "Fluffy", "Chilly", "Lucky", "Merry", "Sunny", "Windy", "Dandy", "Dizzy", "Rusty", "Moody"
+    )
+    val nouns = listOf(
+        "Apple", "Banana", "Cherry", "Panda", "Koala", "Tiger", "Lion", "Rabbit", "Monkey", "Forest",
+        "River", "Mountain", "Ocean", "Desert", "Castle", "Rocket", "Guitar", "Piano", "Cookie", "Muffin",
+        "Teapot", "Balloon", "Pillow", "Blanket", "Bubble", "Donut", "Kitten", "Puppy", "Acorn", "Cactus"
+    )
+    return "${adjectives.random()}-${nouns.random()}"
+}
+
 /**
  * Section for inputting the website's name and URL.
  *
@@ -241,6 +256,17 @@ fun WebsiteInputSection(
                 placeholder = { Text("Name", color = Color.Gray) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                trailingIcon = {
+                    IconButton(onClick = {
+                        onNameChange(generateRandomName())
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Casino,
+                            contentDescription = "Generate Random Name",
+                            tint = Color(0xFFBB86FC)
+                        )
+                    }
+                },
                 keyboardOptions = KeyboardOptions(
                     imeAction = ImeAction.Next,
                     autoCorrect = false,
