@@ -146,6 +146,7 @@ object GeckoRuntimeModule {
         // Install the built-in Timezone Spoofer extension
         runtime.webExtensionController.installBuiltIn("resource://android/assets/extensions/timezone_spoofer/")
         runtime.webExtensionController.installBuiltIn("resource://android/assets/extensions/hardware_spoofer/")
+        runtime.webExtensionController.installBuiltIn("resource://android/assets/extensions/locale_spoofer/")
 
         // 3. Set AddonManagerDelegate to monitor extension lifecycle
         runtime.webExtensionController.setAddonManagerDelegate(object : WebExtensionController.AddonManagerDelegate {
@@ -155,7 +156,9 @@ object GeckoRuntimeModule {
                 extension.setActionDelegate(object : WebExtension.ActionDelegate {})
                 
                 // Handle messages from the Spoofer extensions
-                if (extension.id == "timezone-spoofer@lumina.example.com" || extension.id == "hardware-spoofer@lumina.example.com") {
+                if (extension.id == "timezone-spoofer@lumina.example.com" || 
+                    extension.id == "hardware-spoofer@lumina.example.com" || 
+                    extension.id == "locale-spoofer@lumina.example.com") {
                     extension.setMessageDelegate(object : WebExtension.MessageDelegate {
                         override fun onMessage(
                             nativeApp: String,
@@ -199,6 +202,7 @@ object GeckoRuntimeModule {
                                     if (luminaInfo != null) {
                                         response.put("randomizeScreen", luminaInfo.randomizeScreen)
                                         response.put("spoofHardware", luminaInfo.spoofHardware)
+                                        response.put("spoofLocale", luminaInfo.spoofLocale)
                                         if (luminaInfo.randomizeScreen) {
                                             if (luminaInfo.randomizeUserAgent) {
                                                 // Spoof common desktop screen dimensions
@@ -215,6 +219,7 @@ object GeckoRuntimeModule {
                                     } else {
                                         response.put("randomizeScreen", false)
                                         response.put("spoofHardware", false)
+                                        response.put("spoofLocale", false)
                                     }
 
                                     if (!spoofEnabled) {

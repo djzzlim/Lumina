@@ -29,7 +29,7 @@ browser.webRequest.onBeforeSendHeaders.addListener(
     (details) => {
         for (let header of details.requestHeaders) {
             if (header.name.toLowerCase() === "user-agent") {
-                header.value = header.value.replace(" _NoSR", "").replace(" _NoSH", "");
+                header.value = header.value.replace(" _NoSR", "").replace(" _NoSH", "").replace(" _NoSL", "").replace(/ _Loc_[a-zA-Z\-]+/, "");
                 break;
             }
         }

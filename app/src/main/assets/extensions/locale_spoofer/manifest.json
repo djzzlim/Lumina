@@ -1,0 +1,28 @@
+{
+  "manifest_version": 2,
+  "name": "Locale Spoofer",
+  "version": "1.0",
+  "description": "Spoofs Accept-Language HTTP headers and navigator locales to random values.",
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "permissions": [
+    "nativeMessaging",
+    "<all_urls>",
+    "webRequest",
+    "webRequestBlocking"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "locale-spoofer@lumina.example.com"
+    }
+  }
+}

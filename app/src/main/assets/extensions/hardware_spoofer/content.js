@@ -150,13 +150,11 @@
                                 });
                             });
 
-                            if ('DevicePosture' in win || 'devicePosture' in win.navigator) {
-                                const postureObj = { type: "continuous" };
-                                Object.defineProperty(iframeNavigatorProto, 'devicePosture', {
-                                    get: () => postureObj,
-                                    configurable: true
-                                });
-                            }
+                            const postureObj = { type: "continuous" };
+                            Object.defineProperty(iframeNavigatorProto, 'devicePosture', {
+                                get: () => postureObj,
+                                configurable: true
+                            });
                         }
 
                         if (!isNoSR) {
@@ -243,14 +241,11 @@
                     });
 
                     // devicePosture
-                    if ('DevicePosture' in window || 'devicePosture' in navigator) {
-                        originalNavDescriptors['devicePosture'] = Object.getOwnPropertyDescriptor(Navigator.prototype, 'devicePosture');
-                        const postureObj = { type: "continuous" };
-                        Object.defineProperty(Navigator.prototype, 'devicePosture', {
-                            get: () => postureObj,
-                            configurable: true
-                        });
-                    }
+                    const postureObj = { type: "continuous" };
+                    Object.defineProperty(Navigator.prototype, 'devicePosture', {
+                        get: () => postureObj,
+                        configurable: true
+                    });
                 }
 
                 // Apply initial patches on main window
@@ -329,11 +324,7 @@
                                     delete Navigator.prototype[key];
                                 }
                             });
-                            if (originalNavDescriptors['devicePosture']) {
-                                Object.defineProperty(Navigator.prototype, 'devicePosture', originalNavDescriptors['devicePosture']);
-                            } else {
-                                delete Navigator.prototype.devicePosture;
-                            }
+                            delete Navigator.prototype.devicePosture;
                         }
                     } else {
                         applySpoof(cfg.width, cfg.height, cfg.dpr);

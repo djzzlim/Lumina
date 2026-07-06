@@ -533,27 +533,42 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
         }
     }
 
+    private val sessionLocale: String by lazy {
+        val locales = listOf(
+            "en-US", "en-GB", "de-DE", "fr-FR", "es-ES", 
+            "it-IT", "pt-BR", "nl-NL", "pl-PL", "ru-RU", 
+            "ja-JP", "zh-CN", "ko-KR"
+        )
+        locales.random()
+    }
+
     @androidx.annotation.OptIn(ExperimentalGeckoViewApi::class)
     @OptIn(ExperimentalGeckoViewApi::class)
     private fun applySettings(info: LuminaInfo) {
-        val desktopUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0"
+        val desktopUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
         val androidUA = "Mozilla/5.0 (Android 15; Mobile; rv:135.0) Gecko/135.0 Firefox/135.0"
 
         _geckoSession.settings.apply {
             if (info.randomizeUserAgent && info.afpEnabled) {
-                val uaSuffix = (if (info.randomizeScreen) "" else " _NoSR") + (if (info.spoofHardware) "" else " _NoSH")
+                val localeSuffix = if (info.spoofLocale) " _Loc_$sessionLocale" else " _NoSL"
+                val uaSuffix = (if (info.randomizeScreen) "" else " _NoSR") + 
+                               (if (info.spoofHardware) "" else " _NoSH") + 
+                               localeSuffix
                 userAgentOverride = desktopUA + uaSuffix
                 GeckoPreferenceController.setGeckoPref("general.platform.override", "Win32", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.appversion.override", "5.0 (Windows)", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.oscpu.override", "Windows NT 10.0; Win64; x64", GeckoPreferenceController.PREF_BRANCH_USER)
             } else if (!info.randomizeUserAgent && info.afpEnabled) {
-                val uaSuffix = (if (info.randomizeScreen) "" else " _NoSR") + (if (info.spoofHardware) "" else " _NoSH")
+                val localeSuffix = if (info.spoofLocale) " _Loc_$sessionLocale" else " _NoSL"
+                val uaSuffix = (if (info.randomizeScreen) "" else " _NoSR") + 
+                               (if (info.spoofHardware) "" else " _NoSH") + 
+                               localeSuffix
                 userAgentOverride = androidUA + uaSuffix
                 GeckoPreferenceController.setGeckoPref("general.platform.override", "Android", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.appversion.override", "5.0 (Android 15)", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.oscpu.override", "Android 15", GeckoPreferenceController.PREF_BRANCH_USER)
             } else {
-                userAgentOverride = "$androidUA _NoSR _NoSH"
+                userAgentOverride = "$androidUA _NoSR _NoSH _NoSL"
                 GeckoPreferenceController.setGeckoPref("general.platform.override", "", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.appversion.override", "", GeckoPreferenceController.PREF_BRANCH_USER)
                 GeckoPreferenceController.setGeckoPref("general.oscpu.override", "", GeckoPreferenceController.PREF_BRANCH_USER)
@@ -591,11 +606,7 @@ class BrowserViewModel @androidx.annotation.OptIn(ExperimentalGeckoViewApi::clas
             } else {
                 GeckoPreferenceController.setGeckoPref("dom.enable_performance", true, GeckoPreferenceController.PREF_BRANCH_USER)
             }
-            if (info.spoofLocale) {
-                GeckoPreferenceController.setGeckoPref("intl.accept_languages", "en-US, en", GeckoPreferenceController.PREF_BRANCH_USER)
-            } else {
-                GeckoPreferenceController.setGeckoPref("intl.accept_languages", "", GeckoPreferenceController.PREF_BRANCH_USER)
-            }
+            GeckoPreferenceController.setGeckoPref("intl.accept_languages", "", GeckoPreferenceController.PREF_BRANCH_USER)
         } else {
             GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting.target_video_card", "", GeckoPreferenceController.PREF_BRANCH_USER)
             GeckoPreferenceController.setGeckoPref("privacy.resistFingerprinting.canvasSerialization", false, GeckoPreferenceController.PREF_BRANCH_USER)
