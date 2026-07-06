@@ -1,7 +1,9 @@
 // background.js
+let cachedNetworkTz = null;
+let cachedNetworkOffset = 0;
+let lastNetworkFetch = 0;
 let cachedTz = null;
 let cachedOffset = 0;
-let lastFetch = 0;
 
 // Fallback options for privacy (America or other common places)
 const FALLBACK_ZONES = [
@@ -22,42 +24,75 @@ const getFallback = (excludeTz) => {
         ? pool[Math.floor(Math.random() * pool.length)]
         : FALLBACK_ZONES[0]; // Fallback to first if all excluded (unlikely)
         
+    cachedTz = choice.tz;
+    cachedOffset = choice.offset;
     return { timezone: choice.tz, offset: choice.offset };
 };
 
-const fetchTimezone = async () => {
-    const now = Date.now();
-    if (cachedTz && (now - lastFetch < 300000)) return { timezone: cachedTz, offset: cachedOffset };
-
+const fetchTimezone = async (luminaId) => {
     try {
-        console.log("Lumina BG: Requesting timezone from native app...");
-        const response = await browser.runtime.sendNativeMessage("lumina", { type: "getTimezone" });
+        console.log("Lumina BG: Requesting timezone from native app for ID:", luminaId);
+        const response = await browser.runtime.sendNativeMessage("lumina", { 
+            type: "getTimezone",
+            luminaId: luminaId
+        });
         console.log("Lumina BG: Native app response:", JSON.stringify(response));
         
         if (response && response.timezone === "disabled") {
             console.log("Lumina BG: Timezone spoofing is disabled for this session.");
-            cachedTz = null;
-            return { timezone: null }; 
+            return {
+                timezone: null,
+                randomizeScreen: response.randomizeScreen,
+                screenWidth: response.screenWidth,
+                screenHeight: response.screenHeight,
+                devicePixelRatio: response.devicePixelRatio
+            }; 
         }
 
         // If app explicitly requested fallback (or Tor is off and user wants to hide local)
         if (response && response.timezone === "fallback") {
             const fallback = getFallback(response.systemTimezone);
             console.log("Lumina BG: Explicit fallback requested. Selected:", JSON.stringify(fallback));
-            return fallback;
+            return {
+                timezone: fallback.timezone,
+                offset: fallback.offset,
+                randomizeScreen: response.randomizeScreen,
+                screenWidth: response.screenWidth,
+                screenHeight: response.screenHeight,
+                devicePixelRatio: response.devicePixelRatio
+            };
         }
 
         // If Tor is ON and provided a location, use it.
         if (response && response.timezone && response.timezone !== "system") {
-            cachedTz = response.timezone;
-            cachedOffset = response.offset || 0;
-            lastFetch = now;
-            console.log("Lumina BG: Using Tor/Native provided TZ:", cachedTz);
-            return { timezone: cachedTz, offset: cachedOffset };
+            console.log("Lumina BG: Using Tor/Native provided TZ:", response.timezone);
+            return {
+                timezone: response.timezone,
+                offset: response.offset || 0,
+                randomizeScreen: response.randomizeScreen,
+                screenWidth: response.screenWidth,
+                screenHeight: response.screenHeight,
+                devicePixelRatio: response.devicePixelRatio
+            };
         }
 
         // If Tor is OFF (system), detect if a VPN is active by checking the network IP location.
         const url = "https://ipwho.is/";
+        const now = Date.now();
+        
+        // Use cache if network check was performed recently
+        if (cachedNetworkTz && (now - lastNetworkFetch < 300000)) {
+            console.log("Lumina BG: Using cached network TZ:", cachedNetworkTz);
+            return {
+                timezone: cachedNetworkTz,
+                offset: cachedNetworkOffset,
+                randomizeScreen: response.randomizeScreen,
+                screenWidth: response.screenWidth,
+                screenHeight: response.screenHeight,
+                devicePixelRatio: response.devicePixelRatio
+            };
+        }
+
         console.log("Lumina BG: Tor off/System mode. Checking network location via " + url);
         try {
             const resp = await fetch(url);
@@ -73,17 +108,30 @@ const fetchTimezone = async () => {
                 if (networkTz === systemTz) {
                     console.log("Lumina BG: Network matches System (Real location exposed). Spoofing...");
                     const fallback = getFallback(networkTz);
-                    cachedTz = fallback.timezone;
-                    cachedOffset = fallback.offset;
-                    lastFetch = now;
-                    console.log("Lumina BG: Applied Spoof:", JSON.stringify(fallback));
-                    return fallback;
+                    cachedNetworkTz = fallback.timezone;
+                    cachedNetworkOffset = fallback.offset;
+                    lastNetworkFetch = now;
+                    return {
+                        timezone: fallback.timezone,
+                        offset: fallback.offset,
+                        randomizeScreen: response.randomizeScreen,
+                        screenWidth: response.screenWidth,
+                        screenHeight: response.screenHeight,
+                        devicePixelRatio: response.devicePixelRatio
+                    };
                 } else {
                     console.log("Lumina BG: Network differs from System (VPN active). Using Network TZ.");
-                    cachedTz = networkTz;
-                    cachedOffset = Math.floor(data.timezone.offset / 60);
-                    lastFetch = now;
-                    return { timezone: cachedTz, offset: cachedOffset };
+                    cachedNetworkTz = networkTz;
+                    cachedNetworkOffset = Math.floor(data.timezone.offset / 60);
+                    lastNetworkFetch = now;
+                    return {
+                        timezone: cachedNetworkTz,
+                        offset: cachedNetworkOffset,
+                        randomizeScreen: response.randomizeScreen,
+                        screenWidth: response.screenWidth,
+                        screenHeight: response.screenHeight,
+                        devicePixelRatio: response.devicePixelRatio
+                    };
                 }
             } else {
                 console.error("Lumina BG: ipwho.is failed or returned success=false");
@@ -98,12 +146,36 @@ const fetchTimezone = async () => {
 
     // Default hard fallback for privacy
     console.log("Lumina BG: Final fallback.");
-    return getFallback();
+    const fallback = getFallback();
+    return {
+        timezone: fallback.timezone,
+        offset: fallback.offset,
+        randomizeScreen: false
+    };
 };
+
+// Strip the _NoSR suffix from outgoing User-Agent headers
+browser.webRequest.onBeforeSendHeaders.addListener(
+    (details) => {
+        for (let header of details.requestHeaders) {
+            if (header.name.toLowerCase() === "user-agent") {
+                header.value = header.value.replace(" _NoSR", "");
+                break;
+            }
+        }
+        return { requestHeaders: details.requestHeaders };
+    },
+    { urls: ["<all_urls>"] },
+    ["blocking", "requestHeaders"]
+);
 
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "getTimezone") {
-        fetchTimezone().then(sendResponse);
+        const cookieStoreId = sender.tab ? sender.tab.cookieStoreId : "";
+        const match = cookieStoreId.match(/lumina_session_(\d+)/);
+        const luminaId = match ? parseInt(match[1]) : null;
+        
+        fetchTimezone(luminaId).then(sendResponse);
         return true; // async
     }
 });

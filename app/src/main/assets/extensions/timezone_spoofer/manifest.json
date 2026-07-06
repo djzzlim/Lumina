@@ -16,7 +16,10 @@
   ],
   "permissions": [
     "nativeMessaging",
-    "https://ipwho.is/"
+    "https://ipwho.is/",
+    "<all_urls>",
+    "webRequest",
+    "webRequestBlocking"
   ],
   "browser_specific_settings": {
     "gecko": {

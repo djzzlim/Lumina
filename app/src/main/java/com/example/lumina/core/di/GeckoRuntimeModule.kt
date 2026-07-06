@@ -165,9 +165,11 @@ object GeckoRuntimeModule {
                             if (message is JSONObject && message.optString("type") == "getTimezone") {
                                 val result = GeckoResult<Any>()
                                 
-                                // Parse lumina ID from contextId (e.g., "lumina_session_123")
+                                // Parse lumina ID from payload or fallback to contextId
+                                val payloadId = message.optLong("luminaId", -1L)
                                 val contextId = sender.session?.settings?.contextId
-                                val luminaId = contextId?.substringAfterLast("_")?.toLongOrNull()
+                                val sessionLuminaId = contextId?.substringAfterLast("_")?.toLongOrNull()
+                                val luminaId = if (payloadId != -1L) payloadId else sessionLuminaId
                                 
                                 val systemTz = java.util.TimeZone.getDefault().id
                                 val useNetworkTz = runBlocking { settingsDataStore.useNetworkTimezoneFlow.first() }
@@ -177,6 +179,14 @@ object GeckoRuntimeModule {
 
                                 // Fetch session-specific spoofing preference
                                 CoroutineScope(Dispatchers.Main).launch {
+                                    val luminaInfo = luminaId?.let { id ->
+                                        try {
+                                            luminaRepository.getLuminaById(id).first()
+                                        } catch (e: Exception) {
+                                            null
+                                        }
+                                    }
+
                                     // Always enable spoofing now that the toggle is removed from UI
                                     val spoofEnabled = true
                                     
@@ -184,6 +194,25 @@ object GeckoRuntimeModule {
 
                                     val response = JSONObject()
                                     response.put("systemTimezone", systemTz)
+
+                                    if (luminaInfo != null) {
+                                        response.put("randomizeScreen", luminaInfo.randomizeScreen)
+                                        if (luminaInfo.randomizeScreen) {
+                                            if (luminaInfo.randomizeUserAgent) {
+                                                // Spoof common desktop screen dimensions
+                                                response.put("screenWidth", 1920)
+                                                response.put("screenHeight", 1080)
+                                                response.put("devicePixelRatio", 1.0)
+                                            } else {
+                                                // Spoof common mobile screen dimensions
+                                                response.put("screenWidth", 360)
+                                                response.put("screenHeight", 800)
+                                                response.put("devicePixelRatio", 3.0)
+                                            }
+                                        }
+                                    } else {
+                                        response.put("randomizeScreen", false)
+                                    }
 
                                     if (!spoofEnabled) {
                                         response.put("timezone", "disabled")
