@@ -95,79 +95,141 @@
                     orientationType = width > height ? 'landscape-primary' : 'portrait-primary';
                 };
 
-                // Clean up User-Agent if it contains _NoSR suffix
-                const rawUA = navigator.userAgent || "";
-                const cleanUA = rawUA.replace(" _NoSR", "");
-                if (rawUA !== cleanUA) {
-                    Object.defineProperty(Navigator.prototype, 'userAgent', { get: () => cleanUA, configurable: true });
-                }
+                const patchedWindows = new WeakSet();
 
-                // Define getters on prototype only if randomizeScreen is active
-                if (!isNoSR) {
-                    props.forEach(prop => {
-                        Object.defineProperty(Screen.prototype, prop, {
-                            get: function() {
-                                if (prop === 'colorDepth' || prop === 'pixelDepth') return 24;
-                                if (prop === 'width' || prop === 'availWidth') return width;
-                                return height;
-                            },
-                            configurable: true
-                        });
+                // Dynamic patching function for newly created iframes/contexts
+                const patchWindow = (win) => {
+                    if (!win || patchedWindows.has(win)) return;
+                    patchedWindows.add(win);
+
+                    try {
+                        const iframeScreenProto = win.Screen.prototype;
+                        const iframeScreenOrientationProto = win.ScreenOrientation ? win.ScreenOrientation.prototype : null;
+                        const iframeElementProto = win.Element.prototype;
+                        const iframeNavigatorProto = win.Navigator.prototype;
+
+                        // Clean up User-Agent
+                        const rawUA = win.navigator.userAgent || "";
+                        const cleanUA = rawUA.replace(" _NoSR", "");
+                        if (rawUA !== cleanUA) {
+                            Object.defineProperty(iframeNavigatorProto, 'userAgent', { get: () => cleanUA, configurable: true });
+                        }
+
+                        if (!isNoSR) {
+                            // Define Screen properties
+                            props.forEach(prop => {
+                                Object.defineProperty(iframeScreenProto, prop, {
+                                    get: function() {
+                                        if (prop === 'colorDepth' || prop === 'pixelDepth') return 24;
+                                        if (prop === 'width' || prop === 'availWidth') return width;
+                                        return height;
+                                    },
+                                    configurable: true
+                                });
+                            });
+
+                            Object.defineProperty(win, 'innerWidth', { get: () => width, configurable: true });
+                            Object.defineProperty(win, 'innerHeight', { get: () => height, configurable: true });
+                            Object.defineProperty(win, 'outerWidth', { get: () => width, configurable: true });
+                            Object.defineProperty(win, 'outerHeight', { get: () => height, configurable: true });
+                            Object.defineProperty(win, 'devicePixelRatio', { get: () => dpr, configurable: true });
+
+                            if (iframeScreenOrientationProto) {
+                                Object.defineProperty(iframeScreenOrientationProto, 'type', { get: () => orientationType, configurable: true });
+                                Object.defineProperty(iframeScreenOrientationProto, 'angle', { get: () => 0, configurable: true });
+                            }
+                            Object.defineProperty(iframeScreenProto, 'mozOrientation', { get: () => orientationType, configurable: true });
+                            Object.defineProperty(iframeScreenProto, 'isExtended', { get: () => false, configurable: true });
+                            try {
+                                Object.defineProperty(win.screen, 'isExtended', { get: () => false, configurable: true });
+                            } catch (e) {}
+
+                            // Viewport clientWidth/clientHeight overrides
+                            if (originalClientWidth && originalClientHeight) {
+                                Object.defineProperty(iframeElementProto, 'clientWidth', {
+                                    get: function() {
+                                        const realW = originalClientWidth.call(this);
+                                        const realH = originalClientHeight.call(this);
+                                        if (this === win.document.documentElement || this === win.document.body) {
+                                            return width;
+                                        }
+                                        const vv = win.visualViewport;
+                                        const realVVW = vv ? Math.round(vv.width) : 0;
+                                        const realVVH = vv ? Math.round(vv.height) : 0;
+                                        if (realW === realVVW && realH === realVVH) {
+                                            return width;
+                                        }
+                                        return realW;
+                                    },
+                                    configurable: true
+                                });
+
+                                Object.defineProperty(iframeElementProto, 'clientHeight', {
+                                    get: function() {
+                                        const realW = originalClientWidth.call(this);
+                                        const realH = originalClientHeight.call(this);
+                                        if (this === win.document.documentElement || this === win.document.body) {
+                                            return height;
+                                        }
+                                        const vv = win.visualViewport;
+                                        const realVVW = vv ? Math.round(vv.width) : 0;
+                                        const realVVH = vv ? Math.round(vv.height) : 0;
+                                        if (realW === realVVW && realH === realVVH) {
+                                            return height;
+                                        }
+                                        return realH;
+                                    },
+                                    configurable: true
+                                });
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Lumina: Failed to patch iframe window context", e);
+                    }
+                };
+
+                // Apply initial patches on main window
+                patchWindow(window);
+
+                // Trap iframe contentWindow and contentDocument access
+                try {
+                    const originalContentWindow = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentWindow').get;
+                    Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
+                        get: function() {
+                            const win = originalContentWindow.call(this);
+                            if (win) patchWindow(win);
+                            return win;
+                        },
+                        configurable: true
                     });
 
-                    Object.defineProperty(window, 'innerWidth', { get: () => width, configurable: true });
-                    Object.defineProperty(window, 'innerHeight', { get: () => height, configurable: true });
-                    Object.defineProperty(window, 'outerWidth', { get: () => width, configurable: true });
-                    Object.defineProperty(window, 'outerHeight', { get: () => height, configurable: true });
-                    Object.defineProperty(window, 'devicePixelRatio', { get: () => dpr, configurable: true });
+                    const originalContentDocument = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentDocument').get;
+                    Object.defineProperty(HTMLIFrameElement.prototype, 'contentDocument', {
+                        get: function() {
+                            const doc = originalContentDocument.call(this);
+                            if (doc && doc.defaultView) patchWindow(doc.defaultView);
+                            return doc;
+                        },
+                        configurable: true
+                    });
+                } catch (e) {
+                    console.warn("Lumina: Failed to hook HTMLIFrameElement", e);
+                }
 
-                    if (typeof ScreenOrientation !== 'undefined') {
-                        Object.defineProperty(ScreenOrientation.prototype, 'type', { get: () => orientationType, configurable: true });
-                        Object.defineProperty(ScreenOrientation.prototype, 'angle', { get: () => 0, configurable: true });
-                    }
-                    Object.defineProperty(Screen.prototype, 'mozOrientation', { get: () => orientationType, configurable: true });
-                    
+                // Hook HTMLFrameElement (legacy frame tags support)
+                if (typeof HTMLFrameElement !== 'undefined') {
                     try {
-                        Object.defineProperty(Screen.prototype, 'isExtended', { get: () => false, configurable: true });
-                        Object.defineProperty(window.screen, 'isExtended', { get: () => false, configurable: true });
-                    } catch (e) {}
-
-                    if (originalClientWidth && originalClientHeight) {
-                        Object.defineProperty(Element.prototype, 'clientWidth', {
+                        const frameWindow = Object.getOwnPropertyDescriptor(HTMLFrameElement.prototype, 'contentWindow').get;
+                        Object.defineProperty(HTMLFrameElement.prototype, 'contentWindow', {
                             get: function() {
-                                const realW = originalClientWidth.call(this);
-                                const realH = originalClientHeight.call(this);
-                                if (this === document.documentElement || this === document.body) {
-                                    return width;
-                                }
-                                const vv = window.visualViewport;
-                                const realVVW = vv ? Math.round(vv.width) : 0;
-                                const realVVH = vv ? Math.round(vv.height) : 0;
-                                if (realW === realVVW && realH === realVVH) {
-                                    return width;
-                                }
-                                return realW;
+                                const win = frameWindow.call(this);
+                                if (win) patchWindow(win);
+                                return win;
                             },
                             configurable: true
                         });
-
-                        Object.defineProperty(Element.prototype, 'clientHeight', {
-                            get: function() {
-                                const realW = originalClientWidth.call(this);
-                                const realH = originalClientHeight.call(this);
-                                if (this === document.documentElement || this === document.body) {
-                                    return height;
-                                }
-                                const vv = window.visualViewport;
-                                const realVVW = vv ? Math.round(vv.width) : 0;
-                                const realVVH = vv ? Math.round(vv.height) : 0;
-                                if (realW === realVVW && realH === realVVH) {
-                                    return height;
-                                }
-                                return realH;
-                            },
-                            configurable: true
-                        });
+                    } catch (e) {
+                        console.warn("Lumina: Failed to hook HTMLFrameElement", e);
                     }
                 }
 
