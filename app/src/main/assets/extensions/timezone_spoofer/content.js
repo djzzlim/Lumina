@@ -61,15 +61,31 @@
                 let dpr = isDesktop ? 1.0 : 3.0;
                 let orientationType = width > height ? 'landscape-primary' : 'portrait-primary';
 
+                // Helper to find descriptor on prototype chain
+                const getDescriptor = (proto, prop) => {
+                    let p = proto;
+                    while (p) {
+                        const desc = Object.getOwnPropertyDescriptor(p, prop);
+                        if (desc) return desc;
+                        p = Object.getPrototypeOf(p);
+                    }
+                    return null;
+                };
+
                 // Keep references to originals
                 const originalDescriptors = {};
                 const props = ['width', 'height', 'availWidth', 'availHeight', 'colorDepth', 'pixelDepth'];
                 props.forEach(prop => {
-                    originalDescriptors[prop] = Object.getOwnPropertyDescriptor(Screen.prototype, prop);
+                    const desc = getDescriptor(Screen.prototype, prop);
+                    if (desc) {
+                        originalDescriptors[prop] = desc;
+                    }
                 });
 
-                const originalClientWidth = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth').get;
-                const originalClientHeight = Object.getOwnPropertyDescriptor(Element.prototype, 'clientHeight').get;
+                const clientWidthDesc = getDescriptor(Element.prototype, 'clientWidth');
+                const clientHeightDesc = getDescriptor(Element.prototype, 'clientHeight');
+                const originalClientWidth = clientWidthDesc ? clientWidthDesc.get : null;
+                const originalClientHeight = clientHeightDesc ? clientHeightDesc.get : null;
 
                 // Function to apply the spoof
                 const applySpoof = (w, h, d) => {
@@ -110,26 +126,49 @@
                         Object.defineProperty(ScreenOrientation.prototype, 'angle', { get: () => 0, configurable: true });
                     }
                     Object.defineProperty(Screen.prototype, 'mozOrientation', { get: () => orientationType, configurable: true });
+                    
+                    try {
+                        Object.defineProperty(Screen.prototype, 'isExtended', { get: () => false, configurable: true });
+                        Object.defineProperty(window.screen, 'isExtended', { get: () => false, configurable: true });
+                    } catch (e) {}
 
-                    Object.defineProperty(Element.prototype, 'clientWidth', {
-                        get: function() {
-                            if (this === document.documentElement || this === document.body) {
-                                return width;
-                            }
-                            return originalClientWidth.call(this);
-                        },
-                        configurable: true
-                    });
+                    if (originalClientWidth && originalClientHeight) {
+                        Object.defineProperty(Element.prototype, 'clientWidth', {
+                            get: function() {
+                                const realW = originalClientWidth.call(this);
+                                const realH = originalClientHeight.call(this);
+                                if (this === document.documentElement || this === document.body) {
+                                    return width;
+                                }
+                                const vv = window.visualViewport;
+                                const realVVW = vv ? Math.round(vv.width) : 0;
+                                const realVVH = vv ? Math.round(vv.height) : 0;
+                                if (realW === realVVW && realH === realVVH) {
+                                    return width;
+                                }
+                                return realW;
+                            },
+                            configurable: true
+                        });
 
-                    Object.defineProperty(Element.prototype, 'clientHeight', {
-                        get: function() {
-                            if (this === document.documentElement || this === document.body) {
-                                return height;
-                            }
-                            return originalClientHeight.call(this);
-                        },
-                        configurable: true
-                    });
+                        Object.defineProperty(Element.prototype, 'clientHeight', {
+                            get: function() {
+                                const realW = originalClientWidth.call(this);
+                                const realH = originalClientHeight.call(this);
+                                if (this === document.documentElement || this === document.body) {
+                                    return height;
+                                }
+                                const vv = window.visualViewport;
+                                const realVVW = vv ? Math.round(vv.width) : 0;
+                                const realVVH = vv ? Math.round(vv.height) : 0;
+                                if (realW === realVVW && realH === realVVH) {
+                                    return height;
+                                }
+                                return realH;
+                            },
+                            configurable: true
+                        });
+                    }
                 }
 
                 // Listen for updates from content script
@@ -138,15 +177,21 @@
                     if (cfg.restore) {
                         // Restore originals
                         props.forEach(prop => {
-                            Object.defineProperty(Screen.prototype, prop, originalDescriptors[prop]);
+                            if (originalDescriptors[prop]) {
+                                Object.defineProperty(Screen.prototype, prop, originalDescriptors[prop]);
+                            }
                         });
-                        Object.defineProperty(Element.prototype, 'clientWidth', { get: originalClientWidth, configurable: true });
-                        Object.defineProperty(Element.prototype, 'clientHeight', { get: originalClientHeight, configurable: true });
+                        if (originalClientWidth && originalClientHeight) {
+                            Object.defineProperty(Element.prototype, 'clientWidth', clientWidthDesc);
+                            Object.defineProperty(Element.prototype, 'clientHeight', clientHeightDesc);
+                        }
                         delete window.innerWidth;
                         delete window.innerHeight;
                         delete window.outerWidth;
                         delete window.outerHeight;
                         delete window.devicePixelRatio;
+                        delete Screen.prototype.isExtended;
+                        delete window.screen.isExtended;
                     } else {
                         applySpoof(cfg.width, cfg.height, cfg.dpr);
                     }
